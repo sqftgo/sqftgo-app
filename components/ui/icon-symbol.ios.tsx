@@ -1,32 +1,57 @@
-import { SymbolView, SymbolViewProps, SymbolWeight } from 'expo-symbols';
-import { StyleProp, ViewStyle } from 'react-native';
+import React from 'react';
+import { 
+  Home, 
+  Send, 
+  Code, 
+  ChevronRight, 
+  ChevronLeft, 
+  Heart, 
+  User, 
+  Users, 
+  Plus, 
+  Search, 
+  Bell, 
+  Sliders, 
+  BedDouble, 
+  Star, 
+  MapPin 
+} from 'lucide-react-native';
+import { OpaqueColorValue, type StyleProp, type TextStyle } from 'react-native';
+
+const MAPPING = {
+  'house.fill': Home,
+  'paperplane.fill': Send,
+  'chevron.left.forwardslash.chevron.right': Code,
+  'chevron.right': ChevronRight,
+  'chevron.left': ChevronLeft,
+  'heart.fill': Heart,
+  'person.fill': User,
+  'person.2.fill': Users,
+  'plus.circle.fill': Plus,
+  'magnifyingglass': Search,
+  'bell.fill': Bell,
+  'slider.horizontal.3': Sliders,
+  'bed.double.fill': BedDouble,
+  'star.fill': Star,
+  'mappin.circle.fill': MapPin,
+};
+
+export type IconSymbolName = keyof typeof MAPPING;
 
 export function IconSymbol({
   name,
   size = 24,
   color,
   style,
-  weight = 'regular',
+  weight,
 }: {
-  name: SymbolViewProps['name'];
+  name: IconSymbolName;
   size?: number;
-  color: string;
-  style?: StyleProp<ViewStyle>;
-  weight?: SymbolWeight;
+  color: string | OpaqueColorValue;
+  style?: StyleProp<TextStyle>;
+  weight?: string;
 }) {
-  return (
-    <SymbolView
-      weight={weight}
-      tintColor={color}
-      resizeMode="scaleAspectFit"
-      name={name}
-      style={[
-        {
-          width: size,
-          height: size,
-        },
-        style,
-      ]}
-    />
-  );
+  const IconComponent = MAPPING[name];
+  if (!IconComponent) return null;
+  return <IconComponent size={size} color={color as string} style={style as any} />;
 }
