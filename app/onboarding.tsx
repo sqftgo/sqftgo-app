@@ -1,5 +1,4 @@
 import { useApp } from "@/context/AppContext";
-import { useRouter } from "expo-router";
 import {
   Briefcase,
   CheckCircle2,
@@ -8,22 +7,24 @@ import {
 } from "lucide-react-native";
 import React, { useRef, useState } from "react";
 import {
-  Dimensions,
-  Image,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  View
+  View,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Image } from "expo-image";
 
-const { width, height } = Dimensions.get("window");
+const UserIcon = User as any;
+const BriefcaseIcon = Briefcase as any;
+const CheckCircle2Icon = CheckCircle2 as any;
+const ChevronRightIcon = ChevronRight as any;
 
 export default function OnboardingScreen() {
-  const { setHasCompletedOnboarding, setUserRole, setIsLoggedIn, setUserEmail } = useApp();
-  const router = useRouter();
+  const { setHasCompletedOnboarding, setPreferredRole } = useApp();
+  const { width, height } = useWindowDimensions();
 
   const [currentSlide, setCurrentSlide] = useState(0);
   const [selectedRole, setSelectedRole] = useState<"user" | "broker">("user");
@@ -47,18 +48,16 @@ export default function OnboardingScreen() {
   };
 
   const handleFinish = () => {
-    // Save onboarding details and automatically log in
-    setUserRole(selectedRole);
-    setUserEmail(selectedRole === "broker" ? "broker@svrepl.com" : "dipesh@gmail.com");
-    setIsLoggedIn(true);
+    // Completing onboarding flips the root layout's route guard, which
+    // replaces the stack with the auth screen — no back navigation here.
+    setPreferredRole(selectedRole);
     setHasCompletedOnboarding(true);
-    router.replace('/(tabs)' as any);
   };
 
   const slides = [
     {
       title: "Find Premium Properties",
-      subtitle: "Browse vetted luxury villas, verified apartments, and prime plots in Udaipur and Jaipur without any broker fees.",
+      subtitle: "Browse vetted luxury villas, verified apartments, and prime plots in Udaipur, Jaipur, Surat, and other major cities without any broker fees.",
       image: "https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=600&q=80",
       bgTint: "#EEF7FC"
     },
@@ -98,10 +97,13 @@ export default function OnboardingScreen() {
       >
         {slides.map((slide, idx) => {
           return (
-            <View key={idx} style={[styles.slideContainer, { width }]}>
+            <View
+              key={idx}
+              style={[styles.slideContainer, { width, paddingTop: height * 0.05 }]}
+            >
               {/* Feature Showcase image */}
-              <View style={styles.imageBox}>
-                <Image source={{ uri: slide.image }} style={styles.slideImg} />
+              <View style={[styles.imageBox, { height: height * 0.32 }]}>
+                <Image source={{ uri: slide.image }} style={styles.slideImg} contentFit="cover" />
                 <View style={[styles.iconFloatCircle, { backgroundColor: slide.bgTint }]}>
                 </View>
               </View>
@@ -152,7 +154,7 @@ export default function OnboardingScreen() {
                   styles.roleIconCircle,
                   selectedRole === "user" && styles.roleIconCircleActive
                 ]}>
-                  <User size={20} color={selectedRole === "user" ? "#FFFFFF" : "#0F1E36"} />
+                  <UserIcon size={20} color={selectedRole === "user" ? "#FFFFFF" : "#0F1E36"} />
                 </View>
                 <Text style={[styles.roleCardTitle, selectedRole === "user" && styles.roleCardTitleActive]}>
                   Buyer / Tenant
@@ -160,7 +162,7 @@ export default function OnboardingScreen() {
                 <Text style={styles.roleCardDesc}>Search properties and inspect local ratings.</Text>
                 {selectedRole === "user" && (
                   <View style={styles.checkBadge}>
-                    <CheckCircle2 size={12} color="#FFFFFF" fill="#E05A36" />
+                    <CheckCircle2Icon size={12} color="#FFFFFF" fill="#E05A36" />
                   </View>
                 )}
               </Pressable>
@@ -177,7 +179,7 @@ export default function OnboardingScreen() {
                   styles.roleIconCircle,
                   selectedRole === "broker" && styles.roleIconCircleActive
                 ]}>
-                  <Briefcase size={20} color={selectedRole === "broker" ? "#FFFFFF" : "#0F1E36"} />
+                  <BriefcaseIcon size={20} color={selectedRole === "broker" ? "#FFFFFF" : "#0F1E36"} />
                 </View>
                 <Text style={[styles.roleCardTitle, selectedRole === "broker" && styles.roleCardTitleActive]}>
                   Owner / Broker
@@ -185,7 +187,7 @@ export default function OnboardingScreen() {
                 <Text style={styles.roleCardDesc}>List properties and showcase RERA credentials.</Text>
                 {selectedRole === "broker" && (
                   <View style={styles.checkBadge}>
-                    <CheckCircle2 size={12} color="#FFFFFF" fill="#E05A36" />
+                    <CheckCircle2Icon size={12} color="#FFFFFF" fill="#E05A36" />
                   </View>
                 )}
               </Pressable>
@@ -202,7 +204,7 @@ export default function OnboardingScreen() {
           /* Slide 1 & 2: Simple Next layout buttons */
           <Pressable onPress={handleNext} style={styles.nextBtn}>
             <Text style={styles.nextBtnText}>Next</Text>
-            <ChevronRight size={16} color="#FFFFFF" />
+            <ChevronRightIcon size={16} color="#FFFFFF" />
           </Pressable>
         )}
       </View>
@@ -217,7 +219,7 @@ const styles = StyleSheet.create({
   },
   skipBtn: {
     position: "absolute",
-    top: Platform.OS === 'ios' ? 56 : 20,
+    top: process.env.EXPO_OS === 'ios' ? 56 : 20,
     right: 20,
     zIndex: 10,
     backgroundColor: "#FFFFFF",
@@ -226,11 +228,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     borderColor: "#EAE9E4",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.02,
-    shadowRadius: 3,
-    elevation: 1,
+    boxShadow: "0 2px 6px rgba(0,0,0,0.04)",
   },
   skipText: {
     fontSize: 12,
@@ -245,12 +243,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 30,
-    paddingTop: height * 0.05,
   },
   imageBox: {
     position: "relative",
     width: "100%",
-    height: height * 0.32,
     borderRadius: 32,
     overflow: "hidden",
     shadowColor: "#000",
@@ -274,11 +270,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 4,
     borderColor: "#FAF9F6",
-    shadowColor: "#E05A36",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 4,
+    boxShadow: "0 4px 12px rgba(224, 90, 54, 0.18)",
   },
   textContainer: {
     marginTop: 40,
@@ -301,7 +293,7 @@ const styles = StyleSheet.create({
   },
   bottomControlBar: {
     paddingHorizontal: 20,
-    paddingBottom: Platform.OS === 'ios' ? 44 : 24,
+    paddingBottom: process.env.EXPO_OS === 'ios' ? 44 : 24,
     backgroundColor: "#FAF9F6",
     alignItems: "center",
     gap: 20,
@@ -329,11 +321,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 4,
-    shadowColor: "#E05A36",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 3,
+    boxShadow: "0 4px 12px rgba(224, 90, 54, 0.3)",
   },
   nextBtnText: {
     color: "#FFFFFF",
@@ -347,11 +335,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: "#EAE9E4",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 2,
+    boxShadow: "0 6px 16px rgba(0,0,0,0.05)",
     gap: 12,
   },
   roleHeader: {
@@ -428,11 +412,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#E05A36",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 3,
+    boxShadow: "0 4px 12px rgba(224, 90, 54, 0.3)",
   },
   finishBtnText: {
     color: "#FFFFFF",

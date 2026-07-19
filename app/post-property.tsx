@@ -11,10 +11,12 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useApp, Property } from "@/context/AppContext";
+import { useApp } from "@/context/AppContext";
+import type { Property } from "@/data/types";
+import { CITIES as CITIES_LIST } from "@/constants/cities";
 import { ChevronLeft, ChevronDown, ChevronUp, Check } from "lucide-react-native";
 
-const CITIES = ["Udaipur", "Jaipur", "Jodhpur", "Kota", "Bikaner"];
+const CITIES = CITIES_LIST.map((c) => c.name);
 const PROPERTY_TYPES: Property["type"][] = [
   "Villa", 
   "Apartment", 
