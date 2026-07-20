@@ -159,7 +159,7 @@ export default function OnboardingScreen() {
                 <Text style={[styles.roleCardTitle, selectedRole === "user" && styles.roleCardTitleActive]}>
                   Buyer / Tenant
                 </Text>
-                <Text style={styles.roleCardDesc}>Search properties and inspect local ratings.</Text>
+                <Text style={styles.roleCardDesc}>Search homes, save favorites, and inquire with dealers.</Text>
                 {selectedRole === "user" && (
                   <View style={styles.checkBadge}>
                     <CheckCircle2Icon size={12} color="#FFFFFF" fill="#E05A36" />
@@ -182,9 +182,9 @@ export default function OnboardingScreen() {
                   <BriefcaseIcon size={20} color={selectedRole === "broker" ? "#FFFFFF" : "#0F1E36"} />
                 </View>
                 <Text style={[styles.roleCardTitle, selectedRole === "broker" && styles.roleCardTitleActive]}>
-                  Owner / Broker
+                  Broker / Dealer
                 </Text>
-                <Text style={styles.roleCardDesc}>List properties and showcase RERA credentials.</Text>
+                <Text style={styles.roleCardDesc}>List inventory, manage inquiries, and grow your pipeline.</Text>
                 {selectedRole === "broker" && (
                   <View style={styles.checkBadge}>
                     <CheckCircle2Icon size={12} color="#FFFFFF" fill="#E05A36" />
@@ -196,7 +196,7 @@ export default function OnboardingScreen() {
             {/* CTA Action button to enter app */}
             <Pressable onPress={handleFinish} style={styles.finishBtn}>
               <Text style={styles.finishBtnText}>
-                {selectedRole === "broker" ? "Access Broker Wizard" : "Explore Premium Listings"}
+                {selectedRole === "broker" ? "Continue as dealer" : "Explore Premium Listings"}
               </Text>
             </Pressable>
           </View>

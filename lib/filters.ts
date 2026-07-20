@@ -79,6 +79,7 @@ export function filterProperties(
   const q = filters.query.trim().toLowerCase();
 
   const result = properties.filter((p) => {
+    if (p.status !== "Active") return false;
     if (p.city.toLowerCase() !== city.toLowerCase()) return false;
     if (
       q !== "" &&

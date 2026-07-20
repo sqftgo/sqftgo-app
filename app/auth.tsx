@@ -12,11 +12,28 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Eye, EyeOff, Home as HomeIcon, Lock, Mail } from "lucide-react-native";
 
 import { useApp } from "@/context/AppContext";
+import type { UserRole } from "@/data/types";
 import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
 
 type Mode = "sign-in" | "sign-up";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Demo accounts for walkthroughs — password is accepted by mock auth (≥6 chars). */
+export const DEMO_CREDENTIALS = {
+  buyer: {
+    email: "buyer@svrepl.com",
+    password: "SunValley26",
+    role: "user" as UserRole,
+    label: "Buyer / Tenant",
+  },
+  broker: {
+    email: "broker@svrepl.com",
+    password: "SunValley26",
+    role: "broker" as UserRole,
+    label: "Broker / Dealer",
+  },
+} as const;
 
 export default function AuthScreen() {
   const { signIn, preferredRole: role } = useApp();
@@ -28,6 +45,7 @@ export default function AuthScreen() {
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
   const isSignUp = mode === "sign-up";
+  const demo = role === "broker" ? DEMO_CREDENTIALS.broker : DEMO_CREDENTIALS.buyer;
 
   const validate = () => {
     const next: typeof errors = {};
@@ -43,13 +61,15 @@ export default function AuthScreen() {
 
   const handleSubmit = () => {
     if (!validate()) return;
-    // Mock auth: any valid credentials create a session.
-    // Guards in the root layout navigate to the tabs automatically.
     signIn(email.trim(), role);
   };
 
-  const handleDemo = () => {
-    signIn(role === "broker" ? "broker@svrepl.com" : "dipesh@gmail.com", role);
+  const fillDemo = (kind: keyof typeof DEMO_CREDENTIALS) => {
+    const account = DEMO_CREDENTIALS[kind];
+    setEmail(account.email);
+    setPassword(account.password);
+    setErrors({});
+    signIn(account.email, account.role);
   };
 
   const switchMode = (next: Mode) => {
@@ -87,7 +107,6 @@ export default function AuthScreen() {
             gap: spacing.xl,
           }}
         >
-          {/* Brand header */}
           <View style={{ alignItems: "center", gap: spacing.md }}>
             <View
               style={{
@@ -115,12 +134,15 @@ export default function AuthScreen() {
               }}
             >
               {isSignUp
-                ? "Save homes, get price alerts, and post listings for free."
-                : "Sign in to pick up where you left off."}
+                ? role === "broker"
+                  ? "Create a dealer account to list properties and manage buyer inquiries."
+                  : "Save homes, get price alerts, and inquire with local dealers."
+                : role === "broker"
+                  ? "Sign in to your dealer dashboard."
+                  : "Sign in to pick up where you left off."}
             </Text>
           </View>
 
-          {/* Mode switch */}
           <View
             style={{
               flexDirection: "row",
@@ -166,7 +188,6 @@ export default function AuthScreen() {
             })}
           </View>
 
-          {/* Form */}
           <View style={{ gap: spacing.md }}>
             <View style={{ gap: spacing.xs }}>
               <View style={fieldStyle(!!errors.email)}>
@@ -262,17 +283,56 @@ export default function AuthScreen() {
                 {isSignUp ? "Create account" : "Sign in"}
               </Text>
             </Pressable>
+          </View>
 
-            <Pressable
-              onPress={handleDemo}
-              hitSlop={8}
-              accessibilityRole="button"
-              style={{ alignItems: "center", paddingVertical: spacing.sm }}
-            >
-              <Text style={{ ...type.label, color: colors.inkMuted }}>
-                Continue with demo account
-              </Text>
-            </Pressable>
+          {/* Professional demo credentials */}
+          <View
+            style={{
+              backgroundColor: colors.surface,
+              borderWidth: 1,
+              borderColor: colors.border,
+              borderRadius: radius.lg,
+              borderCurve: "continuous",
+              padding: spacing.lg,
+              gap: spacing.md,
+              boxShadow: shadow.card,
+            }}
+          >
+            <Text style={{ ...type.label, color: colors.inkMuted, letterSpacing: 0.4 }}>
+              DEMO ACCESS
+            </Text>
+            <Text style={{ ...type.caption, color: colors.inkSecondary }}>
+              Use these accounts for a full walkthrough. Password for both:{" "}
+              <Text style={{ fontWeight: "700", color: colors.ink }}>{demo.password}</Text>
+            </Text>
+
+            {(
+              [
+                ["buyer", DEMO_CREDENTIALS.buyer],
+                ["broker", DEMO_CREDENTIALS.broker],
+              ] as const
+            ).map(([key, account]) => (
+              <Pressable
+                key={key}
+                onPress={() => fillDemo(key)}
+                style={({ pressed }) => ({
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  borderRadius: radius.md,
+                  padding: spacing.md,
+                  gap: 4,
+                  backgroundColor: pressed ? colors.surfaceSubtle : colors.bg,
+                })}
+              >
+                <Text style={{ ...type.emphasis, color: colors.ink }}>{account.label}</Text>
+                <Text selectable style={{ ...type.caption, color: colors.inkMuted }}>
+                  {account.email}
+                </Text>
+                <Text style={{ ...type.micro, color: colors.accent, marginTop: 4 }}>
+                  Tap to sign in
+                </Text>
+              </Pressable>
+            ))}
           </View>
 
           <Text

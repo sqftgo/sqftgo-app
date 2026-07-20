@@ -40,12 +40,30 @@ export interface Property {
   ownerName: string;
   ownerPhone: string;
   inquiryCount: number;
-  status: "Active" | "Pending Review" | "Sold" | "Rented";
+  status: "Draft" | "Pending Review" | "Active" | "Sold" | "Rented";
+  /** Dealer who owns this listing (inbox routing). */
+  brokerEmail?: string;
+  brokerId?: string;
   featured?: boolean;
   reraApproved?: boolean;
   reraId?: string;
   verifiedDate?: string;
   priceBreakdown?: PriceBreakdown;
+}
+
+export type InquiryStatus = "open" | "replied" | "dismissed";
+
+export interface Inquiry {
+  id: string;
+  propertyId: string;
+  propertyTitle: string;
+  buyerEmail: string;
+  buyerPhone?: string;
+  message: string;
+  brokerEmail: string;
+  status: InquiryStatus;
+  createdAt: string;
+  replyMessage?: string;
 }
 
 export type DirectoryCategory =
@@ -77,4 +95,4 @@ export interface DirectoryProfile {
   listingsCount?: number;
 }
 
-export type UserRole = "user" | "broker" | "admin";
+export type UserRole = "user" | "broker";

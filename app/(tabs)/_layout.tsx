@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import {
   Animated,
   Pressable,
@@ -9,30 +9,61 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import { Bookmark, Briefcase, Grid, Home, User } from "lucide-react-native";
+import {
+  Bookmark,
+  Briefcase,
+  Grid,
+  Home,
+  Inbox,
+  LayoutDashboard,
+  MessageSquare,
+  User,
+} from "lucide-react-native";
 
+import { useApp } from "@/context/AppContext";
+import type { UserRole } from "@/data/types";
 import { colors, type } from "@/theme/tokens";
+
+interface TabDef {
+  name: string;
+  label: string;
+  Icon: React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
+}
+
+const USER_TABS: TabDef[] = [
+  { name: "index", label: "Home", Icon: Home },
+  { name: "explore", label: "Explore", Icon: Grid },
+  { name: "favorites", label: "Saved", Icon: Bookmark },
+  { name: "my-inquiries", label: "Inquiries", Icon: MessageSquare },
+  { name: "profile", label: "Profile", Icon: User },
+];
+
+const BROKER_TABS: TabDef[] = [
+  { name: "dashboard", label: "Dashboard", Icon: LayoutDashboard },
+  { name: "inquiries", label: "Leads", Icon: Inbox },
+  { name: "explore", label: "Explore", Icon: Grid },
+  { name: "services", label: "Services", Icon: Briefcase },
+  { name: "profile", label: "Profile", Icon: User },
+];
+
+function tabsForRole(role: UserRole | null): TabDef[] {
+  if (role === "broker") return BROKER_TABS;
+  return USER_TABS;
+}
 
 interface CustomTabBarProps {
   state: any;
   descriptors: any;
   navigation: any;
+  tabs: TabDef[];
 }
 
-const TABS = [
-  { name: "index", label: "Home", Icon: Home },
-  { name: "explore", label: "Explore", Icon: Grid },
-  { name: "services", label: "Services", Icon: Briefcase },
-  { name: "favorites", label: "Saved", Icon: Bookmark },
-  { name: "profile", label: "Profile", Icon: User },
-];
-
-function CustomTabBar({ state, navigation }: CustomTabBarProps) {
+function CustomTabBar({ state, navigation, tabs }: CustomTabBarProps) {
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
 
   const activeRouteName = state.routes[state.index]?.name;
-  const activeIdx = TABS.findIndex((t) => t.name === activeRouteName);
+  const activeIdx = tabs.findIndex((t) => t.name === activeRouteName);
   const safeActiveIdx = activeIdx === -1 ? 0 : activeIdx;
 
   const indicatorAnim = useRef(new Animated.Value(safeActiveIdx)).current;
@@ -46,11 +77,11 @@ function CustomTabBar({ state, navigation }: CustomTabBarProps) {
     }).start();
   }, [safeActiveIdx, indicatorAnim]);
 
-  const TAB_WIDTH = screenWidth / TABS.length;
+  const TAB_WIDTH = screenWidth / tabs.length;
 
   const indicatorTranslateX = indicatorAnim.interpolate({
-    inputRange: TABS.map((_, i) => i),
-    outputRange: TABS.map((_, i) => i * TAB_WIDTH),
+    inputRange: tabs.map((_, i) => i),
+    outputRange: tabs.map((_, i) => i * TAB_WIDTH),
   });
 
   const handlePress = (routeName: string, routeKey?: string) => {
@@ -92,7 +123,7 @@ function CustomTabBar({ state, navigation }: CustomTabBarProps) {
         }}
       />
 
-      {TABS.map((tab, idx) => {
+      {tabs.map((tab, idx) => {
         const route = state.routes.find((r: any) => r.name === tab.name);
         const isActive = safeActiveIdx === idx;
 
@@ -133,17 +164,35 @@ function CustomTabBar({ state, navigation }: CustomTabBarProps) {
   );
 }
 
+const ALL_TAB_NAMES = [
+  "index",
+  "explore",
+  "services",
+  "favorites",
+  "profile",
+  "dashboard",
+  "inquiries",
+  "my-inquiries",
+] as const;
+
 export default function TabLayout() {
+  const { userRole } = useApp();
+  const tabs = useMemo(() => tabsForRole(userRole), [userRole]);
+  const visible = useMemo(() => new Set(tabs.map((t) => t.name)), [tabs]);
+
   return (
     <Tabs
-      tabBar={(props) => <CustomTabBar {...props} />}
+      initialRouteName={userRole === "broker" ? "dashboard" : "index"}
+      tabBar={(props) => <CustomTabBar {...props} tabs={tabs} />}
       screenOptions={{ headerShown: false }}
     >
-      <Tabs.Screen name="index" />
-      <Tabs.Screen name="explore" />
-      <Tabs.Screen name="services" />
-      <Tabs.Screen name="favorites" />
-      <Tabs.Screen name="profile" />
+      {ALL_TAB_NAMES.map((name) => (
+        <Tabs.Screen
+          key={name}
+          name={name}
+          options={{ href: visible.has(name) ? undefined : null }}
+        />
+      ))}
     </Tabs>
   );
 }

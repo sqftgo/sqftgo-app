@@ -56,9 +56,10 @@ export default function CitySelectionModal({ visible, onClose }: CitySelectionMo
     }, 150);
   };
 
+  const containerMargin = 10;
   const spacing = 12;
   const padding = 16;
-  const cardSize = (SCREEN_WIDTH - padding * 2 - spacing * 2) / 3;
+  const cardSize = (SCREEN_WIDTH - containerMargin * 2 - padding * 2 - spacing) / 2;
 
   const renderCityCard = ({ item }: { item: City }) => {
     const isSelected = selectedCity.toLowerCase() === item.name.toLowerCase();
@@ -145,7 +146,7 @@ export default function CitySelectionModal({ visible, onClose }: CitySelectionMo
                   data={filteredCities}
                   renderItem={renderCityCard}
                   keyExtractor={(item) => item.name}
-                  numColumns={3}
+                  numColumns={2}
                   contentContainerStyle={styles.gridContainer}
                   columnWrapperStyle={styles.columnWrapper}
                   showsVerticalScrollIndicator={false}

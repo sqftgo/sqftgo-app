@@ -1,13 +1,16 @@
 import React from "react";
 import { Alert, ScrollView, Text, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, type Href } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   Bell,
   FileText,
   Heart,
   HelpCircle,
+  Inbox,
+  LayoutDashboard,
   LogOut,
+  MessageSquare,
   Plus,
   Shield,
   User,
@@ -20,7 +23,7 @@ import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { signOut, userEmail, favorites } = useApp();
+  const { signOut, userEmail, favorites, userRole, inquiries } = useApp();
 
   const handleLogout = () => {
     Alert.alert("Sign out", "Are you sure you want to sign out?", [
@@ -28,7 +31,6 @@ export default function ProfileScreen() {
       {
         text: "Sign out",
         style: "destructive",
-        // Clearing the session flips the root route guard back to auth.
         onPress: signOut,
       },
     ]);
@@ -36,6 +38,12 @@ export default function ProfileScreen() {
 
   const name = displayNameFromEmail(userEmail);
   const initials = initialsFromName(name);
+  const roleLabel = userRole === "broker" ? "Broker / Dealer" : "Buyer / Tenant";
+
+  const myInquiries = inquiries.filter((i) => i.buyerEmail === userEmail).length;
+  const openLeads = inquiries.filter(
+    (i) => i.brokerEmail === userEmail && i.status === "open",
+  ).length;
 
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -51,7 +59,6 @@ export default function ProfileScreen() {
       >
         <Text style={{ ...type.title, color: colors.ink }}>Profile</Text>
 
-        {/* Identity card */}
         <View
           style={{
             flexDirection: "row",
@@ -83,27 +90,52 @@ export default function ProfileScreen() {
             <Text selectable style={{ ...type.caption, color: colors.inkMuted }}>
               {userEmail}
             </Text>
+            <Text style={{ ...type.micro, color: colors.accent }}>{roleLabel}</Text>
           </View>
         </View>
 
-        {/* Account */}
         <View style={{ gap: spacing.sm }}>
           <Text style={{ ...type.label, color: colors.inkMuted, letterSpacing: 0.4 }}>
             ACCOUNT
           </Text>
           <MenuGroup>
-            <MenuRow
-              icon={Heart}
-              label="Saved properties"
-              value={String(favorites.length)}
-              onPress={() => router.push("/(tabs)/favorites")}
-            />
-            <MenuRow
-              icon={Plus}
-              label="Post a property"
-              sub="List for free"
-              onPress={() => router.push("/post-property")}
-            />
+            {userRole === "user" ? (
+              <>
+                <MenuRow
+                  icon={Heart}
+                  label="Saved properties"
+                  value={String(favorites.length)}
+                  onPress={() => router.push("/(tabs)/favorites")}
+                />
+                <MenuRow
+                  icon={MessageSquare}
+                  label="My inquiries"
+                  value={String(myInquiries)}
+                  onPress={() => router.push("/(tabs)/my-inquiries" as Href)}
+                />
+              </>
+            ) : null}
+            {userRole === "broker" ? (
+              <>
+                <MenuRow
+                  icon={LayoutDashboard}
+                  label="Dealer dashboard"
+                  onPress={() => router.push("/(tabs)/dashboard" as Href)}
+                />
+                <MenuRow
+                  icon={Inbox}
+                  label="Open leads"
+                  value={String(openLeads)}
+                  onPress={() => router.push("/(tabs)/inquiries" as Href)}
+                />
+                <MenuRow
+                  icon={Plus}
+                  label="Add property"
+                  sub="Draft or publish live"
+                  onPress={() => router.push("/post-property")}
+                />
+              </>
+            ) : null}
             <MenuRow
               icon={Bell}
               label="Notifications"
@@ -116,7 +148,6 @@ export default function ProfileScreen() {
           </MenuGroup>
         </View>
 
-        {/* Settings */}
         <View style={{ gap: spacing.sm }}>
           <Text style={{ ...type.label, color: colors.inkMuted, letterSpacing: 0.4 }}>
             SETTINGS
@@ -139,7 +170,6 @@ export default function ProfileScreen() {
           </MenuGroup>
         </View>
 
-        {/* Support */}
         <View style={{ gap: spacing.sm }}>
           <Text style={{ ...type.label, color: colors.inkMuted, letterSpacing: 0.4 }}>
             HELP & SUPPORT
@@ -159,7 +189,6 @@ export default function ProfileScreen() {
           </MenuGroup>
         </View>
 
-        {/* Logout */}
         <MenuGroup>
           <MenuRow
             icon={LogOut}

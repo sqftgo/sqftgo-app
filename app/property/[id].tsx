@@ -8,10 +8,12 @@ import {
   Dimensions,
   Share,
   Alert,
-  Linking
+  Linking,
+  Modal,
+  TextInput,
 } from "react-native";
 import { Image } from "expo-image";
-import { useLocalSearchParams, useRouter, Stack } from "expo-router";
+import { useLocalSearchParams, useRouter, Stack, type Href } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useApp } from "@/context/AppContext";
 import {
@@ -33,7 +35,8 @@ import {
   Star,
   ShieldCheck,
   CheckCircle2,
-  Info
+  Info,
+  X,
 } from "lucide-react-native";
 
 const { width } = Dimensions.get("window");
@@ -85,7 +88,14 @@ const FALLBACK_GALLERY = [
 export default function PropertyDetailsScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { properties, favorites, toggleFavorite, directoryProfiles } = useApp();
+  const {
+    properties,
+    favorites,
+    toggleFavorite,
+    directoryProfiles,
+    submitInquiry,
+    userRole,
+  } = useApp();
 
   const property = properties.find((p) => p.id === id);
 
@@ -96,6 +106,9 @@ export default function PropertyDetailsScreen() {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isDescExpanded, setIsDescExpanded] = useState(false);
   const [selectedFacility, setSelectedFacility] = useState("metro");
+  const [showInquiry, setShowInquiry] = useState(false);
+  const [inquiryMessage, setInquiryMessage] = useState("");
+  const [inquiryPhone, setInquiryPhone] = useState("");
 
   // Home Loan Calculator states
   const [downPaymentPercent, setDownPaymentPercent] = useState(20);
@@ -168,6 +181,29 @@ export default function PropertyDetailsScreen() {
         { text: "Contact Owner", onPress: handleWhatsApp }
       ]
     );
+  };
+
+  const handleSubmitInquiry = () => {
+    if (!inquiryMessage.trim()) {
+      Alert.alert("Message required", "Tell the dealer what you are looking for.");
+      return;
+    }
+    const created = submitInquiry({
+      propertyId: property.id,
+      message: inquiryMessage,
+      buyerPhone: inquiryPhone.trim() || undefined,
+    });
+    if (!created) {
+      Alert.alert("Error", "Could not submit inquiry. Please try again.");
+      return;
+    }
+    setShowInquiry(false);
+    setInquiryMessage("");
+    setInquiryPhone("");
+    Alert.alert("Inquiry sent", "The dealer will see this in their inbox.", [
+      { text: "View my inquiries", onPress: () => router.push("/(tabs)/my-inquiries" as Href) },
+      { text: "OK" },
+    ]);
   };
 
   // Thumbnail press scrolls to matching image page
@@ -677,12 +713,60 @@ export default function PropertyDetailsScreen() {
 
       {/* Sticky Bottom Actions Footer */}
       <View style={styles.bottomFooter}>
-        <Pressable onPress={handleRentOrBuy} style={styles.rentNowButton}>
-          <Text style={styles.rentNowButtonText}>
-            {property.purpose === "buy" || property.purpose === "sell" ? "Buy now" : "Rent now"}
-          </Text>
-        </Pressable>
+        {userRole === "user" && property.status === "Active" ? (
+          <Pressable onPress={() => setShowInquiry(true)} style={styles.rentNowButton}>
+            <Text style={styles.rentNowButtonText}>Submit inquiry</Text>
+          </Pressable>
+        ) : (
+          <Pressable onPress={handleRentOrBuy} style={styles.rentNowButton}>
+            <Text style={styles.rentNowButtonText}>
+              {property.purpose === "buy" || property.purpose === "sell" ? "Buy now" : "Rent now"}
+            </Text>
+          </Pressable>
+        )}
       </View>
+
+      <Modal
+        visible={showInquiry}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowInquiry(false)}
+      >
+        <View style={styles.inquiryOverlay}>
+          <View style={styles.inquirySheet}>
+            <View style={styles.inquiryHeader}>
+              <Text style={styles.inquiryTitle}>Submit inquiry</Text>
+              <Pressable onPress={() => setShowInquiry(false)} hitSlop={8}>
+                <X size={20} color="#6B7280" />
+              </Pressable>
+            </View>
+            <Text style={styles.inquiryHint} numberOfLines={2}>
+              {property.title}
+            </Text>
+            <Text style={styles.inquiryLabel}>Message *</Text>
+            <TextInput
+              value={inquiryMessage}
+              onChangeText={setInquiryMessage}
+              placeholder="I am interested in a site visit this weekend..."
+              placeholderTextColor="#9CA3AF"
+              multiline
+              style={styles.inquiryInput}
+            />
+            <Text style={styles.inquiryLabel}>Phone (optional)</Text>
+            <TextInput
+              value={inquiryPhone}
+              onChangeText={setInquiryPhone}
+              placeholder="+91 ..."
+              placeholderTextColor="#9CA3AF"
+              keyboardType="phone-pad"
+              style={styles.inquiryPhoneInput}
+            />
+            <Pressable onPress={handleSubmitInquiry} style={styles.inquirySubmit}>
+              <Text style={styles.rentNowButtonText}>Send to dealer</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1279,5 +1363,70 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "700",
+  },
+  inquiryOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15, 30, 54, 0.55)",
+    justifyContent: "flex-end",
+  },
+  inquirySheet: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    gap: 10,
+  },
+  inquiryHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  inquiryTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#0F1E36",
+  },
+  inquiryHint: {
+    fontSize: 12,
+    color: "#6B7280",
+    fontWeight: "600",
+  },
+  inquiryLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#374151",
+    textTransform: "uppercase",
+    marginTop: 4,
+  },
+  inquiryInput: {
+    minHeight: 90,
+    textAlignVertical: "top",
+    backgroundColor: "#F5F4F0",
+    borderWidth: 1,
+    borderColor: "#EAE9E4",
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 14,
+    color: "#0F1E36",
+    fontWeight: "500",
+  },
+  inquiryPhoneInput: {
+    height: 44,
+    backgroundColor: "#F5F4F0",
+    borderWidth: 1,
+    borderColor: "#EAE9E4",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    fontSize: 14,
+    color: "#0F1E36",
+    fontWeight: "500",
+  },
+  inquirySubmit: {
+    backgroundColor: "#E05A36",
+    height: 48,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 6,
   },
 });

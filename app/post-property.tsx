@@ -15,6 +15,7 @@ import { useApp } from "@/context/AppContext";
 import type { Property } from "@/data/types";
 import { CITIES as CITIES_LIST } from "@/constants/cities";
 import { ChevronLeft, ChevronDown, ChevronUp, Check } from "lucide-react-native";
+import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 
 const CITIES = CITIES_LIST.map((c) => c.name);
 const PROPERTY_TYPES: Property["type"][] = [
@@ -72,7 +73,11 @@ const DropdownSelect: React.FC<DropdownSelectProps> = ({
       </Pressable>
       
       {isOpen && (
-        <View style={styles.dropdownList}>
+        <Animated.View 
+          entering={FadeIn.duration(200)}
+          exiting={FadeOut.duration(200)}
+          style={styles.dropdownList}
+        >
           <ScrollView nestedScrollEnabled style={styles.dropdownScroll}>
             {options.map((opt) => (
               <Pressable
@@ -87,7 +92,7 @@ const DropdownSelect: React.FC<DropdownSelectProps> = ({
               </Pressable>
             ))}
           </ScrollView>
-        </View>
+        </Animated.View>
       )}
     </View>
   );
@@ -95,7 +100,7 @@ const DropdownSelect: React.FC<DropdownSelectProps> = ({
 
 export default function PostPropertyScreen() {
   const router = useRouter();
-  const { addProperty } = useApp();
+  const { addProperty, selectedCity, userRole } = useApp();
 
   // Dropdown states
   const [activeDropdown, setActiveDropdown] = useState<"city" | "type" | "furnished" | null>(null);
@@ -106,7 +111,7 @@ export default function PostPropertyScreen() {
   const [type, setType] = useState<Property["type"]>("Apartment");
   const [purpose, setPurpose] = useState<Property["purpose"]>("buy");
   const [bhk, setBhk] = useState("");
-  const [city, setCity] = useState("Udaipur");
+  const [city, setCity] = useState(selectedCity);
   const [locality, setLocality] = useState("");
   const [size, setSize] = useState("");
   const [furnished, setFurnished] = useState<Property["furnished"]>("Semi-Furnished");
@@ -137,19 +142,9 @@ export default function PostPropertyScreen() {
     setActiveDropdown(activeDropdown === dropdown ? null : dropdown);
   };
 
-  const handleSubmit = () => {
-    if (!title || !price || !locality || !size || !description) {
-      Alert.alert("Error", "Please fill in all mandatory fields.");
-      return;
-    }
-
+  const buildPayload = () => {
     const priceNum = parseFloat(price);
     const sizeNum = parseFloat(size);
-    if (isNaN(priceNum) || isNaN(sizeNum)) {
-      Alert.alert("Error", "Price and size must be valid numeric values.");
-      return;
-    }
-
     const finalImage = imageUrl.trim() || "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80";
 
     const breakdown = {
@@ -159,7 +154,7 @@ export default function PostPropertyScreen() {
       registrationFees: registrationFees ? parseFloat(registrationFees) : undefined
     };
 
-    addProperty({
+    return {
       title,
       price: priceNum,
       type,
@@ -175,12 +170,38 @@ export default function PostPropertyScreen() {
       reraApproved: isReraApproved,
       reraId: isReraApproved ? (reraId.trim() || `RAJ/RERA/PR/${Math.floor(1000 + Math.random() * 9000)}`) : undefined,
       priceBreakdown: breakdown
-    });
+    };
+  };
 
-    Alert.alert("Success", "Property listed successfully!", [
+  const validate = () => {
+    if (!title || !price || !locality || !size || !description) {
+      Alert.alert("Error", "Please fill in all mandatory fields.");
+      return false;
+    }
+    if (isNaN(parseFloat(price)) || isNaN(parseFloat(size))) {
+      Alert.alert("Error", "Price and size must be valid numeric values.");
+      return false;
+    }
+    return true;
+  };
+
+  const handleSaveDraft = () => {
+    if (!validate()) return;
+    addProperty({ ...buildPayload(), status: "Draft" });
+    Alert.alert("Draft saved", "Open this draft later from your dashboard and publish when ready.", [
       { text: "OK", onPress: () => router.back() }
     ]);
   };
+
+  const handleSubmitForReview = () => {
+    if (!validate()) return;
+    addProperty({ ...buildPayload(), status: "Active" });
+    Alert.alert("Published", "Your listing is live and visible to buyers.", [
+      { text: "OK", onPress: () => router.back() },
+    ]);
+  };
+
+  const isBroker = userRole === "broker";
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -189,7 +210,7 @@ export default function PostPropertyScreen() {
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
           <ChevronLeft size={22} color="#0F1E36" />
         </Pressable>
-        <Text style={styles.headerTitle}>Post Property</Text>
+        <Text style={styles.headerTitle}>{isBroker ? "Add Property" : "Post Property"}</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -428,9 +449,22 @@ export default function PostPropertyScreen() {
           />
         </View>
 
-        <Pressable onPress={handleSubmit} style={styles.submitBtn}>
-          <Text style={styles.submitBtnText}>List Property Now</Text>
-        </Pressable>
+        <View style={styles.submitRow}>
+          {isBroker ? (
+            <>
+              <Pressable onPress={handleSaveDraft} style={styles.draftBtn}>
+                <Text style={styles.draftBtnText}>Save draft</Text>
+              </Pressable>
+              <Pressable onPress={handleSubmitForReview} style={styles.submitBtn}>
+                <Text style={styles.submitBtnText}>Publish listing</Text>
+              </Pressable>
+            </>
+          ) : (
+            <Pressable onPress={handleSubmitForReview} style={[styles.submitBtn, { flex: 1 }]}>
+              <Text style={styles.submitBtnText}>Publish listing</Text>
+            </Pressable>
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -551,6 +585,7 @@ const styles = StyleSheet.create({
   },
   dropdownGroup: {
     marginBottom: 16,
+    gap: 8,
   },
   dropdownHeader: {
     flexDirection: "row",
@@ -558,6 +593,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#F9FAFB",
     borderRadius: 12,
+    borderCurve: "continuous",
     borderWidth: 1,
     borderColor: "#E5E7EB",
     paddingHorizontal: 12,
@@ -574,16 +610,13 @@ const styles = StyleSheet.create({
   dropdownList: {
     marginTop: 4,
     borderRadius: 12,
+    borderCurve: "continuous",
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: "#E5E7EB",
     maxHeight: 180,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 3,
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
   },
   dropdownScroll: {
     paddingVertical: 4,
@@ -658,6 +691,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   submitBtn: {
+    flex: 1,
     backgroundColor: "#E05A36", // Primary Warm Orange
     borderRadius: 14,
     paddingVertical: 14,
@@ -667,11 +701,29 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 6,
     elevation: 3,
-    marginTop: 10,
   },
   submitBtnText: {
     color: "#FFFFFF",
     fontWeight: "800",
-    fontSize: 15.5,
+    fontSize: 14,
+  },
+  submitRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 10,
+  },
+  draftBtn: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#EAE9E4",
+  },
+  draftBtnText: {
+    color: "#0F1E36",
+    fontWeight: "800",
+    fontSize: 14,
   },
 });
