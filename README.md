@@ -1,8 +1,8 @@
-# 🏡 SunValley Real Estate
+# SqftGo
 
 A modern, full-featured Mobile & Web Real Estate Application built with **Expo SDK 54**, **React Native**, **Expo Router**, and **NativeWind v5 (Tailwind CSS v4)**.
 
-SunValley Real Estate provides a seamless platform for users to discover, buy, rent, list, and manage real estate properties.
+SqftGo provides a seamless platform for users to discover, buy, rent, list, and manage real estate properties.
 
 ---
 
@@ -63,50 +63,66 @@ SunValley Real Estate provides a seamless platform for users to discover, buy, r
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```text
 real-estate/
-├── app/                        # Expo Router file-based pages & navigation
-│   ├── (tabs)/                 # Main Bottom Tab navigation routes
-│   │   ├── index.tsx           # Home Screen
-│   │   ├── explore.tsx         # Explore / Search Screen
-│   │   ├── favorites.tsx       # Saved Properties
-│   │   ├── dashboard.tsx       # Owner / Agent Dashboard
-│   │   ├── my-inquiries.tsx    # User Submitted Inquiries
-│   │   ├── inquiries.tsx       # Received Inquiries
-│   │   ├── services.tsx        # Real Estate Services & Experts
-│   │   └── profile.tsx         # Profile & Settings
-│   ├── property/               # Dynamic Property routes
-│   │   └── [id].tsx            # Property Details page
-│   ├── auth.tsx                # Authentication (Login / Register)
-│   ├── onboarding.tsx          # Onboarding carousel
-│   ├── post-property.tsx       # Property posting form
-│   └── _layout.tsx             # Root Stack layout & App Provider
-├── components/                 # Reusable React Native components
-│   └── ui/                     # UI Design System components
-│       ├── AppBar.tsx          # Dynamic Top Navigation Bar
-│       ├── PropertyCard.tsx    # Property card grid/list item
-│       ├── FilterSheet.tsx     # Advanced filter bottom sheet
-│       ├── NotificationsSheet.tsx # Notifications drawer sheet
-│       ├── CitySelectionModal.tsx # Global city picker modal
-│       ├── ExpertCard.tsx      # Real Estate Expert card
-│       ├── Chip.tsx            # Category & Filter chips
-│       └── MenuRow.tsx         # Profile/Settings option row
-├── context/                    # State Management
-│   └── AppContext.tsx          # Global context for properties, favorites, inquiries & user state
-├── data/                       # Mock data & Type Definitions
-│   ├── properties.ts           # Property catalog data
-│   ├── directory.ts            # Services & Experts directory data
-│   ├── notifications.ts        # System notifications data
-│   └── types.ts                # TypeScript interfaces
-├── lib/                        # Helper utilities & formatters
-│   ├── format.ts               # Price & area formatting helpers
-│   └── filters.ts              # Filter evaluation utilities
 ├── assets/                     # App icons, splash screens, and images
+├── scripts/                    # Project utility scripts
 ├── app.json                    # Expo configuration
-└── package.json                # Project dependencies & scripts
+├── package.json
+└── src/                        # Application source (Expo Router uses src/app)
+    ├── app/                    # Routes only — every file is a screen
+    │   ├── _layout.tsx         # Root Stack, auth guards, AppProvider
+    │   ├── (tabs)/             # Bottom tab navigation
+    │   │   ├── index.tsx       # Home
+    │   │   ├── explore.tsx     # Search / Explore
+    │   │   ├── favorites.tsx   # Saved properties
+    │   │   ├── services.tsx    # Services & experts
+    │   │   ├── profile.tsx     # Profile & settings
+    │   │   ├── my-inquiries.tsx# Buyer inquiries
+    │   │   ├── dashboard.tsx   # Dealer dashboard
+    │   │   ├── properties.tsx  # Dealer listings
+    │   │   └── inquiries.tsx   # Dealer inbox
+    │   ├── property/[id].tsx   # Property details
+    │   ├── edit-property/[id].tsx
+    │   ├── post-property.tsx
+    │   ├── auth.tsx
+    │   ├── onboarding.tsx
+    │   ├── analytics.tsx
+    │   ├── subscription.tsx
+    │   ├── my-visits.tsx
+    │   ├── manage-visits.tsx
+    │   ├── dealer-register.tsx
+    │   ├── dealer-pending.tsx
+    │   ├── dealer-kyc.tsx
+    │   └── dealer-settings.tsx
+    ├── components/             # Reusable UI
+    │   └── ui/                 # Design-system components
+    ├── context/                # AppContext & global state
+    ├── data/                   # Types & mock/seed data
+    ├── hooks/                  # Shared hooks
+    ├── lib/                    # Utilities + API client
+    │   └── api/                # Auth, properties, inquiries, visits, etc.
+    ├── constants/              # Static config (cities, theme helpers)
+    ├── theme/                  # Design tokens
+    ├── tw/                     # NativeWind / CSS helpers
+    └── global.css              # Tailwind entry
 ```
+
+---
+
+## 🔌 API mode (optional)
+
+By default the app runs on **AsyncStorage mock** data (offline demos).
+
+To talk to the Next.js BFF:
+
+1. Set `EXPO_PUBLIC_API_URL` to your web origin (no trailing slash), e.g. `https://sqftgo.example.com`
+2. Restart Expo. Auth and dealer mutations then use `Authorization: Bearer <token>` against `/api/*`.
+3. Never call `/api/admin/*` from the app; role promotion stays on web admin.
+
+Demo mock logins (when API URL is unset): `broker@svrepl.com` / `SunValley26`
 
 ---
 

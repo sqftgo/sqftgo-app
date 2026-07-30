@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "real-estate",
-    "slug": "real-estate",
+    "name": "SqftGo",
+    "slug": "sqftgo",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "realestate",
+    "scheme": "sqftgo",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
