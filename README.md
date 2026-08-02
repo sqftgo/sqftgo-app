@@ -118,11 +118,10 @@ By default the app runs on **AsyncStorage mock** data (offline demos).
 
 To talk to the Next.js BFF:
 
-1. Set `EXPO_PUBLIC_API_URL` to your web origin (no trailing slash), e.g. `https://sqftgo.example.com`
-2. Restart Expo. Auth and dealer mutations then use `Authorization: Bearer <token>` against `/api/*`.
-3. Never call `/api/admin/*` from the app; role promotion stays on web admin.
-
-Demo mock logins (when API URL is unset): `broker@svrepl.com` / `SunValley26`
+1. Copy `.env.example` → `.env` and set `EXPO_PUBLIC_API_URL=https://www.sqftgo.com`.
+2. Restart Expo (`npx expo start -c`). Auth uses email/password + `Authorization: Bearer <token>` against `/api/*`.
+3. **Google Sign-In on mobile is pending** — see [`docs/GOOGLE_SIGNIN_PENDING.md`](./docs/GOOGLE_SIGNIN_PENDING.md). Website Google login is separate and already live.
+4. Never call `/api/admin/*` from the app; role promotion stays on web admin.
 
 ---
 

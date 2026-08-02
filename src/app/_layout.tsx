@@ -50,7 +50,7 @@ function RootLayoutNav() {
 
         {/* Returning but signed-out users land on auth. */}
         <Stack.Protected guard={hasCompletedOnboarding && !isLoggedIn}>
-          <Stack.Screen name="auth" />
+          <Stack.Screen name="auth/index" />
         </Stack.Protected>
 
         {/* The app itself is only reachable with a session. Signing out
