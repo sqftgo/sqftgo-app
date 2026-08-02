@@ -900,7 +900,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       persistSession(sessionFromAccount(account));
       return { ok: true, role: "user", dealerAccess: "none" };
     },
-    [accounts, persistAccounts, persistSession],
+    [accounts, persistAccounts, persistSession, hydrateFromApi],
   );
 
   const signOut = useCallback(() => {

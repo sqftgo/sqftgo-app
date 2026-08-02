@@ -72,13 +72,19 @@ export async function apiFetch<T = unknown>(
   }
 
   if (!res.ok) {
+    const obj =
+      typeof parsed === "object" && parsed !== null
+        ? (parsed as Record<string, unknown>)
+        : null;
     const message =
-      typeof parsed === "object" &&
-      parsed !== null &&
-      "message" in parsed &&
-      typeof (parsed as { message: unknown }).message === "string"
-        ? (parsed as { message: string }).message
-        : `Request failed (${res.status})`;
+      (typeof obj?.error === "string" && obj.error) ||
+      (typeof obj?.message === "string" && obj.message) ||
+      `Request failed (${res.status})`;
+
+    if (__DEV__) {
+      console.error(`[API ${res.status}] ${options.method ?? "GET"} ${url}`, parsed);
+    }
+
     throw new ApiError(message, res.status, parsed);
   }
 

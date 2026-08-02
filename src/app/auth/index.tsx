@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Pressable,
@@ -30,21 +31,6 @@ type LoginType = "user" | "dealer";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const DEMO_BY_TYPE = {
-  user: {
-    email: "buyer@svrepl.com",
-    password: "SunValley26",
-    label: "Demo User",
-    hint: "Browse, save, inquire, book visits",
-  },
-  dealer: {
-    email: "broker@svrepl.com",
-    password: "SunValley26",
-    label: "Demo Dealer",
-    hint: "Listings, leads, visits dashboard",
-  },
-} as const;
-
 function preferredToLoginType(role: UserRole): LoginType {
   return role === "broker" ? "dealer" : "user";
 }
@@ -64,10 +50,10 @@ export default function AuthScreen() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string }>({});
+  const [busy, setBusy] = useState(false);
 
   const isSignUp = mode === "sign-up";
   const isDealer = loginType === "dealer";
-  const demo = DEMO_BY_TYPE[loginType];
 
   const selectLoginType = (next: LoginType) => {
     setLoginType(next);
@@ -83,43 +69,18 @@ export default function AuthScreen() {
     if (!EMAIL_RE.test(email.trim())) {
       next.email = "Enter a valid email address.";
     }
-    if (password.length < 6) {
-      next.password = "Password must be at least 6 characters.";
+    if (password.length < 8) {
+      next.password = "Password must be at least 8 characters.";
     }
     setErrors(next);
     return Object.keys(next).length === 0;
   };
 
-  const handleSubmit = async () => {
-    if (!validate()) return;
-
-    if (isSignUp) {
-      const result = await signUp({
-        email: email.trim(),
-        password,
-        name: name.trim(),
-      });
-      if (!result.ok) {
-        Alert.alert("Sign up failed", result.message);
-        return;
-      }
-      setPreferredRole(loginTypeToPreferred(loginType));
-      // New accounts are always role=user; dealer path continues to directory register.
-      if (isDealer) {
-        router.replace("/dealer-register" as Href);
-      }
-      return;
-    }
-
-    const result = await signIn(email.trim(), password);
-    if (!result.ok) {
-      Alert.alert(
-        result.code === "admin_unsupported" ? "Use web admin" : "Sign in failed",
-        result.message,
-      );
-      return;
-    }
-
+  const finishAuth = (result: {
+    ok: true;
+    role: UserRole;
+    dealerAccess?: string;
+  }) => {
     const isDealerAccount = result.role === "broker" || result.dealerAccess === "pending";
 
     if (loginType === "user" && result.role === "broker") {
@@ -132,6 +93,11 @@ export default function AuthScreen() {
     }
 
     if (loginType === "dealer" && !isDealerAccount) {
+      if (isSignUp) {
+        setPreferredRole("broker");
+        router.replace("/dealer-register" as Href);
+        return;
+      }
       signOut();
       Alert.alert(
         "Not a dealer account",
@@ -145,17 +111,38 @@ export default function AuthScreen() {
     }
   };
 
-  const fillDemo = async () => {
-    setEmail(demo.email);
-    setPassword(demo.password);
-    setErrors({});
-    const result = await signIn(demo.email, demo.password);
-    if (!result.ok) {
-      Alert.alert("Demo sign-in failed", result.message);
-      return;
-    }
-    if (loginType === "dealer" && result.dealerAccess === "pending" && result.role !== "broker") {
-      router.replace("/dealer-pending" as Href);
+  const handleSubmit = async () => {
+    if (!validate()) return;
+    setBusy(true);
+    try {
+      if (isSignUp) {
+        const result = await signUp({
+          email: email.trim(),
+          password,
+          name: name.trim(),
+        });
+        if (!result.ok) {
+          Alert.alert("Sign up failed", result.message);
+          return;
+        }
+        setPreferredRole(loginTypeToPreferred(loginType));
+        if (isDealer) {
+          router.replace("/dealer-register" as Href);
+        }
+        return;
+      }
+
+      const result = await signIn(email.trim(), password);
+      if (!result.ok) {
+        Alert.alert(
+          result.code === "admin_unsupported" ? "Use web admin" : "Sign in failed",
+          result.message,
+        );
+        return;
+      }
+      finishAuth(result);
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -231,7 +218,6 @@ export default function AuthScreen() {
             </Text>
           </View>
 
-          {/* Login type: User | Dealer only */}
           <View style={{ gap: spacing.sm }}>
             <Text style={{ ...type.label, color: colors.inkMuted, letterSpacing: 0.4 }}>
               CONTINUE AS
@@ -258,6 +244,7 @@ export default function AuthScreen() {
                   <Pressable
                     key={opt.id}
                     onPress={() => selectLoginType(opt.id)}
+                    disabled={busy}
                     accessibilityRole="button"
                     accessibilityState={{ selected: active }}
                     style={{
@@ -270,6 +257,7 @@ export default function AuthScreen() {
                       padding: spacing.md,
                       gap: spacing.sm,
                       boxShadow: active ? shadow.card : undefined,
+                      opacity: busy ? 0.7 : 1,
                     }}
                   >
                     <View
@@ -314,6 +302,7 @@ export default function AuthScreen() {
                 <Pressable
                   key={tab.id}
                   onPress={() => switchMode(tab.id)}
+                  disabled={busy}
                   accessibilityRole="tab"
                   accessibilityState={{ selected: active }}
                   style={{
@@ -353,6 +342,7 @@ export default function AuthScreen() {
                     placeholder="Full name"
                     placeholderTextColor={colors.inkMuted}
                     autoCapitalize="words"
+                    editable={!busy}
                     accessibilityLabel="Full name"
                     style={{ flex: 1, ...type.body, lineHeight: undefined, color: colors.ink }}
                   />
@@ -378,6 +368,7 @@ export default function AuthScreen() {
                   autoCapitalize="none"
                   autoCorrect={false}
                   autoComplete="email"
+                  editable={!busy}
                   accessibilityLabel="Email address"
                   style={{ flex: 1, ...type.body, lineHeight: undefined, color: colors.ink }}
                 />
@@ -403,6 +394,7 @@ export default function AuthScreen() {
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
                   autoComplete={isSignUp ? "new-password" : "current-password"}
+                  editable={!busy}
                   accessibilityLabel="Password"
                   style={{ flex: 1, ...type.body, lineHeight: undefined, color: colors.ink }}
                 />
@@ -441,6 +433,7 @@ export default function AuthScreen() {
                   })();
                 }}
                 hitSlop={8}
+                disabled={busy}
                 accessibilityRole="button"
                 style={{ alignSelf: "flex-end" }}
               >
@@ -449,7 +442,8 @@ export default function AuthScreen() {
             ) : null}
 
             <Pressable
-              onPress={handleSubmit}
+              onPress={() => void handleSubmit()}
+              disabled={busy}
               accessibilityRole="button"
               style={({ pressed }) => ({
                 height: 50,
@@ -458,55 +452,23 @@ export default function AuthScreen() {
                 backgroundColor: colors.accent,
                 alignItems: "center",
                 justifyContent: "center",
-                opacity: pressed ? 0.85 : 1,
+                opacity: pressed || busy ? 0.85 : 1,
                 boxShadow: shadow.accent,
               })}
             >
-              <Text style={{ ...type.emphasis, color: colors.onAccent }}>
-                {isSignUp
-                  ? isDealer
-                    ? "Sign up as Dealer"
-                    : "Sign up as User"
-                  : isDealer
-                    ? "Sign in as Dealer"
-                    : "Sign in as User"}
-              </Text>
-            </Pressable>
-          </View>
-
-          <View
-            style={{
-              backgroundColor: colors.surface,
-              borderWidth: 1,
-              borderColor: colors.border,
-              borderRadius: radius.lg,
-              borderCurve: "continuous",
-              padding: spacing.lg,
-              gap: spacing.md,
-              boxShadow: shadow.card,
-            }}
-          >
-            <Text style={{ ...type.label, color: colors.inkMuted, letterSpacing: 0.4 }}>
-              DEMO · {isDealer ? "DEALER" : "USER"}
-            </Text>
-            <Pressable
-              onPress={fillDemo}
-              style={({ pressed }) => ({
-                borderWidth: 1,
-                borderColor: colors.border,
-                borderRadius: radius.md,
-                padding: spacing.md,
-                gap: 4,
-                backgroundColor: pressed ? colors.surfaceSubtle : colors.bg,
-              })}
-            >
-              <Text style={{ ...type.emphasis, color: colors.ink }}>{demo.label}</Text>
-              <Text selectable style={{ ...type.caption, color: colors.inkMuted }}>
-                {demo.email}
-              </Text>
-              <Text style={{ ...type.micro, color: colors.accent, marginTop: 4 }}>
-                {demo.hint} · password {demo.password}
-              </Text>
+              {busy ? (
+                <ActivityIndicator color={colors.onAccent} />
+              ) : (
+                <Text style={{ ...type.emphasis, color: colors.onAccent }}>
+                  {isSignUp
+                    ? isDealer
+                      ? "Sign up as Dealer"
+                      : "Sign up as User"
+                    : isDealer
+                      ? "Sign in as Dealer"
+                      : "Sign in as User"}
+                </Text>
+              )}
             </Pressable>
           </View>
 
