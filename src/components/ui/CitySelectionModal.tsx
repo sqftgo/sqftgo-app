@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import {
-  Modal,
   View,
   Text,
   StyleSheet,
@@ -9,15 +8,13 @@ import {
   Image,
   Dimensions,
   TextInput,
-  Platform,
-  KeyboardAvoidingView,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { X, Search, Check, MapPin } from "lucide-react-native";
+import { Search, Check, MapPin, X } from "lucide-react-native";
 import Svg, { Defs, LinearGradient as SvgLinearGradient, Rect, Stop } from "react-native-svg";
-import { BlurView } from "expo-blur";
 import { CITIES, City } from "@/constants/cities";
 import { useApp } from "@/context/AppContext";
+import { ModalSheet, ModalSheetHeader } from "@/components/ui/modal-sheet";
+import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -49,17 +46,15 @@ export default function CitySelectionModal({ visible, onClose }: CitySelectionMo
 
   const handleSelectCity = (city: City) => {
     setSelectedCity(city.name);
-    // Standard close after a brief delay for visual confirmation of selection
     setTimeout(() => {
       onClose();
       setSearchQuery("");
     }, 150);
   };
 
-  const containerMargin = 10;
-  const spacing = 12;
-  const padding = 16;
-  const cardSize = (SCREEN_WIDTH - containerMargin * 2 - padding * 2 - spacing) / 2;
+  const cardGap = spacing.md;
+  const paddingHorizontal = spacing.xl;
+  const cardSize = (SCREEN_WIDTH - paddingHorizontal * 2 - cardGap) / 2;
 
   const renderCityCard = ({ item }: { item: City }) => {
     const isSelected = selectedCity.toLowerCase() === item.name.toLowerCase();
@@ -74,18 +69,11 @@ export default function CitySelectionModal({ visible, onClose }: CitySelectionMo
           pressed && styles.cardPressed,
         ]}
       >
-        {/* City Image */}
         <Image source={{ uri: item.image }} style={styles.cardImage} />
-
-        {/* Premium Dark Gradient Overlay */}
         <CardGradient />
-
-        {/* Centered City Name */}
         <View style={styles.textContainer}>
           <Text style={styles.cityName}>{item.name}</Text>
         </View>
-
-        {/* Selected Check Badge */}
         {isSelected && (
           <View style={styles.checkBadge}>
             <Check size={10} color="#FFFFFF" strokeWidth={3} />
@@ -96,181 +84,111 @@ export default function CitySelectionModal({ visible, onClose }: CitySelectionMo
   };
 
   return (
-    <Modal
+    <ModalSheet
       visible={visible}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={onClose}
+      onClose={onClose}
+      avoidKeyboard
+      maxHeight="85%"
     >
-      <BlurView intensity={70} style={StyleSheet.absoluteFill} tint="dark">
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={styles.modalContent}
-        >
-          <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
-            <View style={styles.container}>
-              {/* Header section */}
-              <View style={styles.header}>
-                <View style={styles.headerTitleBox}>
-                  <Text style={styles.headerTitle}>Select City</Text>
-                  <Text style={styles.headerSubtitle}>
-                    Choose your preferred location to explore premium properties
-                  </Text>
-                </View>
-                <Pressable onPress={onClose} style={styles.closeBtn}>
-                  <X size={20} color="#E5E7EB" />
-                </Pressable>
-              </View>
+      <ModalSheetHeader
+        title="Select City"
+        subtitle="Choose your location to explore premium properties"
+        onClose={onClose}
+      />
 
-              {/* Search Bar */}
-              <View style={styles.searchBar}>
-                <Search size={16} color="#9CA3AF" style={styles.searchIcon} />
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder="Search cities..."
-                  placeholderTextColor="#9CA3AF"
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  clearButtonMode="while-editing"
-                />
-                {searchQuery !== "" && (
-                  <Pressable onPress={() => setSearchQuery("")} style={styles.clearBtn}>
-                    <X size={14} color="#9CA3AF" />
-                  </Pressable>
-                )}
-              </View>
+      <View style={styles.container}>
+        {/* Search Bar */}
+        <View style={styles.searchBar}>
+          <Search size={16} color={colors.inkMuted} style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search cities..."
+            placeholderTextColor={colors.inkMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            clearButtonMode="while-editing"
+          />
+          {searchQuery !== "" && (
+            <Pressable onPress={() => setSearchQuery("")} style={styles.clearBtn}>
+              <X size={14} color={colors.inkMuted} />
+            </Pressable>
+          )}
+        </View>
 
-              {/* Grid of Cities */}
-              {filteredCities.length > 0 ? (
-                <FlatList
-                  data={filteredCities}
-                  renderItem={renderCityCard}
-                  keyExtractor={(item) => item.name}
-                  numColumns={2}
-                  contentContainerStyle={styles.gridContainer}
-                  columnWrapperStyle={styles.columnWrapper}
-                  showsVerticalScrollIndicator={false}
-                />
-              ) : (
-                <View style={styles.emptyContainer}>
-                  <MapPin size={48} color="#9CA3AF" style={styles.emptyIcon} />
-                  <Text style={styles.emptyText}>No matching cities found</Text>
-                  <Text style={styles.emptySubtext}>Try searching for a different name</Text>
-                </View>
-              )}
-            </View>
-          </SafeAreaView>
-        </KeyboardAvoidingView>
-      </BlurView>
-    </Modal>
+        {/* Grid of Cities */}
+        {filteredCities.length > 0 ? (
+          <FlatList
+            data={filteredCities}
+            renderItem={renderCityCard}
+            keyExtractor={(item) => item.name}
+            numColumns={2}
+            contentContainerStyle={styles.gridContainer}
+            columnWrapperStyle={styles.columnWrapper}
+            showsVerticalScrollIndicator={false}
+          />
+        ) : (
+          <View style={styles.emptyContainer}>
+            <MapPin size={40} color={colors.inkMuted} style={styles.emptyIcon} />
+            <Text style={styles.emptyText}>No matching cities found</Text>
+            <Text style={styles.emptySubtext}>Try searching for a different name</Text>
+          </View>
+        )}
+      </View>
+    </ModalSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  modalContent: {
-    flex: 1,
-    justifyContent: "flex-end",
-  },
-  safeArea: {
-    flex: 1,
-  },
   container: {
     flex: 1,
-    backgroundColor: "rgba(15, 30, 54, 0.95)", // Glassmorphic deep slate blue background
-    marginHorizontal: 10,
-    marginTop: Platform.OS === "ios" ? 10 : 20,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    borderBottomLeftRadius: Platform.OS === "ios" ? 32 : 0,
-    borderBottomRightRadius: Platform.OS === "ios" ? 32 : 0,
-    overflow: "hidden",
-    padding: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 20,
-    paddingTop: 8,
-  },
-  headerTitleBox: {
-    flex: 1,
-    paddingRight: 10,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "900",
-    color: "#FFFFFF",
-    marginBottom: 6,
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    color: "#9CA3AF",
-    lineHeight: 16,
-    fontWeight: "500",
-  },
-  closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    alignItems: "center",
-    justifyContent: "center",
+    paddingHorizontal: spacing.xl,
   },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    borderRadius: 14,
-    height: 48,
-    paddingHorizontal: 12,
-    marginBottom: 24,
+    backgroundColor: colors.surfaceSubtle,
+    borderRadius: radius.md,
+    height: 46,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.05)",
+    borderColor: colors.border,
   },
   searchIcon: {
-    marginRight: 8,
+    marginRight: spacing.xs,
   },
   searchInput: {
     flex: 1,
-    color: "#FFFFFF",
+    color: colors.ink,
     fontSize: 14,
     fontWeight: "500",
     height: "100%",
   },
   clearBtn: {
-    padding: 4,
+    padding: spacing.xs,
   },
   gridContainer: {
-    paddingBottom: 24,
+    paddingBottom: spacing.xl,
   },
   columnWrapper: {
     justifyContent: "flex-start",
-    gap: 12,
-    marginBottom: 12,
+    gap: spacing.md,
+    marginBottom: spacing.md,
   },
   card: {
-    borderRadius: 24,
+    borderRadius: radius.lg,
     overflow: "hidden",
     position: "relative",
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    backgroundColor: colors.surfaceSubtle,
     borderWidth: 2,
     borderColor: "transparent",
   },
   cardActive: {
-    borderColor: "#E05A36", // Theme Orange Border
-    shadowColor: "#E05A36",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    borderColor: colors.accent,
+    boxShadow: shadow.accent,
   },
   cardPressed: {
-    transform: [{ scale: 0.95 }],
+    transform: [{ scale: 0.96 }],
   },
   cardImage: {
     width: "100%",
@@ -279,7 +197,7 @@ const styles = StyleSheet.create({
   },
   textContainer: {
     position: "absolute",
-    bottom: 12,
+    bottom: 10,
     left: 8,
     right: 8,
     alignItems: "center",
@@ -287,7 +205,7 @@ const styles = StyleSheet.create({
   },
   cityName: {
     color: "#FFFFFF",
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "700",
     textAlign: "center",
     textShadowColor: "rgba(0, 0, 0, 0.75)",
@@ -298,37 +216,32 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 8,
     right: 8,
-    backgroundColor: "#E05A36",
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    backgroundColor: colors.accent,
+    width: 20,
+    height: 20,
+    borderRadius: radius.full,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 3,
+    boxShadow: shadow.raised,
   },
   emptyContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: 48,
+    paddingVertical: spacing.xxl,
   },
   emptyIcon: {
-    marginBottom: 16,
+    marginBottom: spacing.md,
     opacity: 0.7,
   },
   emptyText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 4,
+    ...type.emphasis,
+    color: colors.ink,
+    marginBottom: spacing.xs,
   },
   emptySubtext: {
-    color: "#9CA3AF",
-    fontSize: 12,
+    ...type.caption,
+    color: colors.inkMuted,
     textAlign: "center",
   },
 });

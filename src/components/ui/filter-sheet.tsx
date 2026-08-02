@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { Modal, Pressable, ScrollView, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import * as Haptics from "expo-haptics";
-import { X } from "lucide-react-native";
 
 import { FilterOptionRow } from "@/components/ui/chip";
+import { ModalSheet, ModalSheetHeader } from "@/components/ui/modal-sheet";
 import {
   countActiveFilters,
   defaultFilters,
@@ -89,7 +88,6 @@ interface FilterSheetProps {
  * Edits are drafted locally and only committed on "Show results".
  */
 export function FilterSheet({ visible, filters, countResults, onApply, onClose }: FilterSheetProps) {
-  const insets = useSafeAreaInsets();
   const [draft, setDraft] = useState<PropertyFilters>(filters);
 
   useEffect(() => {
@@ -113,141 +111,99 @@ export function FilterSheet({ visible, filters, countResults, onApply, onClose }
     onClose();
   };
 
+  const resetAction = activeCount > 0 ? (
+    <Pressable onPress={handleReset} hitSlop={8} accessibilityRole="button">
+      <Text style={{ ...type.label, color: colors.accent }}>Reset all</Text>
+    </Pressable>
+  ) : undefined;
+
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: colors.overlay, justifyContent: "flex-end" }}>
-        <Pressable style={{ flex: 1 }} onPress={onClose} accessibilityLabel="Dismiss filters" />
+    <ModalSheet visible={visible} onClose={onClose} maxHeight="85%">
+      <ModalSheetHeader
+        title="Filters"
+        rightAction={resetAction}
+        onClose={onClose}
+      />
 
-        <View
-          style={{
-            backgroundColor: colors.bg,
-            borderTopLeftRadius: radius.xl + 4,
-            borderTopRightRadius: radius.xl + 4,
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingHorizontal: spacing.xl,
+          paddingBottom: spacing.xl,
+          gap: spacing.xl,
+        }}
+      >
+        <FilterGroup label="Looking to">
+          <FilterOptionRow
+            options={PURPOSE_OPTIONS}
+            value={draft.purpose}
+            onChange={(v) => patch("purpose", v)}
+          />
+        </FilterGroup>
+        <FilterGroup label="Property type">
+          <FilterOptionRow
+            options={TYPE_OPTIONS}
+            value={draft.type}
+            onChange={(v) => patch("type", v)}
+          />
+        </FilterGroup>
+        <FilterGroup label="Bedrooms">
+          <FilterOptionRow
+            options={BHK_OPTIONS}
+            value={draft.bhk}
+            onChange={(v) => patch("bhk", v)}
+          />
+        </FilterGroup>
+        <FilterGroup label="Budget">
+          <FilterOptionRow
+            options={PRICE_OPTIONS}
+            value={draft.price}
+            onChange={(v) => patch("price", v)}
+          />
+        </FilterGroup>
+        <FilterGroup label="Furnishing">
+          <FilterOptionRow
+            options={FURNISHING_OPTIONS}
+            value={draft.furnishing}
+            onChange={(v) => patch("furnishing", v)}
+          />
+        </FilterGroup>
+        <FilterGroup label="Sort by">
+          <FilterOptionRow
+            options={SORT_OPTIONS}
+            value={draft.sort}
+            onChange={(v) => patch("sort", v)}
+          />
+        </FilterGroup>
+      </ScrollView>
+
+      <View
+        style={{
+          paddingHorizontal: spacing.xl,
+          paddingTop: spacing.md,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+        }}
+      >
+        <Pressable
+          onPress={handleApply}
+          accessibilityRole="button"
+          style={({ pressed }) => ({
+            height: 50,
+            borderRadius: radius.md,
             borderCurve: "continuous",
-            maxHeight: "85%",
-            paddingBottom: insets.bottom + spacing.md,
-            boxShadow: shadow.raised,
-          }}
+            backgroundColor: colors.accent,
+            alignItems: "center",
+            justifyContent: "center",
+            opacity: pressed ? 0.85 : 1,
+            boxShadow: shadow.accent,
+          })}
         >
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-              paddingHorizontal: spacing.xl,
-              paddingTop: spacing.xl,
-              paddingBottom: spacing.lg,
-            }}
-          >
-            <Text style={{ ...type.title, color: colors.ink }}>Filters</Text>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.lg }}>
-              {activeCount > 0 && (
-                <Pressable onPress={handleReset} hitSlop={8} accessibilityRole="button">
-                  <Text style={{ ...type.label, color: colors.accent }}>Reset all</Text>
-                </Pressable>
-              )}
-              <Pressable
-                onPress={onClose}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel="Close filters"
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: radius.full,
-                  backgroundColor: colors.surface,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <X size={16} color={colors.inkSecondary} />
-              </Pressable>
-            </View>
-          </View>
-
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{
-              paddingHorizontal: spacing.xl,
-              paddingBottom: spacing.xl,
-              gap: spacing.xl,
-            }}
-          >
-            <FilterGroup label="Looking to">
-              <FilterOptionRow
-                options={PURPOSE_OPTIONS}
-                value={draft.purpose}
-                onChange={(v) => patch("purpose", v)}
-              />
-            </FilterGroup>
-            <FilterGroup label="Property type">
-              <FilterOptionRow
-                options={TYPE_OPTIONS}
-                value={draft.type}
-                onChange={(v) => patch("type", v)}
-              />
-            </FilterGroup>
-            <FilterGroup label="Bedrooms">
-              <FilterOptionRow
-                options={BHK_OPTIONS}
-                value={draft.bhk}
-                onChange={(v) => patch("bhk", v)}
-              />
-            </FilterGroup>
-            <FilterGroup label="Budget">
-              <FilterOptionRow
-                options={PRICE_OPTIONS}
-                value={draft.price}
-                onChange={(v) => patch("price", v)}
-              />
-            </FilterGroup>
-            <FilterGroup label="Furnishing">
-              <FilterOptionRow
-                options={FURNISHING_OPTIONS}
-                value={draft.furnishing}
-                onChange={(v) => patch("furnishing", v)}
-              />
-            </FilterGroup>
-            <FilterGroup label="Sort by">
-              <FilterOptionRow
-                options={SORT_OPTIONS}
-                value={draft.sort}
-                onChange={(v) => patch("sort", v)}
-              />
-            </FilterGroup>
-          </ScrollView>
-
-          <View
-            style={{
-              paddingHorizontal: spacing.xl,
-              paddingTop: spacing.md,
-              borderTopWidth: 1,
-              borderTopColor: colors.border,
-            }}
-          >
-            <Pressable
-              onPress={handleApply}
-              accessibilityRole="button"
-              style={({ pressed }) => ({
-                height: 50,
-                borderRadius: radius.md,
-                borderCurve: "continuous",
-                backgroundColor: colors.accent,
-                alignItems: "center",
-                justifyContent: "center",
-                opacity: pressed ? 0.85 : 1,
-                boxShadow: shadow.accent,
-              })}
-            >
-              <Text style={{ ...type.emphasis, color: colors.onAccent }}>
-                {resultCount === 1 ? "Show 1 property" : `Show ${resultCount} properties`}
-              </Text>
-            </Pressable>
-          </View>
-        </View>
+          <Text style={{ ...type.emphasis, color: colors.onAccent }}>
+            {resultCount === 1 ? "Show 1 property" : `Show ${resultCount} properties`}
+          </Text>
+        </Pressable>
       </View>
-    </Modal>
+    </ModalSheet>
   );
 }

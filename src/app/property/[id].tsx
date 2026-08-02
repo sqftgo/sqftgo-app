@@ -38,6 +38,7 @@ import {
   Info,
   X,
 } from "lucide-react-native";
+import { ModalSheet, ModalSheetHeader } from "@/components/ui/modal-sheet";
 
 const { width } = Dimensions.get("window");
 const CAROUSEL_WIDTH = width - 32;
@@ -773,110 +774,102 @@ export default function PropertyDetailsScreen() {
         )}
       </View>
 
-      <Modal
+      <ModalSheet
         visible={showInquiry}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowInquiry(false)}
+        onClose={() => setShowInquiry(false)}
+        avoidKeyboard
+        maxHeight="85%"
       >
-        <View style={styles.inquiryOverlay}>
-          <View style={styles.inquirySheet}>
-            <View style={styles.inquiryHeader}>
-              <Text style={styles.inquiryTitle}>Submit inquiry</Text>
-              <Pressable onPress={() => setShowInquiry(false)} hitSlop={8}>
-                <X size={20} color="#6B7280" />
-              </Pressable>
-            </View>
-            <Text style={styles.inquiryHint} numberOfLines={2}>
-              {property.title}
-            </Text>
-            <Text style={styles.inquiryLabel}>Name *</Text>
-            <TextInput
-              value={inquiryName}
-              onChangeText={setInquiryName}
-              placeholder="Your name"
-              placeholderTextColor="#9CA3AF"
-              style={styles.inquiryPhoneInput}
-            />
-            <Text style={styles.inquiryLabel}>Email (stable for this account)</Text>
-            <TextInput
-              value={userEmail}
-              editable={false}
-              style={[styles.inquiryPhoneInput, { opacity: 0.7 }]}
-            />
-            <Text style={styles.inquiryLabel}>Message *</Text>
-            <TextInput
-              value={inquiryMessage}
-              onChangeText={setInquiryMessage}
-              placeholder="I am interested in a site visit this weekend..."
-              placeholderTextColor="#9CA3AF"
-              multiline
-              style={styles.inquiryInput}
-            />
-            <Text style={styles.inquiryLabel}>Phone (optional)</Text>
-            <TextInput
-              value={inquiryPhone}
-              onChangeText={setInquiryPhone}
-              placeholder="+91 ..."
-              placeholderTextColor="#9CA3AF"
-              keyboardType="phone-pad"
-              style={styles.inquiryPhoneInput}
-            />
-            <Pressable onPress={handleSubmitInquiry} style={styles.inquirySubmit}>
-              <Text style={styles.rentNowButtonText}>Send to dealer</Text>
-            </Pressable>
-          </View>
+        <ModalSheetHeader
+          title="Submit inquiry"
+          onClose={() => setShowInquiry(false)}
+        />
+        <View style={styles.inquirySheet}>
+          <Text style={styles.inquiryHint} numberOfLines={2}>
+            {property.title}
+          </Text>
+          <Text style={styles.inquiryLabel}>Name *</Text>
+          <TextInput
+            value={inquiryName}
+            onChangeText={setInquiryName}
+            placeholder="Your name"
+            placeholderTextColor="#9CA3AF"
+            style={styles.inquiryPhoneInput}
+          />
+          <Text style={styles.inquiryLabel}>Email (stable for this account)</Text>
+          <TextInput
+            value={userEmail}
+            editable={false}
+            style={[styles.inquiryPhoneInput, { opacity: 0.7 }]}
+          />
+          <Text style={styles.inquiryLabel}>Message *</Text>
+          <TextInput
+            value={inquiryMessage}
+            onChangeText={setInquiryMessage}
+            placeholder="I am interested in a site visit this weekend..."
+            placeholderTextColor="#9CA3AF"
+            multiline
+            style={styles.inquiryInput}
+          />
+          <Text style={styles.inquiryLabel}>Phone (optional)</Text>
+          <TextInput
+            value={inquiryPhone}
+            onChangeText={setInquiryPhone}
+            placeholder="+91 ..."
+            placeholderTextColor="#9CA3AF"
+            keyboardType="phone-pad"
+            style={styles.inquiryPhoneInput}
+          />
+          <Pressable onPress={handleSubmitInquiry} style={styles.inquirySubmit}>
+            <Text style={styles.rentNowButtonText}>Send to dealer</Text>
+          </Pressable>
         </View>
-      </Modal>
+      </ModalSheet>
 
-      <Modal
+      <ModalSheet
         visible={showVisit}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowVisit(false)}
+        onClose={() => setShowVisit(false)}
+        avoidKeyboard
+        maxHeight="85%"
       >
-        <View style={styles.inquiryOverlay}>
-          <View style={styles.inquirySheet}>
-            <View style={styles.inquiryHeader}>
-              <Text style={styles.inquiryTitle}>Book site visit</Text>
-              <Pressable onPress={() => setShowVisit(false)} hitSlop={8}>
-                <X size={20} color="#6B7280" />
-              </Pressable>
-            </View>
-            <Text style={styles.inquiryHint} numberOfLines={2}>
-              {property.title}
-            </Text>
-            <Text style={styles.inquiryLabel}>Date * (YYYY-MM-DD)</Text>
-            <TextInput
-              value={visitDate}
-              onChangeText={setVisitDate}
-              placeholder="2026-08-01"
-              placeholderTextColor="#9CA3AF"
-              style={styles.inquiryPhoneInput}
-            />
-            <Text style={styles.inquiryLabel}>Time *</Text>
-            <TextInput
-              value={visitTime}
-              onChangeText={setVisitTime}
-              placeholder="11:00 AM"
-              placeholderTextColor="#9CA3AF"
-              style={styles.inquiryPhoneInput}
-            />
-            <Text style={styles.inquiryLabel}>Phone</Text>
-            <TextInput
-              value={visitPhone}
-              onChangeText={setVisitPhone}
-              placeholder="+91 ..."
-              placeholderTextColor="#9CA3AF"
-              keyboardType="phone-pad"
-              style={styles.inquiryPhoneInput}
-            />
-            <Pressable onPress={handleBookVisit} style={styles.inquirySubmit}>
-              <Text style={styles.rentNowButtonText}>Request visit</Text>
-            </Pressable>
-          </View>
+        <ModalSheetHeader
+          title="Book site visit"
+          onClose={() => setShowVisit(false)}
+        />
+        <View style={styles.inquirySheet}>
+          <Text style={styles.inquiryHint} numberOfLines={2}>
+            {property.title}
+          </Text>
+          <Text style={styles.inquiryLabel}>Date * (YYYY-MM-DD)</Text>
+          <TextInput
+            value={visitDate}
+            onChangeText={setVisitDate}
+            placeholder="2026-08-01"
+            placeholderTextColor="#9CA3AF"
+            style={styles.inquiryPhoneInput}
+          />
+          <Text style={styles.inquiryLabel}>Time *</Text>
+          <TextInput
+            value={visitTime}
+            onChangeText={setVisitTime}
+            placeholder="11:00 AM"
+            placeholderTextColor="#9CA3AF"
+            style={styles.inquiryPhoneInput}
+          />
+          <Text style={styles.inquiryLabel}>Phone</Text>
+          <TextInput
+            value={visitPhone}
+            onChangeText={setVisitPhone}
+            placeholder="+91 ..."
+            placeholderTextColor="#9CA3AF"
+            keyboardType="phone-pad"
+            style={styles.inquiryPhoneInput}
+          />
+          <Pressable onPress={handleBookVisit} style={styles.inquirySubmit}>
+            <Text style={styles.rentNowButtonText}>Request visit</Text>
+          </Pressable>
         </View>
-      </Modal>
+      </ModalSheet>
     </SafeAreaView>
   );
 }
@@ -1480,21 +1473,9 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   inquirySheet: {
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
     gap: 10,
-  },
-  inquiryHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  inquiryTitle: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: "#0F1E36",
   },
   inquiryHint: {
     fontSize: 12,

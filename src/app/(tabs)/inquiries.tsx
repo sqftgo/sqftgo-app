@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Inbox, MessageSquare, Plus, X } from "lucide-react-native";
 
 import { EmptyState } from "@/components/ui/empty-state";
+import { ModalSheet, ModalSheetHeader } from "@/components/ui/modal-sheet";
 import { useApp } from "@/context/AppContext";
 import type { Inquiry, InquiryStatus, MessageThread } from "@/data/types";
 import { ownedPropertyIds, ownsInquiry } from "@/lib/ownership";
@@ -416,124 +417,110 @@ export default function CommunicationsScreen() {
         </>
       )}
 
-      <Modal visible={!!replyTarget} transparent animationType="fade" onRequestClose={() => setReplyTarget(null)}>
-        <View style={{ flex: 1, backgroundColor: colors.overlay, justifyContent: "flex-end" }}>
-          <View
+      <ModalSheet
+        visible={!!replyTarget}
+        onClose={() => setReplyTarget(null)}
+        avoidKeyboard
+        maxHeight="80%"
+      >
+        <ModalSheetHeader
+          title="Reply to buyer"
+          onClose={() => setReplyTarget(null)}
+        />
+        <View style={{ paddingHorizontal: spacing.xl, paddingBottom: spacing.lg, gap: spacing.md }}>
+          <TextInput
+            value={replyText}
+            onChangeText={setReplyText}
+            placeholder="Write your reply…"
+            placeholderTextColor={colors.inkMuted}
+            multiline
             style={{
-              backgroundColor: colors.surface,
-              borderTopLeftRadius: radius.xl,
-              borderTopRightRadius: radius.xl,
-              padding: spacing.xl,
-              gap: spacing.md,
+              minHeight: 100,
+              textAlignVertical: "top",
+              backgroundColor: colors.surfaceSubtle,
+              borderWidth: 1,
+              borderColor: colors.border,
+              borderRadius: radius.md,
+              padding: spacing.md,
+              ...type.body,
+              color: colors.ink,
+            }}
+          />
+          <Pressable
+            onPress={handleReply}
+            style={{
+              height: 48,
+              borderRadius: radius.md,
+              backgroundColor: colors.accent,
+              alignItems: "center",
+              justifyContent: "center",
             }}
           >
-            <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-              <Text style={{ ...type.heading, color: colors.ink }}>Reply to buyer</Text>
-              <Pressable onPress={() => setReplyTarget(null)}>
-                <X size={20} color={colors.inkMuted} />
-              </Pressable>
-            </View>
-            <TextInput
-              value={replyText}
-              onChangeText={setReplyText}
-              placeholder="Write your reply…"
-              placeholderTextColor={colors.inkMuted}
-              multiline
-              style={{
-                minHeight: 100,
-                textAlignVertical: "top",
-                backgroundColor: colors.surfaceSubtle,
-                borderWidth: 1,
-                borderColor: colors.border,
-                borderRadius: radius.md,
-                padding: spacing.md,
-                ...type.body,
-                color: colors.ink,
-              }}
-            />
-            <Pressable
-              onPress={handleReply}
-              style={{
-                height: 48,
-                borderRadius: radius.md,
-                backgroundColor: colors.accent,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Text style={{ ...type.emphasis, color: colors.onAccent }}>Send reply</Text>
-            </Pressable>
-          </View>
+            <Text style={{ ...type.emphasis, color: colors.onAccent }}>Send reply</Text>
+          </Pressable>
         </View>
-      </Modal>
+      </ModalSheet>
 
-      <Modal visible={composeOpen} transparent animationType="fade" onRequestClose={() => setComposeOpen(false)}>
-        <View style={{ flex: 1, backgroundColor: colors.overlay, justifyContent: "flex-end" }}>
-          <View
+      <ModalSheet
+        visible={composeOpen}
+        onClose={() => setComposeOpen(false)}
+        avoidKeyboard
+        maxHeight="85%"
+      >
+        <ModalSheetHeader
+          title="New message"
+          onClose={() => setComposeOpen(false)}
+        />
+        <View style={{ paddingHorizontal: spacing.xl, paddingBottom: spacing.lg, gap: spacing.md }}>
+          <TextInput
+            value={composeEmail}
+            onChangeText={setComposeEmail}
+            placeholder="Buyer email"
+            autoCapitalize="none"
+            keyboardType="email-address"
+            placeholderTextColor={colors.inkMuted}
             style={{
-              backgroundColor: colors.surface,
-              borderTopLeftRadius: radius.xl,
-              borderTopRightRadius: radius.xl,
-              padding: spacing.xl,
-              gap: spacing.md,
+              backgroundColor: colors.surfaceSubtle,
+              borderWidth: 1,
+              borderColor: colors.border,
+              borderRadius: radius.md,
+              padding: spacing.md,
+              ...type.body,
+              color: colors.ink,
+            }}
+          />
+          <TextInput
+            value={composeBody}
+            onChangeText={setComposeBody}
+            placeholder="Message"
+            multiline
+            placeholderTextColor={colors.inkMuted}
+            style={{
+              minHeight: 100,
+              textAlignVertical: "top",
+              backgroundColor: colors.surfaceSubtle,
+              borderWidth: 1,
+              borderColor: colors.border,
+              borderRadius: radius.md,
+              padding: spacing.md,
+              ...type.body,
+              color: colors.ink,
+            }}
+          />
+          <Pressable
+            onPress={() => void handleCompose()}
+            style={{
+              height: 48,
+              borderRadius: radius.md,
+              backgroundColor: colors.accent,
+              alignItems: "center",
+              justifyContent: "center",
             }}
           >
-            <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-              <Text style={{ ...type.heading, color: colors.ink }}>New message</Text>
-              <Pressable onPress={() => setComposeOpen(false)}>
-                <X size={20} color={colors.inkMuted} />
-              </Pressable>
-            </View>
-            <TextInput
-              value={composeEmail}
-              onChangeText={setComposeEmail}
-              placeholder="Buyer email"
-              autoCapitalize="none"
-              keyboardType="email-address"
-              placeholderTextColor={colors.inkMuted}
-              style={{
-                backgroundColor: colors.surfaceSubtle,
-                borderWidth: 1,
-                borderColor: colors.border,
-                borderRadius: radius.md,
-                padding: spacing.md,
-                ...type.body,
-                color: colors.ink,
-              }}
-            />
-            <TextInput
-              value={composeBody}
-              onChangeText={setComposeBody}
-              placeholder="Message"
-              multiline
-              placeholderTextColor={colors.inkMuted}
-              style={{
-                minHeight: 100,
-                textAlignVertical: "top",
-                backgroundColor: colors.surfaceSubtle,
-                borderWidth: 1,
-                borderColor: colors.border,
-                borderRadius: radius.md,
-                padding: spacing.md,
-                ...type.body,
-                color: colors.ink,
-              }}
-            />
-            <Pressable
-              onPress={() => void handleCompose()}
-              style={{
-                height: 48,
-                borderRadius: radius.md,
-                backgroundColor: colors.accent,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Text style={{ ...type.emphasis, color: colors.onAccent }}>Send</Text>
-            </Pressable>
-          </View>
+            <Text style={{ ...type.emphasis, color: colors.onAccent }}>Send</Text>
+          </Pressable>
         </View>
-      </Modal>
+      </ModalSheet>
 
       <Modal
         visible={!!activeThread}
