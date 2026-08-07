@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { Stack } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
 import "@/global.css";
@@ -9,6 +11,11 @@ import { View } from "react-native";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { AppProvider, useApp } from "@/context/AppContext";
 import { colors } from "@/theme/tokens";
+import { AuthLoadingScreen } from "@/components/ui/auth-loading";
+import { AuthErrorScreen } from "@/components/ui/auth-error";
+
+// Keep native splash screen visible until initial hydration & routing check finishes
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export const unstable_settings = {
   anchor: "(tabs)",
@@ -16,12 +23,34 @@ export const unstable_settings = {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
-  const { hasCompletedOnboarding, isLoggedIn } = useApp();
+  const {
+    hasCompletedOnboarding,
+    isLoggedIn,
+    isHydrating,
+    authStatus,
+    authError,
+    retryAuthCheck,
+  } = useApp();
 
-  // Persisted state is still loading; hold on the canvas color to avoid
-  // flashing the wrong screen before redirecting.
-  if (hasCompletedOnboarding === undefined) {
+  useEffect(() => {
+    if (!isHydrating && hasCompletedOnboarding !== undefined) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [isHydrating, hasCompletedOnboarding]);
+
+  // While hydration is active, return null to keep the native splash screen visible
+  if (isHydrating || hasCompletedOnboarding === undefined) {
     return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
+  }
+
+  // Network failure / unexpected error during initial auth check
+  if (authStatus === "error") {
+    return <AuthErrorScreen message={authError || undefined} onRetry={retryAuthCheck} />;
+  }
+
+  // Returning user session loading state (if checking background token/session)
+  if (authStatus === "checking") {
+    return <AuthLoadingScreen />;
   }
 
   const navTheme =
@@ -88,3 +117,4 @@ export default function RootLayout() {
     </SafeAreaProvider>
   );
 }
+

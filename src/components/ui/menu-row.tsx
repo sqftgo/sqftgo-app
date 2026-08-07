@@ -1,7 +1,7 @@
 import React from "react";
 import { Pressable, Text, View } from "react-native";
-import { ChevronRight } from "lucide-react-native";
-import type { LucideIcon } from "lucide-react-native";
+import { ChevronRight } from "@/components/ui/icons";
+import type { LucideIcon } from "@/components/ui/icons";
 
 import { colors, radius, spacing, type } from "@/theme/tokens";
 

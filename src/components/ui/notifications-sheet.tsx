@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { FlatList, Pressable, Text, View } from "react-native";
-import { BellOff } from "lucide-react-native";
+import { BellOff } from "@/components/ui/icons";
 
 import { ModalSheet, ModalSheetHeader } from "@/components/ui/modal-sheet";
 import { seedNotifications, type AppNotification } from "@/data/notifications";

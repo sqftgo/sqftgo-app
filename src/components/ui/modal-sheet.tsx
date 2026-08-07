@@ -12,7 +12,7 @@ import {
   DimensionValue,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { X } from "lucide-react-native";
+import { X } from "@/components/ui/icons";
 import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
 
 export interface ModalSheetCloseButtonProps {

@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { FlatList, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { MessageSquare } from "lucide-react-native";
+import { MessageSquare } from "@/components/ui/icons";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { useApp } from "@/context/AppContext";

@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { FlatList, Pressable, ScrollView, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Bell, Building2, ChevronDown, Home as HomeIcon, KeyRound, MapPin, Plus, Search, Store } from "lucide-react-native";
+import { Bell, Building2, ChevronDown, Home as HomeIcon, KeyRound, MapPin, Plus, Search, Store } from "@/components/ui/icons";
 
 import CitySelectionModal from "@/components/ui/CitySelectionModal";
 import { ExpertCard } from "@/components/ui/expert-card";

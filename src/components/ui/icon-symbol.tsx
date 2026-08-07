@@ -3,35 +3,35 @@ import {
   Home, 
   Send, 
   Code, 
-  ChevronRight, 
-  ChevronLeft, 
+  NavArrowRight, 
+  NavArrowLeft, 
   Heart, 
   User, 
-  Users, 
+  Group, 
   Plus, 
   Search, 
   Bell, 
-  Sliders, 
-  BedDouble, 
+  ControlSlider, 
+  BedReady, 
   Star, 
   MapPin 
-} from 'lucide-react-native';
+} from 'iconoir-react-native';
 import { OpaqueColorValue, type StyleProp, type TextStyle } from 'react-native';
 
 const MAPPING = {
   'house.fill': Home,
   'paperplane.fill': Send,
   'chevron.left.forwardslash.chevron.right': Code,
-  'chevron.right': ChevronRight,
-  'chevron.left': ChevronLeft,
+  'chevron.right': NavArrowRight,
+  'chevron.left': NavArrowLeft,
   'heart.fill': Heart,
   'person.fill': User,
-  'person.2.fill': Users,
+  'person.2.fill': Group,
   'plus.circle.fill': Plus,
   'magnifyingglass': Search,
   'bell.fill': Bell,
-  'slider.horizontal.3': Sliders,
-  'bed.double.fill': BedDouble,
+  'slider.horizontal.3': ControlSlider,
+  'bed.double.fill': BedReady,
   'star.fill': Star,
   'mappin.circle.fill': MapPin,
 };
@@ -54,6 +54,5 @@ export function IconSymbol({
   const IconComponent = MAPPING[name];
   if (!IconComponent) return null;
   
-  // Lucide handles OpaqueColorValue types as color strings in react-native wrapper
-  return <IconComponent size={size} color={color as string} style={style as any} />;
+  return <IconComponent width={size} height={size} color={color as string} style={style as any} />;
 }

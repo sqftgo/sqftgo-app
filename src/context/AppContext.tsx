@@ -76,6 +76,7 @@ export type { Property, DirectoryProfile, Inquiry, SiteVisit, UserProfile } from
 
 const STORAGE_KEYS = {
   onboarding: "hasCompletedOnboarding",
+  onboardingStep: "onboarding_step",
   favorites: "favorites",
   city: "selectedCity",
   session: "session",
@@ -333,6 +334,12 @@ interface AppContextType {
   }) => Promise<void> | void;
   hasCompletedOnboarding: boolean | undefined;
   setHasCompletedOnboarding: (val: boolean) => void;
+  onboardingStep: number;
+  setOnboardingStep: (step: number) => void;
+  isHydrating: boolean;
+  authStatus: "idle" | "checking" | "authenticated" | "unauthenticated" | "error";
+  authError: string | null;
+  retryAuthCheck: () => Promise<void>;
   preferredRole: UserRole;
   setPreferredRole: (role: UserRole) => void;
 }
@@ -443,6 +450,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [hasCompletedOnboarding, setHasCompletedOnboardingState] = useState<boolean | undefined>(
     undefined,
   );
+  const [onboardingStep, setOnboardingStepState] = useState<number>(0);
+  const [isHydrating, setIsHydrating] = useState<boolean>(true);
+  const [authStatus, setAuthStatus] = useState<
+    "idle" | "checking" | "authenticated" | "unauthenticated" | "error"
+  >("checking");
+  const [authError, setAuthError] = useState<string | null>(null);
   const [notifPrefs, setNotifPrefsState] = useState<NotifPrefs>(DEFAULT_NOTIF_PREFS);
 
   const persistProperties = useCallback((next: Property[]) => {
@@ -552,189 +565,215 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, []);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const [
-          onboarding,
-          storedFavorites,
-          storedCity,
-          storedSession,
-          storedRole,
-          storedProperties,
-          storedInquiries,
-          storedVisits,
-          storedAccounts,
-          storedDirectory,
-          storedMessages,
-          storedNotif,
-        ] = await Promise.all([
-          AsyncStorage.getItem(STORAGE_KEYS.onboarding),
-          AsyncStorage.getItem(STORAGE_KEYS.favorites),
-          AsyncStorage.getItem(STORAGE_KEYS.city),
-          AsyncStorage.getItem(STORAGE_KEYS.session),
-          AsyncStorage.getItem(STORAGE_KEYS.preferredRole),
-          AsyncStorage.getItem(STORAGE_KEYS.properties),
-          AsyncStorage.getItem(STORAGE_KEYS.inquiries),
-          AsyncStorage.getItem(STORAGE_KEYS.visits),
-          AsyncStorage.getItem(STORAGE_KEYS.accounts),
-          AsyncStorage.getItem(STORAGE_KEYS.directory),
-          AsyncStorage.getItem(STORAGE_KEYS.messages),
-          AsyncStorage.getItem(STORAGE_KEYS.notifPrefs),
-        ]);
+  const loadInitialState = useCallback(async () => {
+    setIsHydrating(true);
+    setAuthStatus("checking");
+    setAuthError(null);
+    try {
+      const [
+        onboarding,
+        storedStep,
+        storedFavorites,
+        storedCity,
+        storedSession,
+        storedRole,
+        storedProperties,
+        storedInquiries,
+        storedVisits,
+        storedAccounts,
+        storedDirectory,
+        storedMessages,
+        storedNotif,
+      ] = await Promise.all([
+        AsyncStorage.getItem(STORAGE_KEYS.onboarding),
+        AsyncStorage.getItem(STORAGE_KEYS.onboardingStep),
+        AsyncStorage.getItem(STORAGE_KEYS.favorites),
+        AsyncStorage.getItem(STORAGE_KEYS.city),
+        AsyncStorage.getItem(STORAGE_KEYS.session),
+        AsyncStorage.getItem(STORAGE_KEYS.preferredRole),
+        AsyncStorage.getItem(STORAGE_KEYS.properties),
+        AsyncStorage.getItem(STORAGE_KEYS.inquiries),
+        AsyncStorage.getItem(STORAGE_KEYS.visits),
+        AsyncStorage.getItem(STORAGE_KEYS.accounts),
+        AsyncStorage.getItem(STORAGE_KEYS.directory),
+        AsyncStorage.getItem(STORAGE_KEYS.messages),
+        AsyncStorage.getItem(STORAGE_KEYS.notifPrefs),
+      ]);
 
-        if (storedFavorites) setFavorites(JSON.parse(storedFavorites));
-        if (storedCity) setSelectedCityState(storedCity);
-        if (storedNotif) {
-          try {
-            setNotifPrefsState({ ...DEFAULT_NOTIF_PREFS, ...JSON.parse(storedNotif) });
-          } catch {
-            /* ignore */
-          }
+      if (storedStep) {
+        const stepNum = parseInt(storedStep, 10);
+        if (!isNaN(stepNum) && stepNum >= 0 && stepNum <= 3) {
+          setOnboardingStepState(stepNum);
         }
-
-        if (storedAccounts) {
-          const parsed: StoredAccount[] = JSON.parse(storedAccounts);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            const emails = new Set(parsed.map((a) => a.email.toLowerCase()));
-            const merged = [...parsed];
-            for (const demo of DEMO_ACCOUNTS) {
-              if (!emails.has(demo.email.toLowerCase())) merged.push(demo);
-            }
-            setAccounts(merged);
-          }
-        }
-
-        if (storedDirectory) {
-          const parsed: DirectoryProfile[] = JSON.parse(storedDirectory);
-          if (Array.isArray(parsed) && parsed.length > 0) setDirectoryProfiles(parsed);
-        }
-
-        if (storedMessages) {
-          const parsed = JSON.parse(storedMessages) as {
-            threads?: MessageThread[];
-            byThread?: Record<string, Message[]>;
-          };
-          if (parsed.threads) setMessageThreads(parsed.threads);
-          if (parsed.byThread) setMessagesByThread(parsed.byThread);
-        }
-
-        if (storedSession) {
-          const parsed = JSON.parse(storedSession) as {
-            isLoggedIn?: boolean;
-            role?: string;
-            dealerAccess?: DealerAccessStatus;
-            accountId?: string;
-            email?: string;
-            name?: string;
-            phone?: string;
-            status?: AccountStatus;
-            directoryProfileId?: string;
-            kyc?: DealerKyc;
-            joinedDate?: string;
-            accessToken?: string;
-          };
-          if (parsed?.role === "admin" || !parsed?.isLoggedIn) {
-            setSession(GUEST_SESSION);
-          } else if (parsed.role === "user" || parsed.role === "broker") {
-            const nextSession: Session = {
-              ...GUEST_SESSION,
-              isLoggedIn: true,
-              accountId: parsed.accountId ?? "",
-              email: parsed.email ?? "",
-              name: parsed.name ?? "",
-              phone: parsed.phone,
-              role: parsed.role,
-              status: parsed.status ?? "active",
-              dealerAccess:
-                parsed.role === "broker" ? "approved" : (parsed.dealerAccess ?? "none"),
-              directoryProfileId: parsed.directoryProfileId,
-              kyc: parsed.kyc,
-              joinedDate: parsed.joinedDate ?? "",
-              accessToken: parsed.accessToken,
-            };
-            setSession(nextSession);
-            if (isApiMode && parsed.accessToken) {
-              await setAccessToken(parsed.accessToken);
-              try {
-                const me = await apiMe();
-                if (me.role === "admin") {
-                  setSession(GUEST_SESSION);
-                  await setAccessToken(null);
-                } else {
-                  const refreshed = sessionFromApiUser(me, parsed.accessToken);
-                  setSession(refreshed);
-                  await hydrateFromApi(refreshed.role);
-                }
-              } catch {
-                // keep restored session
-              }
-            }
-          }
-        }
-
-        if (storedRole === "user" || storedRole === "broker") {
-          setPreferredRoleState(storedRole);
-        }
-
-        if (!isApiMode && storedProperties) {
-          const parsed: Property[] = JSON.parse(storedProperties);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setProperties(parsed.filter((p) => p.id !== "prop-pending-demo"));
-          }
-        }
-
-        if (!isApiMode && storedInquiries) {
-          const parsed: Inquiry[] = JSON.parse(storedInquiries);
-          if (Array.isArray(parsed)) {
-            setInquiries(
-              parsed.map((inq) => ({
-                ...inq,
-                buyerName: inq.buyerName || inq.buyerEmail.split("@")[0],
-                status: normalizeInquiryStatus(inq.status as string),
-              })),
-            );
-          }
-        }
-
-        if (!isApiMode && storedVisits) {
-          const parsed: SiteVisit[] = JSON.parse(storedVisits);
-          if (Array.isArray(parsed)) setVisits(parsed);
-        }
-
-        setHasCompletedOnboardingState(onboarding === "true");
-
-        // API mode: load public catalog for guests (logged-in hydrate runs separately).
-        if (isApiMode) {
-          const hasSession =
-            storedSession &&
-            (() => {
-              try {
-                const p = JSON.parse(storedSession) as { isLoggedIn?: boolean; accessToken?: string };
-                return Boolean(p?.isLoggedIn && p?.accessToken);
-              } catch {
-                return false;
-              }
-            })();
-          if (!hasSession) {
-            const [publicList, dirs] = await Promise.all([
-              apiListProperties({ status: "Active", limit: 100 }).catch(() => [] as Property[]),
-              apiListDealers(false).catch(() => [] as DirectoryProfile[]),
-            ]);
-            if (publicList.length) setProperties(publicList);
-            if (dirs.length) {
-              setDirectoryProfiles((prev) => {
-                const ids = new Set(dirs.map((d) => d.id));
-                return [...dirs, ...prev.filter((p) => !ids.has(p.id))];
-              });
-            }
-          }
-        }
-      } catch {
-        setHasCompletedOnboardingState(false);
       }
-    })();
+
+      if (storedFavorites) setFavorites(JSON.parse(storedFavorites));
+      if (storedCity) setSelectedCityState(storedCity);
+      if (storedNotif) {
+        try {
+          setNotifPrefsState({ ...DEFAULT_NOTIF_PREFS, ...JSON.parse(storedNotif) });
+        } catch {
+          /* ignore */
+        }
+      }
+
+      if (storedAccounts) {
+        const parsed: StoredAccount[] = JSON.parse(storedAccounts);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const emails = new Set(parsed.map((a) => a.email.toLowerCase()));
+          const merged = [...parsed];
+          for (const demo of DEMO_ACCOUNTS) {
+            if (!emails.has(demo.email.toLowerCase())) merged.push(demo);
+          }
+          setAccounts(merged);
+        }
+      }
+
+      if (storedDirectory) {
+        const parsed: DirectoryProfile[] = JSON.parse(storedDirectory);
+        if (Array.isArray(parsed) && parsed.length > 0) setDirectoryProfiles(parsed);
+      }
+
+      if (storedMessages) {
+        const parsed = JSON.parse(storedMessages) as {
+          threads?: MessageThread[];
+          byThread?: Record<string, Message[]>;
+        };
+        if (parsed.threads) setMessageThreads(parsed.threads);
+        if (parsed.byThread) setMessagesByThread(parsed.byThread);
+      }
+
+      let activeSession = GUEST_SESSION;
+
+      if (storedSession) {
+        const parsed = JSON.parse(storedSession) as {
+          isLoggedIn?: boolean;
+          role?: string;
+          dealerAccess?: DealerAccessStatus;
+          accountId?: string;
+          email?: string;
+          name?: string;
+          phone?: string;
+          status?: AccountStatus;
+          directoryProfileId?: string;
+          kyc?: DealerKyc;
+          joinedDate?: string;
+          accessToken?: string;
+        };
+        if (parsed?.role === "admin" || !parsed?.isLoggedIn) {
+          activeSession = GUEST_SESSION;
+          setSession(GUEST_SESSION);
+        } else if (parsed.role === "user" || parsed.role === "broker") {
+          const nextSession: Session = {
+            ...GUEST_SESSION,
+            isLoggedIn: true,
+            accountId: parsed.accountId ?? "",
+            email: parsed.email ?? "",
+            name: parsed.name ?? "",
+            phone: parsed.phone,
+            role: parsed.role,
+            status: parsed.status ?? "active",
+            dealerAccess:
+              parsed.role === "broker" ? "approved" : (parsed.dealerAccess ?? "none"),
+            directoryProfileId: parsed.directoryProfileId,
+            kyc: parsed.kyc,
+            joinedDate: parsed.joinedDate ?? "",
+            accessToken: parsed.accessToken,
+          };
+          activeSession = nextSession;
+          setSession(nextSession);
+          if (isApiMode && parsed.accessToken) {
+            await setAccessToken(parsed.accessToken);
+            try {
+              const me = await apiMe();
+              if (me.role === "admin") {
+                activeSession = GUEST_SESSION;
+                setSession(GUEST_SESSION);
+                await setAccessToken(null);
+              } else {
+                const refreshed = sessionFromApiUser(me, parsed.accessToken);
+                activeSession = refreshed;
+                setSession(refreshed);
+                await hydrateFromApi(refreshed.role);
+              }
+            } catch {
+              // keep restored session
+            }
+          }
+        }
+      }
+
+      if (storedRole === "user" || storedRole === "broker") {
+        setPreferredRoleState(storedRole);
+      }
+
+      if (!isApiMode && storedProperties) {
+        const parsed: Property[] = JSON.parse(storedProperties);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setProperties(parsed.filter((p) => p.id !== "prop-pending-demo"));
+        }
+      }
+
+      if (!isApiMode && storedInquiries) {
+        const parsed: Inquiry[] = JSON.parse(storedInquiries);
+        if (Array.isArray(parsed)) {
+          setInquiries(
+            parsed.map((inq) => ({
+              ...inq,
+              buyerName: inq.buyerName || inq.buyerEmail.split("@")[0],
+              status: normalizeInquiryStatus(inq.status as string),
+            })),
+          );
+        }
+      }
+
+      if (!isApiMode && storedVisits) {
+        const parsed: SiteVisit[] = JSON.parse(storedVisits);
+        if (Array.isArray(parsed)) setVisits(parsed);
+      }
+
+      setHasCompletedOnboardingState(onboarding === "true");
+
+      // API mode: load public catalog for guests (logged-in hydrate runs separately).
+      if (isApiMode) {
+        const hasSession = activeSession.isLoggedIn && Boolean(activeSession.accessToken);
+        if (!hasSession) {
+          const [publicList, dirs] = await Promise.all([
+            apiListProperties({ status: "Active", limit: 100 }).catch(() => [] as Property[]),
+            apiListDealers(false).catch(() => [] as DirectoryProfile[]),
+          ]);
+          if (publicList.length) setProperties(publicList);
+          if (dirs.length) {
+            setDirectoryProfiles((prev) => {
+              const ids = new Set(dirs.map((d) => d.id));
+              return [...dirs, ...prev.filter((p) => !ids.has(p.id))];
+            });
+          }
+        }
+      }
+
+      setAuthStatus(activeSession.isLoggedIn ? "authenticated" : "unauthenticated");
+    } catch (err: any) {
+      setHasCompletedOnboardingState(false);
+      setAuthStatus("error");
+      setAuthError(err?.message || "Failed to initialize app session.");
+    } finally {
+      setIsHydrating(false);
+    }
   }, [hydrateFromApi]);
+
+  useEffect(() => {
+    loadInitialState();
+  }, [loadInitialState]);
+
+  const retryAuthCheck = useCallback(async () => {
+    await loadInitialState();
+  }, [loadInitialState]);
+
+  const setOnboardingStep = useCallback((step: number) => {
+    setOnboardingStepState(step);
+    AsyncStorage.setItem(STORAGE_KEYS.onboardingStep, String(step)).catch(() => {});
+  }, []);
 
   const setPreferredRole = useCallback((role: UserRole) => {
     setPreferredRoleState(role);
@@ -744,6 +783,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const setHasCompletedOnboarding = useCallback((val: boolean) => {
     setHasCompletedOnboardingState(val);
     AsyncStorage.setItem(STORAGE_KEYS.onboarding, String(val)).catch(() => {});
+    if (val) {
+      setOnboardingStepState(0);
+      AsyncStorage.removeItem(STORAGE_KEYS.onboardingStep).catch(() => {});
+    }
   }, []);
 
   const setSelectedCity = useCallback((city: string) => {
@@ -1703,6 +1746,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       submitKyc,
       hasCompletedOnboarding,
       setHasCompletedOnboarding,
+      onboardingStep,
+      setOnboardingStep,
+      isHydrating,
+      authStatus,
+      authError,
+      retryAuthCheck,
       preferredRole,
       setPreferredRole,
     }),
@@ -1747,6 +1796,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       submitKyc,
       hasCompletedOnboarding,
       setHasCompletedOnboarding,
+      onboardingStep,
+      setOnboardingStep,
+      isHydrating,
+      authStatus,
+      authError,
+      retryAuthCheck,
       preferredRole,
       setPreferredRole,
     ],

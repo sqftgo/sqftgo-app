@@ -37,7 +37,7 @@ import {
   CheckCircle2,
   Info,
   X,
-} from "lucide-react-native";
+} from "@/components/ui/icons";
 import { ModalSheet, ModalSheetHeader } from "@/components/ui/modal-sheet";
 
 const { width } = Dimensions.get("window");

@@ -19,7 +19,7 @@ import {
   Lock,
   Mail,
   User,
-} from "lucide-react-native";
+} from "@/components/ui/icons";
 
 import { useApp } from "@/context/AppContext";
 import type { UserRole } from "@/data/types";

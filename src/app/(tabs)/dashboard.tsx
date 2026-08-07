@@ -9,7 +9,7 @@ import {
   ClipboardList,
   Inbox,
   Plus,
-} from "lucide-react-native";
+} from "@/components/ui/icons";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { useApp } from "@/context/AppContext";

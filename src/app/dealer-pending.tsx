@@ -2,7 +2,7 @@ import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Clock, FileCheck, LayoutDashboard, Shield } from "lucide-react-native";
+import { Clock, FileCheck, LayoutDashboard, Shield } from "@/components/ui/icons";
 
 import { useApp } from "@/context/AppContext";
 import { KYC_STATUS_LABEL } from "@/lib/status-labels";

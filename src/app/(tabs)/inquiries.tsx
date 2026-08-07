@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Inbox, MessageSquare, Plus, X } from "lucide-react-native";
+import { Inbox, MessageSquare, Plus, X } from "@/components/ui/icons";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { ModalSheet, ModalSheetHeader } from "@/components/ui/modal-sheet";
