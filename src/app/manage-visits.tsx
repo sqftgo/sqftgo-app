@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Alert, FlatList, Pressable, Text, View } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Calendar } from "lucide-react-native";
+import { Calendar } from "@/components/ui/icons";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { useApp } from "@/context/AppContext";

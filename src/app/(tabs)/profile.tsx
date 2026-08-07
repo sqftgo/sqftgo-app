@@ -29,7 +29,7 @@ import {
   Shield,
   Sparkles,
   User,
-} from "lucide-react-native";
+} from "@/components/ui/icons";
 
 import { MenuGroup, MenuRow } from "@/components/ui/menu-row";
 import { useApp } from "@/context/AppContext";

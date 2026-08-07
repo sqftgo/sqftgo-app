@@ -3,7 +3,7 @@ import { Pressable, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { Bed, Heart, MapPin, Maximize2, ShieldCheck } from "lucide-react-native";
+import { Bed, Heart, MapPin, Maximize2, ShieldCheck } from "@/components/ui/icons";
 
 import { useApp } from "@/context/AppContext";
 import type { Property } from "@/data/types";

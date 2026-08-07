@@ -15,7 +15,7 @@ import { useApp } from "@/context/AppContext";
 import type { Property } from "@/data/types";
 import { CITIES as CITIES_LIST } from "@/constants/cities";
 import { pickAndUploadPropertyImage } from "@/lib/media-upload";
-import { ChevronLeft, ChevronDown, ChevronUp, Check } from "lucide-react-native";
+import { ChevronLeft, ChevronDown, ChevronUp, Check } from "@/components/ui/icons";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 
 const CITIES = CITIES_LIST.map((c) => c.name);

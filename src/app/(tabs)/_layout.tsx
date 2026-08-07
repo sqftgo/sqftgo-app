@@ -18,7 +18,7 @@ import {
   LayoutDashboard,
   MessageSquare,
   User,
-} from "lucide-react-native";
+} from "@/components/ui/icons";
 
 import { useApp } from "@/context/AppContext";
 import type { UserRole } from "@/data/types";
@@ -28,7 +28,7 @@ import { colors, type } from "@/theme/tokens";
 interface TabDef {
   name: string;
   label: string;
-  Icon: React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
+  Icon: React.ComponentType<{ size?: number; color?: string; strokeWidth?: number | string }>;
   badge?: number;
 }
 

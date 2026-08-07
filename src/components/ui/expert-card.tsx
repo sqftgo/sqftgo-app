@@ -1,6 +1,6 @@
 import React from "react";
 import { Alert, Linking, Pressable, Text, View } from "react-native";
-import { Mail, Phone, ShieldCheck } from "lucide-react-native";
+import { Mail, Phone, ShieldCheck } from "@/components/ui/icons";
 
 import type { DirectoryProfile } from "@/data/types";
 import { initialsFromName } from "@/lib/format";

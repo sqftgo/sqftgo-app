@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { BarChart3, ChevronLeft } from "lucide-react-native";
+import { BarChart3, ChevronLeft } from "@/components/ui/icons";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { useApp } from "@/context/AppContext";

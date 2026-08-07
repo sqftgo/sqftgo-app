@@ -45,3 +45,6 @@ app-example
 
 # agent skills
 .agents/skills
+
+# IDEs
+.idea/

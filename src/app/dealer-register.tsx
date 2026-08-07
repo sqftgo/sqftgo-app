@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ChevronLeft } from "lucide-react-native";
+import { ChevronLeft } from "@/components/ui/icons";
 
 import { useApp } from "@/context/AppContext";
 import type { DirectoryCategory } from "@/data/types";

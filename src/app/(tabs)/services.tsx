@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { FlatList, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Briefcase, MapPin, ChevronDown } from "lucide-react-native";
+import { Briefcase, MapPin, ChevronDown } from "@/components/ui/icons";
 
 import CitySelectionModal from "@/components/ui/CitySelectionModal";
 import { Chip } from "@/components/ui/chip";

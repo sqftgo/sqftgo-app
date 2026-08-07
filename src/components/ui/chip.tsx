@@ -1,6 +1,6 @@
 import React from "react";
 import { Pressable, Text, View } from "react-native";
-import { Check } from "lucide-react-native";
+import { Check } from "@/components/ui/icons";
 
 import { colors, radius, spacing, type } from "@/theme/tokens";
 

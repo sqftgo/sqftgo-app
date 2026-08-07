@@ -9,7 +9,7 @@ import {
   Dimensions,
   TextInput,
 } from "react-native";
-import { Search, Check, MapPin, X } from "lucide-react-native";
+import { Search, Check, MapPin, X } from "@/components/ui/icons";
 import Svg, { Defs, LinearGradient as SvgLinearGradient, Rect, Stop } from "react-native-svg";
 import { CITIES, City } from "@/constants/cities";
 import { useApp } from "@/context/AppContext";

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { FlatList, Pressable, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { SearchX, SlidersHorizontal, X } from "lucide-react-native";
+import { SearchX, SlidersHorizontal, X } from "@/components/ui/icons";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { FilterSheet } from "@/components/ui/filter-sheet";

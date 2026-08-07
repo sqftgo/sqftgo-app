@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -7,7 +7,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
 import {
@@ -27,7 +27,7 @@ import {
   Zap,
   PhoneCall,
   ArrowRight,
-} from "lucide-react-native";
+} from "@/components/ui/icons";
 
 import { useApp } from "@/context/AppContext";
 import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
@@ -68,15 +68,35 @@ const INTENT_OPTIONS = {
 };
 
 export default function OnboardingScreen() {
-  const { setHasCompletedOnboarding, setPreferredRole, selectedCity, setSelectedCity } = useApp();
+  const {
+    setHasCompletedOnboarding,
+    setPreferredRole,
+    selectedCity,
+    setSelectedCity,
+    onboardingStep,
+    setOnboardingStep,
+  } = useApp();
   const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
 
-  const [currentSlide, setCurrentSlide] = useState(0);
+  const [currentSlide, setCurrentSlide] = useState(onboardingStep || 0);
   const [selectedRole, setSelectedRole] = useState<"user" | "broker">("user");
   const [activeIntent, setActiveIntent] = useState<string>("buy_home");
   const [chosenCity, setChosenCity] = useState<string>(selectedCity || "Udaipur");
 
   const scrollRef = useRef<ScrollView>(null);
+
+  // Resume from persisted onboarding step on mount
+  useEffect(() => {
+    if (onboardingStep > 0 && onboardingStep <= 3) {
+      setCurrentSlide(onboardingStep);
+      const timer = setTimeout(() => {
+        scrollRef.current?.scrollTo({ x: onboardingStep * width, animated: false });
+      }, 80);
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const triggerHaptic = () => {
     try {
@@ -91,6 +111,7 @@ export default function OnboardingScreen() {
     const index = Math.round(scrollOffset / width);
     if (index !== currentSlide && index >= 0 && index <= 3) {
       setCurrentSlide(index);
+      setOnboardingStep(index);
     }
   };
 
@@ -98,6 +119,7 @@ export default function OnboardingScreen() {
     triggerHaptic();
     scrollRef.current?.scrollTo({ x: index * width, animated: true });
     setCurrentSlide(index);
+    setOnboardingStep(index);
   };
 
   const handleNext = () => {
@@ -134,6 +156,7 @@ export default function OnboardingScreen() {
     setSelectedCity(chosenCity);
     setHasCompletedOnboarding(true);
   };
+
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -416,7 +439,12 @@ export default function OnboardingScreen() {
       </ScrollView>
 
       {/* Bottom Fixed Action Bar */}
-      <View style={styles.bottomControlBar}>
+      <View
+        style={[
+          styles.bottomControlBar,
+          { paddingBottom: Math.max(insets.bottom, spacing.md) },
+        ]}
+      >
         {/* Dot Indicators */}
         <View style={styles.carouselIndicators}>
           {[0, 1, 2, 3].map((index) => (

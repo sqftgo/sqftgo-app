@@ -2,7 +2,7 @@ import React from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ChevronLeft, Sparkles } from "lucide-react-native";
+import { ChevronLeft, Sparkles } from "@/components/ui/icons";
 
 import { useApp } from "@/context/AppContext";
 import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
