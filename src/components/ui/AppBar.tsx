@@ -11,6 +11,7 @@
  */
 import React from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
+import { colors } from "@/theme/tokens";
 
 export interface AppBarAction {
   /** Any renderable icon element */
@@ -45,10 +46,10 @@ export default function AppBar({
   title,
   subtitle,
   actions = [],
-  backgroundColor = "#FAF9F6",
-  titleColor = "#0F1E36",
-  subtitleColor = "#6B7280",
-  borderColor = "#EAE9E4",
+  backgroundColor = colors.bg,
+  titleColor = colors.ink,
+  subtitleColor = colors.inkMuted,
+  borderColor = colors.border,
   leftElement,
 }: AppBarProps) {
   return (
@@ -78,7 +79,7 @@ export default function AppBar({
               accessibilityLabel={action.label}
               style={({ pressed }) => [
                 styles.iconBtn,
-                { backgroundColor: action.bgColor ?? "#FFFFFF", borderColor },
+                { backgroundColor: action.bgColor ?? colors.surface, borderColor },
                 pressed && styles.iconBtnPressed,
               ]}
             >
@@ -134,7 +135,6 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    borderCurve: "continuous",
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
@@ -152,8 +152,8 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 4,
-    backgroundColor: "#E05A36",
+    backgroundColor: colors.accent,
     borderWidth: 1.5,
-    borderColor: "#FFFFFF",
+    borderColor: colors.surface,
   },
 });

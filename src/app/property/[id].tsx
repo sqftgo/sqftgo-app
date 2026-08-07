@@ -39,6 +39,7 @@ import {
   X,
 } from "@/components/ui/icons";
 import { ModalSheet, ModalSheetHeader } from "@/components/ui/modal-sheet";
+import { colors, type, radius, spacing } from "@/theme/tokens";
 
 const { width } = Dimensions.get("window");
 const CAROUSEL_WIDTH = width - 32;
@@ -294,18 +295,18 @@ export default function PropertyDetailsScreen() {
       {/* Header Bar */}
       <View style={styles.headerBar}>
         <Pressable onPress={() => router.back()} style={styles.headerIconBtn}>
-          <ChevronLeft size={22} color="#0F1E36" />
+          <ChevronLeft size={22} color={colors.ink} />
         </Pressable>
         <Text style={styles.headerTitle}>Details</Text>
         <View style={styles.headerRightActions}>
           <Pressable onPress={handleShare} style={styles.headerIconBtn}>
-            <Share2 size={20} color="#0F1E36" />
+            <Share2 size={20} color={colors.ink} />
           </Pressable>
           <Pressable onPress={() => toggleFavorite(property.id)} style={styles.headerIconBtn}>
             <Heart
               size={20}
-              color={isFav ? "#E05A36" : "#0F1E36"}
-              fill={isFav ? "#E05A36" : "transparent"}
+              color={isFav ? colors.accent : colors.ink}
+              fill={isFav ? colors.accent : "transparent"}
             />
           </Pressable>
         </View>

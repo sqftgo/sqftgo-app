@@ -185,10 +185,10 @@ const styles = StyleSheet.create({
   },
   cardActive: {
     borderColor: colors.accent,
-    boxShadow: shadow.accent,
+    borderWidth: 2,
   },
   cardPressed: {
-    transform: [{ scale: 0.96 }],
+    opacity: 0.9,
   },
   cardImage: {
     width: "100%",
@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
   cityName: {
     color: "#FFFFFF",
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "600",
     textAlign: "center",
     textShadowColor: "rgba(0, 0, 0, 0.75)",
     textShadowOffset: { width: 0, height: 1 },
@@ -222,7 +222,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     alignItems: "center",
     justifyContent: "center",
-    boxShadow: shadow.raised,
   },
   emptyContainer: {
     flex: 1,

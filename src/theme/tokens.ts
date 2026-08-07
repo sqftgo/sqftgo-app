@@ -1,16 +1,25 @@
 /**
- * Design tokens — single source of truth for the app's visual language.
+ * Design tokens — single source of truth for SqftGo's visual language.
  *
- * Spacing follows an 8pt system (4 is the half-step).
- * Colors preserve the committed brand: cream canvas, slate ink, warm orange accent.
+ * 1. Typography: Fredoka for logo/wordmark, Inter for all UI text.
+ * 2. Palette: Deep Emerald Forest (#0F382C) primary, Warm Terracotta (#C86D51) single accent, Light Gray canvas (#F8F9FA).
+ * 3. Buttons: Flat with 1px border or subtle 0 2px 4px rgba(0,0,0,0.08) neutral shadow.
  */
 
+export const fonts = {
+  logo: "Fredoka_600SemiBold",
+  sansRegular: "Inter_400Regular",
+  sansMedium: "Inter_500Medium",
+  sansSemiBold: "Inter_600SemiBold",
+  sansBold: "Inter_700Bold",
+} as const;
+
 export const colors = {
-  /** Screen canvas */
+  /** Warm off-white / cream screen canvas */
   bg: "#FAF9F6",
   /** Cards and elevated surfaces */
   surface: "#FFFFFF",
-  /** Recessed panels inside cards (input wells, info blocks) */
+  /** Recessed panels (input wells, info blocks) */
   surfaceSubtle: "#F5F4F0",
 
   ink: "#0F1E36",
@@ -20,9 +29,15 @@ export const colors = {
   border: "#EAE9E4",
   borderStrong: "#D9D7CF",
 
+  /** Primary brand color - Deep Navy / Slate Ink (#0F1E36) */
+  primary: "#0F1E36",
+  primarySoft: "rgba(15, 30, 54, 0.07)",
+  primaryBorder: "rgba(15, 30, 54, 0.20)",
+
+  /** Single accent color - Terracotta / Warm Coral (#E05A36) (reserved ONLY for primary CTAs & active selection) */
   accent: "#E05A36",
   accentSoft: "rgba(224, 90, 54, 0.08)",
-  accentBorder: "rgba(224, 90, 54, 0.22)",
+  accentBorder: "rgba(224, 90, 54, 0.25)",
 
   info: "#005B96",
   infoSoft: "rgba(0, 91, 150, 0.08)",
@@ -31,6 +46,7 @@ export const colors = {
   danger: "#DC2626",
   dangerSoft: "rgba(220, 38, 38, 0.08)",
 
+  onPrimary: "#FFFFFF",
   onAccent: "#FFFFFF",
   overlay: "rgba(15, 30, 54, 0.55)",
 } as const;
@@ -46,43 +62,49 @@ export const spacing = {
 
 export const radius = {
   sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 20,
+  md: 10,
+  lg: 14,
+  xl: 18,
   full: 999,
 } as const;
 
 export const shadow = {
-  /** Resting cards */
-  card: "0 1px 3px rgba(15, 30, 54, 0.06)",
-  /** Floating elements: sheets, popovers, primary CTAs */
-  raised: "0 4px 16px rgba(15, 30, 54, 0.10)",
-  /** Accent CTA glow */
-  accent: "0 4px 12px rgba(224, 90, 54, 0.28)",
+  /** Flat card border shadow */
+  card: "0 1px 2px rgba(0, 0, 0, 0.05)",
+  /** Floating sheets, modal popovers */
+  raised: "0 4px 12px rgba(0, 0, 0, 0.08)",
+  /** Flat button minimal neutral shadow (no soft colored glow) */
+  button: "0 2px 4px rgba(0, 0, 0, 0.08)",
+  /** Backward compatible alias pointing to flat neutral shadow */
+  accent: "0 2px 4px rgba(0, 0, 0, 0.08)",
 } as const;
 
 type TextStyleToken = {
+  fontFamily?: string;
   fontSize: number;
-  fontWeight: "500" | "600" | "700" | "800";
+  fontWeight: "400" | "500" | "600" | "700" | "800";
   letterSpacing?: number;
   lineHeight?: number;
 };
 
 export const type = {
-  /** Screen titles */
-  title: { fontSize: 22, fontWeight: "800", letterSpacing: -0.4 },
+  /** Brand wordmark logo font */
+  logo: { fontFamily: fonts.logo, fontSize: 24, fontWeight: "600" },
+  /** Main screen titles */
+  title: { fontFamily: fonts.sansBold, fontSize: 22, fontWeight: "700", letterSpacing: -0.3, lineHeight: 28 },
   /** Section headings */
-  heading: { fontSize: 17, fontWeight: "700", letterSpacing: -0.2 },
-  /** Card titles, prominent values */
-  emphasis: { fontSize: 15, fontWeight: "700" },
-  /** Default body copy */
-  body: { fontSize: 15, fontWeight: "500", lineHeight: 21 },
-  /** Secondary labels, buttons */
-  label: { fontSize: 13, fontWeight: "600" },
-  /** Metadata, timestamps */
-  caption: { fontSize: 12, fontWeight: "500", lineHeight: 16 },
-  /** Badges, chips */
-  micro: { fontSize: 11, fontWeight: "700", letterSpacing: 0.2 },
+  heading: { fontFamily: fonts.sansSemiBold, fontSize: 17, fontWeight: "600", letterSpacing: -0.2, lineHeight: 23 },
+  /** Card titles, bold labels */
+  emphasis: { fontFamily: fonts.sansSemiBold, fontSize: 15, fontWeight: "600" },
+  /** Regular body text */
+  body: { fontFamily: fonts.sansRegular, fontSize: 15, fontWeight: "400", lineHeight: 22 },
+  /** Secondary text, form labels, buttons */
+  label: { fontFamily: fonts.sansMedium, fontSize: 14, fontWeight: "500" },
+  /** Captions, timestamps */
+  caption: { fontFamily: fonts.sansRegular, fontSize: 12, fontWeight: "400", lineHeight: 16 },
+  /** Badges, micro labels (Sentence / Title case) */
+  micro: { fontFamily: fonts.sansMedium, fontSize: 11, fontWeight: "500", letterSpacing: 0.1 },
 } satisfies Record<string, TextStyleToken>;
 
 export const hitSlop = { top: 8, bottom: 8, left: 8, right: 8 } as const;
+
