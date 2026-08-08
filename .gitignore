@@ -1,50 +1,92 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
-# dependencies
-node_modules/
+# Dependencies
+/node_modules/
+/.pnpm-store/
 
-# Expo
+# Expo & Metro
 .expo/
 dist/
 web-build/
 expo-env.d.ts
+.metro-health-check*
 
-# Native
+# React Native & Generated Native folders
+/ios/
+/android/
 .kotlin/
 *.orig.*
+
+# Certificates, keys & provisioning
 *.jks
 *.p8
 *.p12
 *.key
+*.keystore
 *.mobileprovision
+*.pem
+*.cer
+*.crt
 
-# Metro
-.metro-health-check*
+# Build outputs
+*.apk
+*.aab
+*.ipa
+*.xcarchive/
 
-# debug
+# Logs & Debugging
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+pnpm-debug.*
+*.log
 
+# Environment variables & secrets
+.env
+.env.local
+.env*.local
+!.env.example
+
+# TypeScript & Cache
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+.eslintcache
+.stylelintcache
+.turbo/
+
+# Testing & Coverage
+coverage/
+.nyc_output/
+
+# Agent & AI tool caches
+.agents/skills
+.agents/scratch/
+.gemini/
+
+# Operating System Files
 # macOS
 .DS_Store
-*.pem
+.AppleDouble
+.LSOverride
+._*
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
 
-# local env files
-.env
-.env*.local
-
-# typescript
-*.tsbuildinfo
-
-app-example
-
-# generated native folders
-/ios
-/android
-
-# agent skills
-.agents/skills
-
-# IDEs
-.idea/
+# IDEs & Editors
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+.vscode/*.local
+
