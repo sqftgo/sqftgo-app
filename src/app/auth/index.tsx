@@ -1,7 +1,6 @@
 import {
   Eye,
   EyeOff,
-  Home as HomeIcon,
   Lock,
   Mail,
   User
@@ -181,23 +180,9 @@ export default function AuthScreen() {
         >
           {/* Header Brand Section */}
           <View style={{ alignItems: "center", gap: spacing.xs }}>
-            <View
-              style={{
-                width: 56,
-                height: 56,
-                borderRadius: radius.lg,
-                backgroundColor: colors.primary,
-                alignItems: "center",
-                justifyContent: "center",
-                marginBottom: spacing.xs,
-                boxShadow: shadow.button,
-              }}
-            >
-              <HomeIcon size={26} color={colors.onPrimary} />
-            </View>
             <Text style={{ ...type.logo, color: colors.primary, fontSize: 28 }}>SqftGo</Text>
             <Text style={{ ...type.title, color: colors.ink, marginTop: spacing.xs }}>
-              {isSignUp ? "Create your account" : "Welcome back"}
+              {isSignUp ? "Create your account" : "Welcome"}
             </Text>
             <Text
               style={{
@@ -262,52 +247,6 @@ export default function AuthScreen() {
                 );
               })}
             </View>
-          </View>
-
-          {/* Mode Switcher (Sign In vs Sign Up) */}
-          <View
-            style={{
-              flexDirection: "row",
-              backgroundColor: colors.surfaceSubtle,
-              borderRadius: radius.md,
-              padding: spacing.xs,
-            }}
-          >
-            {(
-              [
-                { id: "sign-in", label: "Sign In" },
-                { id: "sign-up", label: "Sign Up" },
-              ] as const
-            ).map((tab) => {
-              const active = mode === tab.id;
-              return (
-                <Pressable
-                  key={tab.id}
-                  onPress={() => switchMode(tab.id)}
-                  disabled={busy}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: active }}
-                  style={{
-                    flex: 1,
-                    alignItems: "center",
-                    paddingVertical: spacing.sm,
-                    borderRadius: radius.sm,
-                    backgroundColor: active ? colors.surface : "transparent",
-                    boxShadow: active ? shadow.card : undefined,
-                  }}
-                >
-                  <Text
-                    style={{
-                      ...type.label,
-                      color: active ? colors.ink : colors.inkMuted,
-                      fontWeight: active ? "600" : "400",
-                    }}
-                  >
-                    {tab.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
           </View>
 
           {/* Form Input Fields */}
@@ -449,16 +388,36 @@ export default function AuthScreen() {
                 <ActivityIndicator color={colors.onAccent} />
               ) : (
                 <Text style={{ ...type.emphasis, color: colors.onAccent }}>
-                  {isSignUp
-                    ? isDealer
-                      ? "Create Dealer Account"
-                      : "Create User Account"
-                    : isDealer
-                      ? "Sign In to Dealer Portal"
-                      : "Sign In to Account"}
+                  Sign In
                 </Text>
               )}
             </Pressable>
+
+            {/* Bottom Footer Switcher (Standard App Auth Layout) */}
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "center",
+                alignItems: "center",
+                gap: spacing.xs,
+                marginTop: spacing.xs,
+              }}
+            >
+              <Text style={{ ...type.body, color: colors.inkMuted }}>
+                {isSignUp ? "Already have an account?" : "Don't have an account?"}
+              </Text>
+              <Pressable
+                onPress={() => switchMode(isSignUp ? "sign-in" : "sign-up")}
+                disabled={busy}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={isSignUp ? "Sign In" : "Sign Up"}
+              >
+                <Text style={{ ...type.emphasis, color: colors.accent, fontWeight: "600" }}>
+                  {isSignUp ? "Sign In" : "Sign Up"}
+                </Text>
+              </Pressable>
+            </View>
           </View>
 
           <Text

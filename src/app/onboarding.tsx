@@ -1,3 +1,22 @@
+import {
+  ArrowRight,
+  Briefcase,
+  Building2,
+  Check,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Compass,
+  Home,
+  MapPin,
+  PhoneCall,
+  ShieldCheck,
+  TrendingUp,
+  User,
+  Zap,
+} from "@/components/ui/icons";
+import * as Haptics from "expo-haptics";
+import { Image } from "expo-image";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Pressable,
@@ -8,29 +27,10 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { Image } from "expo-image";
-import * as Haptics from "expo-haptics";
-import {
-  Briefcase,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  ShieldCheck,
-  TrendingUp,
-  User,
-  MapPin,
-  Building2,
-  Home,
-  Check,
-  Compass,
-  Zap,
-  PhoneCall,
-  ArrowRight,
-} from "@/components/ui/icons";
 
+import { CITIES, City } from "@/constants/cities";
 import { useApp } from "@/context/AppContext";
 import { colors, fonts, radius, shadow, spacing, type } from "@/theme/tokens";
-import { CITIES, City } from "@/constants/cities";
 
 const UserIcon = User as any;
 const BriefcaseIcon = Briefcase as any;
@@ -67,16 +67,13 @@ const COMING_SOON_CITIES: (City & { comingSoon: true })[] = [
 
 const INTENT_OPTIONS = {
   user: [
-    { id: "buy_home", label: "Buy a Home", icon: HomeIcon },
-    { id: "rent", label: "Rent Apartment", icon: Building2Icon },
-    { id: "invest", label: "Invest in Plots", icon: TrendingUpIcon },
-    { id: "explore", label: "Browse Market", icon: CompassIcon },
+    { id: "buy_home", label: "Buy a Home", desc: "Villas & houses", icon: HomeIcon },
+    { id: "rent", label: "Rent Apartment", desc: "Flats & studio units", icon: Building2Icon },
   ],
   broker: [
-    { id: "list_prop", label: "Post Properties", icon: HomeIcon },
-    { id: "get_leads", label: "Capture Buyer Leads", icon: ZapIcon },
-    { id: "manage_visits", label: "Schedule Site Visits", icon: PhoneCallIcon },
-    { id: "analytics", label: "Market Analytics", icon: TrendingUpIcon },
+    { id: "list_prop", label: "Post Properties", desc: "Sell or lease units", icon: HomeIcon },
+    { id: "get_leads", label: "Capture Leads", desc: "Direct buyer inquiries", icon: ZapIcon },
+    { id: "manage_visits", label: "Schedule Visits", desc: "Calendar & client tours", icon: PhoneCallIcon },
   ],
 };
 
@@ -221,21 +218,21 @@ export default function OnboardingScreen() {
           <View style={styles.slideContentCentered}>
             <View style={[styles.heroImageBox, { height: Math.min(height * 0.35, 260) }]}>
               <Image
-                source={{ uri: "https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=800&q=80" }}
+                source={require("../../assets/images/OnBoarding1.png")}
                 style={styles.slideImg}
                 contentFit="cover"
               />
               <View style={styles.imageOverlayGradient} />
               <View style={styles.heroBadgePill}>
                 <ShieldCheckIcon size={14} color={colors.primary} />
-                <Text style={styles.heroBadgeText}>Verified listings • Direct dealer connect</Text>
+                <Text style={styles.heroBadgeText}>Verified listings</Text>
               </View>
             </View>
 
-            <View style={styles.textContainer}>
+            <View style={styles.stepHeaderBox}>
               <Text style={styles.slideTitle}>Discover verified properties</Text>
               <Text selectable style={styles.slideSubtitle}>
-                Browse curated residential homes, apartments, commercial plots, and investments with transparent pricing.
+                Browse curated residential homes, apartments, plots, and investments with transparent pricing.
               </Text>
             </View>
 
@@ -306,17 +303,17 @@ export default function OnboardingScreen() {
           </View>
         </View>
 
-        {/* SLIDE 3: Role & Intent Personalization (Rule 6 & Rule 7) */}
+        {/* SLIDE 3: Role & Intent Personalization */}
         <View style={[styles.slideContainer, { width }]}>
           <View style={styles.slideContentCentered}>
             <View style={styles.stepHeaderBox}>
               <Text style={styles.slideTitle}>Customize your profile</Text>
               <Text selectable style={styles.slideSubtitle}>
-                Select your role to get a tailored experience for buying or managing real estate.
+                Select your role to get tailored listings, market insights, and tools.
               </Text>
             </View>
 
-            {/* Role Cards Row (Rule 6: Unselected uses plain outline icon with NO container) */}
+            {/* Role Cards Row */}
             <View style={styles.roleCardsRow}>
               {/* Property Buyer */}
               <Pressable
@@ -326,25 +323,50 @@ export default function OnboardingScreen() {
                   selectedRole === "user" && styles.roleCardActive,
                 ]}
               >
-                <View style={styles.roleHeaderRow}>
-                  {selectedRole === "user" ? (
-                    <View style={styles.roleIconContainerActive}>
-                      <UserIcon size={18} color={colors.onAccent} />
-                    </View>
-                  ) : (
-                    <UserIcon size={22} color={colors.inkMuted} />
-                  )}
-                  {selectedRole === "user" && (
-                    <CheckCircle2Icon size={16} color={colors.accent} />
-                  )}
+                <View style={styles.roleCardTopRow}>
+                  <View
+                    style={[
+                      styles.roleIconBox,
+                      selectedRole === "user" ? styles.roleIconBoxActive : styles.roleIconBoxInactive,
+                    ]}
+                  >
+                    <UserIcon
+                      size={18}
+                      color={selectedRole === "user" ? colors.onAccent : colors.inkSecondary}
+                    />
+                  </View>
+                  <View
+                    style={[
+                      styles.roleRadioIndicator,
+                      selectedRole === "user" && styles.roleRadioIndicatorActive,
+                    ]}
+                  >
+                    {selectedRole === "user" && <CheckIcon size={10} color={colors.onAccent} />}
+                  </View>
                 </View>
 
                 <Text style={[styles.roleCardTitle, selectedRole === "user" && styles.roleCardTitleActive]}>
                   Property Buyer
                 </Text>
                 <Text style={styles.roleCardDesc}>
-                  Browse verified listings, save properties, and schedule site visits.
+                  Browse verified listings, schedule tours, & save homes.
                 </Text>
+
+                <View
+                  style={[
+                    styles.roleBadgePill,
+                    selectedRole === "user" && styles.roleBadgePillActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.roleBadgeText,
+                      selectedRole === "user" && styles.roleBadgeTextActive,
+                    ]}
+                  >
+                    Zero Brokerage
+                  </Text>
+                </View>
               </Pressable>
 
               {/* Property Dealer */}
@@ -355,31 +377,59 @@ export default function OnboardingScreen() {
                   selectedRole === "broker" && styles.roleCardActive,
                 ]}
               >
-                <View style={styles.roleHeaderRow}>
-                  {selectedRole === "broker" ? (
-                    <View style={styles.roleIconContainerActive}>
-                      <BriefcaseIcon size={18} color={colors.onAccent} />
-                    </View>
-                  ) : (
-                    <BriefcaseIcon size={22} color={colors.inkMuted} />
-                  )}
-                  {selectedRole === "broker" && (
-                    <CheckCircle2Icon size={16} color={colors.accent} />
-                  )}
+                <View style={styles.roleCardTopRow}>
+                  <View
+                    style={[
+                      styles.roleIconBox,
+                      selectedRole === "broker" ? styles.roleIconBoxActive : styles.roleIconBoxInactive,
+                    ]}
+                  >
+                    <BriefcaseIcon
+                      size={18}
+                      color={selectedRole === "broker" ? colors.onAccent : colors.inkSecondary}
+                    />
+                  </View>
+                  <View
+                    style={[
+                      styles.roleRadioIndicator,
+                      selectedRole === "broker" && styles.roleRadioIndicatorActive,
+                    ]}
+                  >
+                    {selectedRole === "broker" && <CheckIcon size={10} color={colors.onAccent} />}
+                  </View>
                 </View>
 
                 <Text style={[styles.roleCardTitle, selectedRole === "broker" && styles.roleCardTitleActive]}>
                   Property Dealer
                 </Text>
                 <Text style={styles.roleCardDesc}>
-                  Publish property listings, capture buyer leads, and manage clients.
+                  Publish listings, capture buyer leads, & close deals.
                 </Text>
+
+                <View
+                  style={[
+                    styles.roleBadgePill,
+                    selectedRole === "broker" && styles.roleBadgePillActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.roleBadgeText,
+                      selectedRole === "broker" && styles.roleBadgeTextActive,
+                    ]}
+                  >
+                    Direct Leads
+                  </Text>
+                </View>
               </Pressable>
             </View>
 
             {/* Intent Options Section */}
             <View style={styles.intentSection}>
-              <Text style={styles.intentHeading}>What is your primary goal?</Text>
+              <View style={styles.intentHeaderRow}>
+                <Text style={styles.intentHeading}>What is your primary goal?</Text>
+              </View>
+
               <View style={styles.intentGrid}>
                 {INTENT_OPTIONS[selectedRole].map((item) => {
                   const IconComp = item.icon;
@@ -392,14 +442,40 @@ export default function OnboardingScreen() {
                         setActiveIntent(item.id);
                       }}
                       style={[
-                        styles.intentChip,
-                        isSelected && styles.intentChipSelected,
+                        styles.intentCard,
+                        isSelected && styles.intentCardSelected,
                       ]}
                     >
-                      <IconComp size={15} color={isSelected ? colors.accent : colors.inkMuted} />
-                      <Text style={[styles.intentChipText, isSelected && styles.intentChipTextSelected]}>
-                        {item.label}
-                      </Text>
+                      <View
+                        style={[
+                          styles.intentIconCircle,
+                          isSelected && styles.intentIconCircleSelected,
+                        ]}
+                      >
+                        <IconComp
+                          size={15}
+                          color={isSelected ? colors.accent : colors.inkSecondary}
+                        />
+                      </View>
+                      <View style={styles.intentCardTextWrapper}>
+                        <Text
+                          style={[
+                            styles.intentCardTitle,
+                            isSelected && styles.intentCardTitleSelected,
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {item.label}
+                        </Text>
+                        <Text style={styles.intentCardDesc} numberOfLines={1}>
+                          {item.desc}
+                        </Text>
+                      </View>
+                      {isSelected && (
+                        <View style={styles.intentCheckBadge}>
+                          <CheckIcon size={9} color={colors.onAccent} />
+                        </View>
+                      )}
                     </Pressable>
                   );
                 })}
@@ -408,20 +484,20 @@ export default function OnboardingScreen() {
           </View>
         </View>
 
-        {/* SLIDE 4: Direct Agent Connect & Portal Confirmation (Rule 7 & Rule 8) */}
+        {/* SLIDE 4: Direct Agent Connect & Portal Confirmation */}
         <View style={[styles.slideContainer, { width }]}>
           <View style={styles.slideContentCentered}>
-            <View style={styles.summaryCard}>
-              <View style={styles.summaryHeader}>
-                <View style={styles.summaryBadgePill}>
-                  <Text style={styles.summaryBadgeText}>Portal Configured</Text>
-                </View>
-                <Text style={styles.summaryTitle}>Your SqftGo portal is ready</Text>
-                <Text style={styles.summarySubtitle}>
-                  Tailored for <Text style={styles.highlightText}>{chosenCity}</Text> real estate market
-                </Text>
+            <View style={styles.stepHeaderBox}>
+              <View style={styles.summaryBadgePill}>
+                <Text style={styles.summaryBadgeText}>Portal Configured</Text>
               </View>
+              <Text style={styles.slideTitle}>Your SqftGo portal is ready</Text>
+              <Text selectable style={styles.slideSubtitle}>
+                Tailored for <Text style={styles.highlightText}>{chosenCity}</Text> real estate market
+              </Text>
+            </View>
 
+            <View style={styles.summaryCard}>
               <View style={styles.summaryList}>
                 <View style={styles.summaryItem}>
                   <View style={styles.summaryIconBox}>
@@ -472,12 +548,10 @@ export default function OnboardingScreen() {
             <Text style={styles.primaryActionBtnText}>
               {selectedRole === "broker" ? "Open Dealer Directory" : `Explore Properties in ${chosenCity}`}
             </Text>
-            <ArrowRightIcon size={18} color={colors.onAccent} />
           </Pressable>
         ) : (
           <Pressable onPress={handleNext} style={styles.primaryActionBtn}>
             <Text style={styles.primaryActionBtnText}>Continue</Text>
-            <ChevronRightIcon size={18} color={colors.onAccent} />
           </Pressable>
         )}
       </View>
@@ -495,7 +569,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.lg,
   },
   brandWordmark: {
     fontFamily: fonts.logo,
@@ -505,7 +579,7 @@ const styles = StyleSheet.create({
   headerIconBtn: {
     width: 36,
     height: 36,
-    borderRadius: radius.full,
+    borderRadius: radius.sm,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
@@ -541,7 +615,7 @@ const styles = StyleSheet.create({
   skipBtn: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs + 2,
-    borderRadius: radius.full,
+    borderRadius: radius.sm,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
@@ -582,15 +656,15 @@ const styles = StyleSheet.create({
   },
   heroBadgePill: {
     position: "absolute",
-    bottom: spacing.md,
-    left: spacing.md,
+    top: spacing.sm,
+    right: spacing.sm,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
     backgroundColor: "rgba(255, 255, 255, 0.95)",
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs + 2,
-    borderRadius: radius.full,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -629,7 +703,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs + 2,
-    borderRadius: radius.full,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -697,7 +771,7 @@ const styles = StyleSheet.create({
     right: spacing.xs,
     width: 20,
     height: 20,
-    borderRadius: radius.full,
+    borderRadius: radius.sm,
     backgroundColor: colors.accent,
     alignItems: "center",
     justifyContent: "center",
@@ -724,7 +798,7 @@ const styles = StyleSheet.create({
   roleCard: {
     flex: 1,
     backgroundColor: colors.surface,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.border,
     borderRadius: radius.lg,
     padding: spacing.md,
@@ -734,24 +808,44 @@ const styles = StyleSheet.create({
   roleCardActive: {
     backgroundColor: colors.accentSoft,
     borderColor: colors.accent,
-    borderWidth: 1.5,
   },
-  roleHeaderRow: {
+  roleCardTopRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: spacing.xs,
+    marginBottom: 4,
   },
-  roleIconContainerActive: {
+  roleIconBox: {
     width: 32,
     height: 32,
     borderRadius: radius.md,
-    backgroundColor: colors.accent,
     alignItems: "center",
     justifyContent: "center",
   },
+  roleIconBoxActive: {
+    backgroundColor: colors.accent,
+  },
+  roleIconBoxInactive: {
+    backgroundColor: colors.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  roleRadioIndicator: {
+    width: 18,
+    height: 18,
+    borderRadius: radius.full,
+    borderWidth: 1.5,
+    borderColor: colors.borderStrong,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  roleRadioIndicatorActive: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
   roleCardTitle: {
     ...type.emphasis,
+    fontSize: 14,
     color: colors.ink,
   },
   roleCardTitleActive: {
@@ -759,85 +853,140 @@ const styles = StyleSheet.create({
   },
   roleCardDesc: {
     ...type.caption,
+    fontSize: 11,
     color: colors.inkMuted,
-    lineHeight: 16,
+    lineHeight: 15,
+  },
+  roleBadgePill: {
+    alignSelf: "flex-start",
+    marginTop: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: radius.full,
+    backgroundColor: colors.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  roleBadgePillActive: {
+    backgroundColor: "rgba(224, 90, 54, 0.12)",
+    borderColor: colors.accentBorder,
+  },
+  roleBadgeText: {
+    ...type.micro,
+    fontSize: 10,
+    color: colors.inkSecondary,
+  },
+  roleBadgeTextActive: {
+    color: colors.accent,
+    fontFamily: fonts.sansMedium,
   },
   intentSection: {
     width: "100%",
-    marginTop: spacing.lg,
+    marginTop: spacing.md + 4,
     gap: spacing.xs + 2,
+  },
+  intentHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 2,
   },
   intentHeading: {
     ...type.label,
+    fontSize: 13,
     color: colors.inkSecondary,
+  },
+  intentSubheading: {
+    ...type.micro,
+    fontSize: 11,
+    color: colors.inkMuted,
   },
   intentGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
+    justifyContent: "space-between",
     gap: spacing.xs + 2,
   },
-  intentChip: {
+  intentCard: {
+    width: "48.5%",
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 8,
     backgroundColor: colors.surface,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.border,
-    borderRadius: radius.full,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.sm,
+    position: "relative",
   },
-  intentChipSelected: {
+  intentCardSelected: {
     borderColor: colors.accent,
     backgroundColor: colors.accentSoft,
   },
-  intentChipText: {
-    ...type.caption,
-    color: colors.inkSecondary,
+  intentIconCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceSubtle,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  intentChipTextSelected: {
-    color: colors.accent,
+  intentIconCircleSelected: {
+    backgroundColor: "rgba(224, 90, 54, 0.15)",
+  },
+  intentCardTextWrapper: {
+    flex: 1,
+  },
+  intentCardTitle: {
+    ...type.caption,
     fontFamily: fonts.sansMedium,
+    fontSize: 12,
+    color: colors.ink,
+  },
+  intentCardTitleSelected: {
+    color: colors.accent,
+    fontFamily: fonts.sansSemiBold,
+  },
+  intentCardDesc: {
+    ...type.micro,
+    fontSize: 10,
+    color: colors.inkMuted,
+  },
+  intentCheckBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    width: 14,
+    height: 14,
+    borderRadius: radius.sm,
+    backgroundColor: colors.accent,
+    alignItems: "center",
+    justifyContent: "center",
   },
   summaryCard: {
     width: "100%",
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    borderRadius: radius.sm,
     padding: spacing.lg,
     borderWidth: 1,
     borderColor: colors.border,
     boxShadow: shadow.card,
     gap: spacing.md,
   },
-  summaryHeader: {
-    alignItems: "center",
-    gap: spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    paddingBottom: spacing.md,
-  },
   summaryBadgePill: {
     backgroundColor: colors.primarySoft,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
-    borderRadius: radius.full,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.primaryBorder,
+    marginBottom: spacing.xs,
   },
   summaryBadgeText: {
     ...type.caption,
     fontFamily: fonts.sansMedium,
     color: colors.primary,
-  },
-  summaryTitle: {
-    ...type.title,
-    color: colors.ink,
-    fontSize: 20,
-  },
-  summarySubtitle: {
-    ...type.body,
-    color: colors.inkMuted,
-    textAlign: "center",
   },
   highlightText: {
     fontFamily: fonts.sansSemiBold,
@@ -854,7 +1003,7 @@ const styles = StyleSheet.create({
   summaryIconBox: {
     width: 36,
     height: 36,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     backgroundColor: colors.surfaceSubtle,
     alignItems: "center",
     justifyContent: "center",
@@ -883,7 +1032,7 @@ const styles = StyleSheet.create({
   primaryActionBtn: {
     flexDirection: "row",
     height: 48,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     backgroundColor: colors.accent,
     alignItems: "center",
     justifyContent: "center",

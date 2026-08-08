@@ -2,8 +2,10 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { FlatList, Pressable, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { SearchX, SlidersHorizontal, X } from "@/components/ui/icons";
+import * as Haptics from "expo-haptics";
+import { SearchX, SlidersHorizontal } from "@/components/ui/icons";
 
+import { RemovableFilterChip } from "@/components/ui/chip";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FilterSheet } from "@/components/ui/filter-sheet";
 import { PropertyCard } from "@/components/ui/property-card";
@@ -14,6 +16,7 @@ import {
   defaultFilters,
   filterProperties,
   isFiltering,
+  type PriceFilter,
   type PropertyFilters,
   type PurposeFilter,
 } from "@/lib/filters";
@@ -25,14 +28,28 @@ const PURPOSE_LABELS: Record<Exclude<PurposeFilter, "all">, string> = {
   commercial: "Commercial",
 };
 
+const PRICE_LABELS: Record<Exclude<PriceFilter, "all">, string> = {
+  "under-25k": "Under ₹25k/mo",
+  "25k-50k": "₹25k - ₹50k/mo",
+  "50k-1L": "₹50k - ₹1L/mo",
+  "over-1L": "₹1L+/mo",
+  "under-50L": "Under ₹50 L",
+  "50L-1Cr": "₹50 L - ₹1 Cr",
+  "1Cr-2Cr": "₹1 Cr - ₹2 Cr",
+  "over-2Cr": "₹2 Cr+",
+  "under-50k": "Under ₹50k/mo",
+  "under-2Cr": "Under ₹2 Cr",
+};
+
 const SORT_LABELS: Record<PropertyFilters["sort"], string> = {
   relevance: "Relevance",
+  featured: "Featured first",
   "price-asc": "Price: low to high",
   "price-desc": "Price: high to low",
   "size-desc": "Largest first",
 };
 
-/** One removable chip per active filter, shown under the search bar. */
+/** Removable chips for active filters, shown under the search bar. */
 function ActiveFilterChips({
   filters,
   onChange,
@@ -42,80 +59,104 @@ function ActiveFilterChips({
 }) {
   const chips: { key: string; label: string; clear: () => void }[] = [];
 
+  // Purpose
   if (filters.purpose !== "all") {
     chips.push({
-      key: "purpose",
+      key: `purpose-${filters.purpose}`,
       label: PURPOSE_LABELS[filters.purpose],
       clear: () => onChange({ ...filters, purpose: "all" }),
     });
   }
+
+  // Type
   if (filters.type !== "all") {
     chips.push({
-      key: "type",
+      key: `type-${filters.type}`,
       label: filters.type === "Industrial Plot" ? "Plot" : filters.type,
       clear: () => onChange({ ...filters, type: "all" }),
     });
   }
-  if (filters.bhk !== "all") {
-    chips.push({
-      key: "bhk",
-      label: `${filters.bhk} BHK`,
-      clear: () => onChange({ ...filters, bhk: "all" }),
+
+  // Multi-select BHK
+  if (filters.bhk && filters.bhk.length > 0) {
+    filters.bhk.forEach((b) => {
+      chips.push({
+        key: `bhk-${b}`,
+        label: `${b >= 5 ? "5+" : b} BHK`,
+        clear: () => onChange({ ...filters, bhk: filters.bhk.filter((x) => x !== b) }),
+      });
     });
   }
+
+  // Budget
   if (filters.price !== "all") {
-    const labels = {
-      "under-50k": "Under ₹50k/mo",
-      "under-50L": "Under ₹50 L",
-      "under-2Cr": "Under ₹2 Cr",
-      "over-2Cr": "₹2 Cr+",
-    } as const;
     chips.push({
-      key: "price",
-      label: labels[filters.price],
+      key: `price-${filters.price}`,
+      label: PRICE_LABELS[filters.price] || filters.price,
       clear: () => onChange({ ...filters, price: "all" }),
     });
   }
-  if (filters.furnishing !== "all") {
+
+  // Multi-select Furnishing
+  if (filters.furnishing && filters.furnishing.length > 0) {
+    filters.furnishing.forEach((f) => {
+      chips.push({
+        key: `furnishing-${f}`,
+        label: f,
+        clear: () =>
+          onChange({ ...filters, furnishing: filters.furnishing.filter((x) => x !== f) }),
+      });
+    });
+  }
+
+  // RERA Verified
+  if (filters.reraApprovedOnly) {
     chips.push({
-      key: "furnishing",
-      label: filters.furnishing,
-      clear: () => onChange({ ...filters, furnishing: "all" }),
+      key: "rera",
+      label: "RERA Verified",
+      clear: () => onChange({ ...filters, reraApprovedOnly: false }),
+    });
+  }
+
+  // Featured
+  if (filters.featuredOnly) {
+    chips.push({
+      key: "featured",
+      label: "Featured Only",
+      clear: () => onChange({ ...filters, featuredOnly: false }),
+    });
+  }
+
+  // Multi-select Amenities
+  if (filters.selectedAmenities && filters.selectedAmenities.length > 0) {
+    filters.selectedAmenities.forEach((a) => {
+      chips.push({
+        key: `amenity-${a}`,
+        label: a,
+        clear: () =>
+          onChange({
+            ...filters,
+            selectedAmenities: filters.selectedAmenities.filter((x) => x !== a),
+          }),
+      });
     });
   }
 
   if (chips.length === 0) return null;
 
+  const handleResetAll = () => {
+    if (process.env.EXPO_OS === "ios") {
+      Haptics.selectionAsync();
+    }
+    onChange({ ...defaultFilters, query: filters.query, sort: filters.sort });
+  };
+
   return (
     <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, alignItems: "center" }}>
       {chips.map((chip) => (
-        <Pressable
-          key={chip.key}
-          onPress={chip.clear}
-          accessibilityRole="button"
-          accessibilityLabel={`Remove ${chip.label} filter`}
-          style={({ pressed }) => ({
-            flexDirection: "row",
-            alignItems: "center",
-            gap: spacing.xs,
-            backgroundColor: colors.accentSoft,
-            borderWidth: 1,
-            borderColor: colors.accentBorder,
-            borderRadius: radius.full,
-            paddingHorizontal: spacing.md,
-            paddingVertical: spacing.xs + 2,
-            opacity: pressed ? 0.7 : 1,
-          })}
-        >
-          <Text style={{ ...type.label, color: colors.accent }}>{chip.label}</Text>
-          <X size={12} color={colors.accent} />
-        </Pressable>
+        <RemovableFilterChip key={chip.key} label={chip.label} onRemove={chip.clear} />
       ))}
-      <Pressable
-        onPress={() => onChange({ ...defaultFilters, query: filters.query, sort: filters.sort })}
-        hitSlop={8}
-        accessibilityRole="button"
-      >
+      <Pressable onPress={handleResetAll} hitSlop={8} accessibilityRole="button">
         <Text style={{ ...type.label, color: colors.inkMuted }}>Reset filters</Text>
       </Pressable>
     </View>
@@ -148,6 +189,13 @@ export default function ExploreScreen() {
 
   const activeCount = countActiveFilters(filters);
 
+  const openFilters = () => {
+    if (process.env.EXPO_OS === "ios") {
+      Haptics.selectionAsync();
+    }
+    setSheetVisible(true);
+  };
+
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.bg }}>
       <View style={{ paddingHorizontal: spacing.xl, paddingTop: spacing.lg, gap: spacing.md }}>
@@ -162,7 +210,7 @@ export default function ExploreScreen() {
             />
           </View>
           <Pressable
-            onPress={() => setSheetVisible(true)}
+            onPress={openFilters}
             accessibilityRole="button"
             accessibilityLabel={
               activeCount > 0 ? `Filters, ${activeCount} active` : "Open filters"
@@ -199,7 +247,9 @@ export default function ExploreScreen() {
                   paddingHorizontal: 4,
                 }}
               >
-                <Text style={{ ...type.micro, color: colors.onAccent }}>{activeCount}</Text>
+                <Text style={{ ...type.micro, color: colors.onAccent, fontWeight: "700" }}>
+                  {activeCount}
+                </Text>
               </View>
             )}
           </Pressable>
@@ -217,7 +267,7 @@ export default function ExploreScreen() {
           <Text style={{ ...type.caption, color: colors.inkMuted }}>
             {results.length === 1 ? "1 property" : `${results.length} properties`}
           </Text>
-          <Pressable onPress={() => setSheetVisible(true)} hitSlop={8} accessibilityRole="button">
+          <Pressable onPress={openFilters} hitSlop={8} accessibilityRole="button">
             <Text style={{ ...type.caption, color: colors.inkSecondary }}>
               Sorted by {SORT_LABELS[filters.sort]}
             </Text>
@@ -248,7 +298,14 @@ export default function ExploreScreen() {
             }
             actionLabel={isFiltering(filters) ? "Reset filters" : undefined}
             onAction={
-              isFiltering(filters) ? () => setFilters(defaultFilters) : undefined
+              isFiltering(filters)
+                ? () => {
+                    if (process.env.EXPO_OS === "ios") {
+                      Haptics.selectionAsync();
+                    }
+                    setFilters(defaultFilters);
+                  }
+                : undefined
             }
           />
         }
@@ -264,3 +321,4 @@ export default function ExploreScreen() {
     </SafeAreaView>
   );
 }
+
