@@ -8,6 +8,14 @@ import "@/global.css";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { View } from "react-native";
 
+import { useFonts, Fredoka_600SemiBold } from "@expo-google-fonts/fredoka";
+import {
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+} from "@expo-google-fonts/inter";
+
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { AppProvider, useApp } from "@/context/AppContext";
 import { colors } from "@/theme/tokens";
@@ -23,6 +31,14 @@ export const unstable_settings = {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
+  const [fontsLoaded] = useFonts({
+    Fredoka_600SemiBold,
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+  });
+
   const {
     hasCompletedOnboarding,
     isLoggedIn,
@@ -33,13 +49,13 @@ function RootLayoutNav() {
   } = useApp();
 
   useEffect(() => {
-    if (!isHydrating && hasCompletedOnboarding !== undefined) {
+    if (!isHydrating && hasCompletedOnboarding !== undefined && fontsLoaded) {
       SplashScreen.hideAsync().catch(() => {});
     }
-  }, [isHydrating, hasCompletedOnboarding]);
+  }, [isHydrating, hasCompletedOnboarding, fontsLoaded]);
 
-  // While hydration is active, return null to keep the native splash screen visible
-  if (isHydrating || hasCompletedOnboarding === undefined) {
+  // While hydration or font loading is active, keep splash screen background visible
+  if (isHydrating || hasCompletedOnboarding === undefined || !fontsLoaded) {
     return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
   }
 

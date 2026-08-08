@@ -17,6 +17,7 @@ import { CITIES as CITIES_LIST } from "@/constants/cities";
 import { pickAndUploadPropertyImage } from "@/lib/media-upload";
 import { ChevronLeft, ChevronDown, ChevronUp, Check } from "@/components/ui/icons";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
+import { colors, type, radius, spacing } from "@/theme/tokens";
 
 const CITIES = CITIES_LIST.map((c) => c.name);
 const PROPERTY_TYPES: Property["type"][] = [
@@ -89,7 +90,7 @@ const DropdownSelect: React.FC<DropdownSelectProps> = ({
                 <Text style={[styles.dropdownItemText, value === opt && styles.dropdownItemTextActive]}>
                   {opt}
                 </Text>
-                {value === opt && <Check size={14} color="#E05A36" />}
+                {value === opt && <Check size={14} color={colors.accent} />}
               </Pressable>
             ))}
           </ScrollView>
@@ -234,7 +235,7 @@ export default function PostPropertyScreen() {
       {/* Header Bar */}
       <View style={styles.headerBar}>
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <ChevronLeft size={22} color="#0F1E36" />
+          <ChevronLeft size={22} color={colors.ink} />
         </Pressable>
         <Text style={styles.headerTitle}>{isBroker ? "Add Property" : "Post Property"}</Text>
         <View style={styles.placeholder} />

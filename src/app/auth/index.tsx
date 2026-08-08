@@ -1,3 +1,12 @@
+import {
+  Eye,
+  EyeOff,
+  Home as HomeIcon,
+  Lock,
+  Mail,
+  User
+} from "@/components/ui/icons";
+import { useRouter, type Href } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -9,17 +18,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useRouter, type Href } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  Briefcase,
-  Eye,
-  EyeOff,
-  Home as HomeIcon,
-  Lock,
-  Mail,
-  User,
-} from "@/components/ui/icons";
 
 import { useApp } from "@/context/AppContext";
 import type { UserRole } from "@/data/types";
@@ -159,9 +158,8 @@ export default function AuthScreen() {
     borderWidth: 1,
     borderColor: hasError ? colors.danger : colors.border,
     borderRadius: radius.md,
-    borderCurve: "continuous" as const,
     paddingHorizontal: spacing.md,
-    height: 50,
+    height: 48,
   });
 
   return (
@@ -181,23 +179,24 @@ export default function AuthScreen() {
             gap: spacing.xl,
           }}
         >
-          <View style={{ alignItems: "center", gap: spacing.md }}>
+          {/* Header Brand Section */}
+          <View style={{ alignItems: "center", gap: spacing.xs }}>
             <View
               style={{
-                width: 64,
-                height: 64,
+                width: 56,
+                height: 56,
                 borderRadius: radius.lg,
-                borderCurve: "continuous",
-                backgroundColor: colors.accent,
+                backgroundColor: colors.primary,
                 alignItems: "center",
                 justifyContent: "center",
-                boxShadow: shadow.accent,
+                marginBottom: spacing.xs,
+                boxShadow: shadow.button,
               }}
             >
-              <HomeIcon size={28} color={colors.onAccent} />
+              <HomeIcon size={26} color={colors.onPrimary} />
             </View>
-            <Text style={{ ...type.title, color: colors.ink }}>SqftGo</Text>
-            <Text style={{ ...type.heading, color: colors.ink }}>
+            <Text style={{ ...type.logo, color: colors.primary, fontSize: 28 }}>SqftGo</Text>
+            <Text style={{ ...type.title, color: colors.ink, marginTop: spacing.xs }}>
               {isSignUp ? "Create your account" : "Welcome back"}
             </Text>
             <Text
@@ -205,37 +204,34 @@ export default function AuthScreen() {
                 ...type.body,
                 color: colors.inkMuted,
                 textAlign: "center",
-                maxWidth: 300,
+                maxWidth: 320,
               }}
             >
               {isDealer
                 ? isSignUp
-                  ? "Dealer signup creates a user account first, then you register your directory."
-                  : "Sign in to your dealer dashboard to manage listings and leads."
+                  ? "Register as a dealer to publish listings and connect with active buyers."
+                  : "Sign in to your dealer portal to manage properties and client inquiries."
                 : isSignUp
-                  ? "Save homes, inquire with dealers, and book site visits."
-                  : "Sign in to browse homes, favorites, and inquiries."}
+                  ? "Create a user account to save favorite homes and contact local dealers."
+                  : "Sign in to browse verified properties, saved homes, and inquiries."}
             </Text>
           </View>
 
-          <View style={{ gap: spacing.sm }}>
-            <Text style={{ ...type.label, color: colors.inkMuted, letterSpacing: 0.4 }}>
-              CONTINUE AS
+          {/* Account Type Selection (Plain outline icons when unselected) */}
+          <View style={{ gap: spacing.xs + 2 }}>
+            <Text style={{ ...type.label, color: colors.inkSecondary }}>
+              Select account type
             </Text>
             <View style={{ flexDirection: "row", gap: spacing.sm }}>
               {(
                 [
                   {
                     id: "user" as const,
-                    label: "User",
-                    desc: "Buy · Rent · Inquire",
-                    Icon: User,
+                    label: "Buyer",
                   },
                   {
                     id: "dealer" as const,
                     label: "Dealer",
-                    desc: "List · Leads · Visits",
-                    Icon: Briefcase,
                   },
                 ] as const
               ).map((opt) => {
@@ -250,44 +246,30 @@ export default function AuthScreen() {
                     style={{
                       flex: 1,
                       backgroundColor: active ? colors.accentSoft : colors.surface,
-                      borderWidth: 1.5,
+                      borderWidth: active ? 1.5 : 1,
                       borderColor: active ? colors.accent : colors.border,
                       borderRadius: radius.lg,
-                      borderCurve: "continuous",
                       padding: spacing.md,
-                      gap: spacing.sm,
+                      gap: 4,
                       boxShadow: active ? shadow.card : undefined,
                       opacity: busy ? 0.7 : 1,
                     }}
                   >
-                    <View
-                      style={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: radius.md,
-                        backgroundColor: active ? colors.accent : colors.surfaceSubtle,
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <opt.Icon size={18} color={active ? colors.onAccent : colors.ink} />
-                    </View>
                     <Text style={{ ...type.emphasis, color: active ? colors.accent : colors.ink }}>
                       {opt.label}
                     </Text>
-                    <Text style={{ ...type.micro, color: colors.inkMuted }}>{opt.desc}</Text>
                   </Pressable>
                 );
               })}
             </View>
           </View>
 
+          {/* Mode Switcher (Sign In vs Sign Up) */}
           <View
             style={{
               flexDirection: "row",
               backgroundColor: colors.surfaceSubtle,
               borderRadius: radius.md,
-              borderCurve: "continuous",
               padding: spacing.xs,
             }}
           >
@@ -308,9 +290,8 @@ export default function AuthScreen() {
                   style={{
                     flex: 1,
                     alignItems: "center",
-                    paddingVertical: spacing.sm + 2,
+                    paddingVertical: spacing.sm,
                     borderRadius: radius.sm,
-                    borderCurve: "continuous",
                     backgroundColor: active ? colors.surface : "transparent",
                     boxShadow: active ? shadow.card : undefined,
                   }}
@@ -319,6 +300,7 @@ export default function AuthScreen() {
                     style={{
                       ...type.label,
                       color: active ? colors.ink : colors.inkMuted,
+                      fontWeight: active ? "600" : "400",
                     }}
                   >
                     {tab.label}
@@ -328,9 +310,11 @@ export default function AuthScreen() {
             })}
           </View>
 
+          {/* Form Input Fields */}
           <View style={{ gap: spacing.md }}>
             {isSignUp ? (
               <View style={{ gap: spacing.xs }}>
+                <Text style={{ ...type.label, color: colors.inkSecondary }}>Full name</Text>
                 <View style={fieldStyle(!!errors.name)}>
                   <User size={16} color={colors.inkMuted} />
                   <TextInput
@@ -339,7 +323,7 @@ export default function AuthScreen() {
                       setName(v);
                       if (errors.name) setErrors((e) => ({ ...e, name: undefined }));
                     }}
-                    placeholder="Full name"
+                    placeholder="Enter your name"
                     placeholderTextColor={colors.inkMuted}
                     autoCapitalize="words"
                     editable={!busy}
@@ -354,6 +338,7 @@ export default function AuthScreen() {
             ) : null}
 
             <View style={{ gap: spacing.xs }}>
+              <Text style={{ ...type.label, color: colors.inkSecondary }}>Email address</Text>
               <View style={fieldStyle(!!errors.email)}>
                 <Mail size={16} color={colors.inkMuted} />
                 <TextInput
@@ -362,7 +347,7 @@ export default function AuthScreen() {
                     setEmail(v);
                     if (errors.email) setErrors((e) => ({ ...e, email: undefined }));
                   }}
-                  placeholder="you@example.com"
+                  placeholder="name@example.com"
                   placeholderTextColor={colors.inkMuted}
                   keyboardType="email-address"
                   autoCapitalize="none"
@@ -381,6 +366,7 @@ export default function AuthScreen() {
             </View>
 
             <View style={{ gap: spacing.xs }}>
+              <Text style={{ ...type.label, color: colors.inkSecondary }}>Password</Text>
               <View style={fieldStyle(!!errors.password)}>
                 <Lock size={16} color={colors.inkMuted} />
                 <TextInput
@@ -389,7 +375,7 @@ export default function AuthScreen() {
                     setPassword(v);
                     if (errors.password) setErrors((e) => ({ ...e, password: undefined }));
                   }}
-                  placeholder={isSignUp ? "Create a password" : "Password"}
+                  placeholder={isSignUp ? "At least 8 characters" : "Enter password"}
                   placeholderTextColor={colors.inkMuted}
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
@@ -421,14 +407,14 @@ export default function AuthScreen() {
                 onPress={() => {
                   const target = email.trim();
                   if (!target) {
-                    Alert.alert("Email required", "Enter your account email first.");
+                    Alert.alert("Email required", "Enter your account email address.");
                     return;
                   }
                   void (async () => {
                     const res = await forgotPassword(target);
                     Alert.alert(
-                      res.ok ? "Check your email" : "Reset failed",
-                      res.message ?? (res.ok ? "Reset link sent." : "Unable to reset."),
+                      res.ok ? "Check your inbox" : "Reset failed",
+                      res.message ?? (res.ok ? "Password reset instructions sent." : "Unable to send reset email."),
                     );
                   })();
                 }}
@@ -437,7 +423,9 @@ export default function AuthScreen() {
                 accessibilityRole="button"
                 style={{ alignSelf: "flex-end" }}
               >
-                <Text style={{ ...type.label, color: colors.accent }}>Forgot password?</Text>
+                <Text style={{ ...type.caption, color: colors.accent, fontWeight: "500" }}>
+                  Forgot password?
+                </Text>
               </Pressable>
             ) : null}
 
@@ -446,14 +434,15 @@ export default function AuthScreen() {
               disabled={busy}
               accessibilityRole="button"
               style={({ pressed }) => ({
-                height: 50,
+                height: 48,
                 borderRadius: radius.md,
-                borderCurve: "continuous",
                 backgroundColor: colors.accent,
                 alignItems: "center",
                 justifyContent: "center",
-                opacity: pressed || busy ? 0.85 : 1,
-                boxShadow: shadow.accent,
+                opacity: pressed || busy ? 0.88 : 1,
+                boxShadow: shadow.button,
+                borderWidth: 1,
+                borderColor: colors.accentBorder,
               })}
             >
               {busy ? (
@@ -462,11 +451,11 @@ export default function AuthScreen() {
                 <Text style={{ ...type.emphasis, color: colors.onAccent }}>
                   {isSignUp
                     ? isDealer
-                      ? "Sign up as Dealer"
-                      : "Sign up as User"
+                      ? "Create Dealer Account"
+                      : "Create User Account"
                     : isDealer
-                      ? "Sign in as Dealer"
-                      : "Sign in as User"}
+                      ? "Sign In to Dealer Portal"
+                      : "Sign In to Account"}
                 </Text>
               )}
             </Pressable>
@@ -479,10 +468,11 @@ export default function AuthScreen() {
               textAlign: "center",
             }}
           >
-            By continuing you agree to our Terms of Service and Privacy Policy.
+            By continuing, you agree to our Terms of Service and Privacy Policy.
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
+
