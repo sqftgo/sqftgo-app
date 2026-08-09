@@ -26,7 +26,7 @@ export function ExpertCard({ profile }: { profile: DirectoryProfile }) {
     <View
       style={{
         backgroundColor: colors.surface,
-        borderRadius: radius.xl,
+        borderRadius: radius.sm,
         borderCurve: "continuous",
         borderWidth: 1,
         borderColor: colors.border,
@@ -40,7 +40,7 @@ export function ExpertCard({ profile }: { profile: DirectoryProfile }) {
           style={{
             width: 40,
             height: 40,
-            borderRadius: radius.full,
+            borderRadius: radius.sm,
             backgroundColor: colors.accentSoft,
             alignItems: "center",
             justifyContent: "center",
@@ -109,7 +109,7 @@ export function ExpertCard({ profile }: { profile: DirectoryProfile }) {
             justifyContent: "center",
             gap: spacing.xs,
             height: 40,
-            borderRadius: radius.md,
+            borderRadius: radius.sm,
             borderCurve: "continuous",
             borderWidth: 1,
             borderColor: colors.accentBorder,
@@ -130,7 +130,7 @@ export function ExpertCard({ profile }: { profile: DirectoryProfile }) {
             justifyContent: "center",
             gap: spacing.xs,
             height: 40,
-            borderRadius: radius.md,
+            borderRadius: radius.sm,
             borderCurve: "continuous",
             backgroundColor: colors.accent,
             opacity: pressed ? 0.85 : 1,

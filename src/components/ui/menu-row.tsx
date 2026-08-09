@@ -55,7 +55,7 @@ export function MenuRow({
         style={{
           width: 34,
           height: 34,
-          borderRadius: radius.sm + 2,
+          borderRadius: radius.sm,
           borderCurve: "continuous",
           backgroundColor: destructive ? colors.dangerSoft : colors.surfaceSubtle,
           alignItems: "center",
@@ -85,7 +85,7 @@ export function MenuGroup({ children }: { children: React.ReactNode }) {
     <View
       style={{
         backgroundColor: colors.surface,
-        borderRadius: radius.lg,
+        borderRadius: radius.sm,
         borderCurve: "continuous",
         borderWidth: 1,
         borderColor: colors.border,
