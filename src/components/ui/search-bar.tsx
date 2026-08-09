@@ -22,7 +22,7 @@ export function SearchBar({ value, onChangeText, placeholder, autoFocus }: Searc
         backgroundColor: colors.surface,
         borderWidth: 1,
         borderColor: colors.border,
-        borderRadius: radius.md,
+        borderRadius: radius.sm,
         borderCurve: "continuous",
         paddingHorizontal: spacing.md,
         height: 46,

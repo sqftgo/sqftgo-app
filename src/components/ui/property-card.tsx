@@ -45,7 +45,7 @@ export function PropertyCard({ property, variant = "full" }: PropertyCardProps) 
       style={({ pressed }) => ({
         width: compact ? 240 : undefined,
         backgroundColor: colors.surface,
-        borderRadius: radius.xl,
+        borderRadius: radius.sm,
         borderCurve: "continuous",
         borderWidth: 1,
         borderColor: colors.border,
