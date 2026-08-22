@@ -1,92 +1,52 @@
 import React, { useEffect, useState } from "react";
-import { Pressable, ScrollView, Switch, Text, View } from "react-native";
+import { Pressable, ScrollView, Switch, Text, TextInput, View } from "react-native";
 import * as Haptics from "expo-haptics";
 
 import { FilterOptionRow, MultiSelectChipRow } from "@/components/ui/chip";
 import { ModalSheet, ModalSheetHeader } from "@/components/ui/modal-sheet";
 import {
-  COMMERCIAL_TYPES,
+  AMENITY_OPTIONS,
+  BHK_OPTIONS,
+  BUDGET_BUY_MAX_OPTIONS,
+  BUDGET_BUY_MIN_OPTIONS,
+  BUDGET_RENT_MAX_OPTIONS,
+  BUDGET_RENT_MIN_OPTIONS,
   countActiveFilters,
   defaultFilters,
+  FURNISHING_OPTIONS,
+  isRentLikePurpose,
+  NON_RESIDENTIAL_TYPES,
+  PROPERTY_TYPE_OPTIONS,
+  SIZE_MAX_OPTIONS,
+  SIZE_MIN_OPTIONS,
   type FurnishingFilter,
-  type PriceFilter,
   type PropertyFilters,
   type PurposeFilter,
   type SortOption,
-  type TypeFilter,
 } from "@/lib/filters";
 import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
 
 const PURPOSE_OPTIONS: { value: PurposeFilter; label: string }[] = [
   { value: "all", label: "Any" },
   { value: "buy", label: "Buy" },
+  { value: "sell", label: "Sell" },
   { value: "rent", label: "Rent" },
-  { value: "commercial", label: "Commercial" },
+  { value: "lease", label: "Lease" },
 ];
 
-const TYPE_OPTIONS: { value: TypeFilter; label: string }[] = [
-  { value: "all", label: "Any" },
-  { value: "Apartment", label: "Apartment" },
-  { value: "Home", label: "House" },
-  { value: "Villa", label: "Villa" },
-  { value: "Industrial Plot", label: "Plot" },
-  { value: "Commercial Space", label: "Commercial" },
-  { value: "Office Space", label: "Office" },
-  { value: "Shop", label: "Shop" },
+const TYPE_OPTIONS: { value: string; label: string }[] = [
+  { value: "any", label: "All Types" },
+  ...PROPERTY_TYPE_OPTIONS.map((t) => ({ value: t, label: t })),
 ];
 
-const BHK_OPTIONS: { value: number; label: string }[] = [
-  { value: 1, label: "1 BHK" },
-  { value: 2, label: "2 BHK" },
-  { value: 3, label: "3 BHK" },
-  { value: 4, label: "4 BHK" },
-  { value: 5, label: "5+ BHK" },
-];
+const BHK_CHIP_OPTIONS = BHK_OPTIONS.map((v) => ({ value: v, label: `${v} BHK` }));
 
-const FURNISHING_OPTIONS: { value: FurnishingFilter; label: string }[] = [
-  { value: "Furnished", label: "Furnished" },
-  { value: "Semi-Furnished", label: "Semi-Furnished" },
-  { value: "Unfurnished", label: "Unfurnished" },
-];
-
-const RENT_PRICE_OPTIONS: { value: PriceFilter; label: string }[] = [
-  { value: "all", label: "Any Budget" },
-  { value: "under-25k", label: "Under ₹25k/mo" },
-  { value: "25k-50k", label: "₹25k - ₹50k/mo" },
-  { value: "50k-1L", label: "₹50k - ₹1 Lakh/mo" },
-  { value: "over-1L", label: "₹1 Lakh+/mo" },
-];
-
-const BUY_PRICE_OPTIONS: { value: PriceFilter; label: string }[] = [
-  { value: "all", label: "Any Budget" },
-  { value: "under-50L", label: "Under ₹50 Lakhs" },
-  { value: "50L-1Cr", label: "₹50 Lakhs - ₹1 Cr" },
-  { value: "1Cr-2Cr", label: "₹1 Cr - ₹2 Cr" },
-  { value: "over-2Cr", label: "₹2 Cr+" },
-];
-
-const ALL_PRICE_OPTIONS: { value: PriceFilter; label: string }[] = [
-  { value: "all", label: "Any Budget" },
-  { value: "under-50k", label: "Under ₹50k/mo" },
-  { value: "under-50L", label: "Under ₹50 Lakhs" },
-  { value: "under-2Cr", label: "Under ₹2 Cr" },
-  { value: "over-2Cr", label: "₹2 Cr+" },
-];
-
-const POPULAR_AMENITIES = [
-  "Swimming Pool",
-  "Gym",
-  "Power Backup",
-  "Security",
-  "Private Garden",
-  "Elevator",
-  "Clubhouse",
-  "Parking",
-];
+const FURNISHING_CHIP_OPTIONS: { value: FurnishingFilter; label: string }[] = FURNISHING_OPTIONS.map(
+  (v) => ({ value: v, label: v }),
+);
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
-  { value: "relevance", label: "Relevance" },
-  { value: "featured", label: "Featured first" },
+  { value: "latest", label: "Latest" },
   { value: "price-asc", label: "Price: low to high" },
   { value: "price-desc", label: "Price: high to low" },
   { value: "size-desc", label: "Largest first" },
@@ -114,9 +74,9 @@ function FilterGroup({
         >
           {label}
         </Text>
-        {subtitle && (
+        {subtitle ? (
           <Text style={{ ...type.caption, color: colors.inkMuted, marginTop: 2 }}>{subtitle}</Text>
-        )}
+        ) : null}
       </View>
       {children}
     </View>
@@ -126,16 +86,12 @@ function FilterGroup({
 interface FilterSheetProps {
   visible: boolean;
   filters: PropertyFilters;
-  /** Live count of results the current draft would produce */
   countResults: (filters: PropertyFilters) => number;
   onApply: (filters: PropertyFilters) => void;
   onClose: () => void;
 }
 
-/**
- * High-performance bottom-sheet filter panel.
- * Supports multi-select arrays, dynamic price intervals, conditional specs, and tactile haptics.
- */
+/** Filter Properties panel — fields aligned with web `/listings` FilterPanel. */
 export function FilterSheet({ visible, filters, countResults, onApply, onClose }: FilterSheetProps) {
   const [draft, setDraft] = useState<PropertyFilters>(filters);
 
@@ -173,7 +129,8 @@ export function FilterSheet({ visible, filters, countResults, onApply, onClose }
     setDraft((prev) => ({
       ...prev,
       purpose,
-      price: "all", // Clear out-of-bounds price scale on purpose change
+      minPrice: "",
+      maxPrice: "",
     }));
   };
 
@@ -188,16 +145,14 @@ export function FilterSheet({ visible, filters, countResults, onApply, onClose }
     onClose();
   };
 
-  const isResidential =
-    draft.type === "all" ||
-    !COMMERCIAL_TYPES.has(draft.type as any) && draft.type !== "Industrial Plot";
+  const showResidentialSpecs = !NON_RESIDENTIAL_TYPES.has(draft.type);
 
-  const priceOptions =
-    draft.purpose === "rent"
-      ? RENT_PRICE_OPTIONS
-      : draft.purpose === "buy"
-      ? BUY_PRICE_OPTIONS
-      : ALL_PRICE_OPTIONS;
+  const minPriceOptions = isRentLikePurpose(draft.purpose)
+    ? BUDGET_RENT_MIN_OPTIONS
+    : BUDGET_BUY_MIN_OPTIONS;
+  const maxPriceOptions = isRentLikePurpose(draft.purpose)
+    ? BUDGET_RENT_MAX_OPTIONS
+    : BUDGET_BUY_MAX_OPTIONS;
 
   const resetAction =
     activeCount > 0 ? (
@@ -207,22 +162,41 @@ export function FilterSheet({ visible, filters, countResults, onApply, onClose }
     ) : undefined;
 
   return (
-    <ModalSheet visible={visible} onClose={onClose} maxHeight="88%">
+    <ModalSheet visible={visible} onClose={onClose} maxHeight="88%" avoidKeyboard>
       <ModalSheetHeader
-        title={activeCount > 0 ? `Filters (${activeCount})` : "Filters"}
+        title={activeCount > 0 ? `Filter Properties (${activeCount})` : "Filter Properties"}
         rightAction={resetAction}
         onClose={onClose}
       />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
           paddingHorizontal: spacing.xl,
           paddingBottom: spacing.xxl,
           gap: spacing.xl,
         }}
       >
-        {/* Purpose */}
+        <FilterGroup label="Locality">
+          <TextInput
+            value={draft.locality}
+            onChangeText={(locality) => setDraft((prev) => ({ ...prev, locality }))}
+            placeholder="e.g. Fateh Sagar, Hiran Magri"
+            placeholderTextColor={colors.inkMuted}
+            style={{
+              height: 46,
+              borderRadius: radius.md,
+              borderWidth: 1,
+              borderColor: colors.border,
+              backgroundColor: colors.surface,
+              paddingHorizontal: spacing.md,
+              ...type.body,
+              color: colors.ink,
+            }}
+          />
+        </FilterGroup>
+
         <FilterGroup label="Looking to">
           <FilterOptionRow
             options={PURPOSE_OPTIONS}
@@ -231,59 +205,96 @@ export function FilterSheet({ visible, filters, countResults, onApply, onClose }
           />
         </FilterGroup>
 
-        {/* Property Type */}
         <FilterGroup label="Property type">
           <FilterOptionRow
             options={TYPE_OPTIONS}
-            value={draft.type}
+            value={draft.type === "commercial" ? "any" : draft.type}
             onChange={(v) => patch("type", v)}
           />
         </FilterGroup>
 
-        {/* Bedrooms (BHK) - Multi-select (Conditional for residential) */}
-        {isResidential && (
-          <FilterGroup label="Bedrooms (BHK)" subtitle="Select one or multiple configurations">
+        {showResidentialSpecs ? (
+          <FilterGroup label="Bedrooms (BHK)" subtitle="Select one or more">
             <MultiSelectChipRow
-              options={BHK_OPTIONS}
+              options={BHK_CHIP_OPTIONS}
               values={draft.bhk}
               onToggle={(v) => toggleArrayItem("bhk", v)}
               showCheck
             />
           </FilterGroup>
-        )}
+        ) : null}
 
-        {/* Budget Brackets (Dynamic based on purpose) */}
-        <FilterGroup label="Budget" subtitle={draft.purpose === "rent" ? "Monthly rental range" : "Purchase price range"}>
+        <FilterGroup
+          label="Budget"
+          subtitle={
+            isRentLikePurpose(draft.purpose) ? "Monthly rent range" : "Purchase price range"
+          }
+        >
+          <Text style={{ ...type.caption, color: colors.inkMuted }}>Minimum</Text>
           <FilterOptionRow
-            options={priceOptions}
-            value={draft.price}
-            onChange={(v) => patch("price", v)}
+            options={minPriceOptions.map((o) => ({
+              value: o.value || "__none__",
+              label: o.label,
+            }))}
+            value={draft.minPrice || "__none__"}
+            onChange={(v) => patch("minPrice", v === "__none__" ? "" : v)}
+          />
+          <Text style={{ ...type.caption, color: colors.inkMuted, marginTop: spacing.sm }}>
+            Maximum
+          </Text>
+          <FilterOptionRow
+            options={maxPriceOptions.map((o) => ({
+              value: o.value || "__none__",
+              label: o.label,
+            }))}
+            value={draft.maxPrice || "__none__"}
+            onChange={(v) => patch("maxPrice", v === "__none__" ? "" : v)}
           />
         </FilterGroup>
 
-        {/* Furnishing - Multi-select (Conditional for residential) */}
-        {isResidential && (
+        <FilterGroup label="Size (sq.ft.)">
+          <Text style={{ ...type.caption, color: colors.inkMuted }}>Minimum</Text>
+          <FilterOptionRow
+            options={SIZE_MIN_OPTIONS.map((o) => ({
+              value: o.value || "__none__",
+              label: o.label,
+            }))}
+            value={draft.minSize || "__none__"}
+            onChange={(v) => patch("minSize", v === "__none__" ? "" : v)}
+          />
+          <Text style={{ ...type.caption, color: colors.inkMuted, marginTop: spacing.sm }}>
+            Maximum
+          </Text>
+          <FilterOptionRow
+            options={SIZE_MAX_OPTIONS.map((o) => ({
+              value: o.value || "__none__",
+              label: o.label,
+            }))}
+            value={draft.maxSize || "__none__"}
+            onChange={(v) => patch("maxSize", v === "__none__" ? "" : v)}
+          />
+        </FilterGroup>
+
+        {showResidentialSpecs ? (
           <FilterGroup label="Furnishing">
             <MultiSelectChipRow
-              options={FURNISHING_OPTIONS}
+              options={FURNISHING_CHIP_OPTIONS}
               values={draft.furnishing}
               onToggle={(v) => toggleArrayItem("furnishing", v)}
               showCheck
             />
           </FilterGroup>
-        )}
+        ) : null}
 
-        {/* Amenities - Multi-select */}
-        <FilterGroup label="Amenities" subtitle="Tap to filter by specific features">
+        <FilterGroup label="Amenities" subtitle="Must include all selected">
           <MultiSelectChipRow
-            options={POPULAR_AMENITIES.map((a) => ({ value: a, label: a }))}
+            options={AMENITY_OPTIONS.map((a) => ({ value: a, label: a }))}
             values={draft.selectedAmenities}
             onToggle={(v) => toggleArrayItem("selectedAmenities", v)}
             showCheck
           />
         </FilterGroup>
 
-        {/* Verified & Premium Switches */}
         <View
           style={{
             gap: spacing.lg,
@@ -293,7 +304,6 @@ export function FilterSheet({ visible, filters, countResults, onApply, onClose }
             borderColor: colors.border,
           }}
         >
-          {/* RERA Approved Switch */}
           <View
             style={{
               flexDirection: "row",
@@ -302,9 +312,9 @@ export function FilterSheet({ visible, filters, countResults, onApply, onClose }
             }}
           >
             <View style={{ flex: 1, paddingRight: spacing.md }}>
-              <Text style={{ ...type.emphasis, color: colors.ink }}>RERA Verified Only</Text>
+              <Text style={{ ...type.emphasis, color: colors.ink }}>RERA Approved Only</Text>
               <Text style={{ ...type.caption, color: colors.inkMuted, marginTop: 2 }}>
-                Show properties with valid government RERA registration
+                Show properties with valid RERA registration
               </Text>
             </View>
             <Switch
@@ -314,7 +324,6 @@ export function FilterSheet({ visible, filters, countResults, onApply, onClose }
             />
           </View>
 
-          {/* Featured Switch */}
           <View
             style={{
               flexDirection: "row",
@@ -323,9 +332,9 @@ export function FilterSheet({ visible, filters, countResults, onApply, onClose }
             }}
           >
             <View style={{ flex: 1, paddingRight: spacing.md }}>
-              <Text style={{ ...type.emphasis, color: colors.ink }}>Featured Listings Only</Text>
+              <Text style={{ ...type.emphasis, color: colors.ink }}>Featured Only</Text>
               <Text style={{ ...type.caption, color: colors.inkMuted, marginTop: 2 }}>
-                Display premium handpicked properties
+                Show handpicked featured listings
               </Text>
             </View>
             <Switch
@@ -336,7 +345,6 @@ export function FilterSheet({ visible, filters, countResults, onApply, onClose }
           </View>
         </View>
 
-        {/* Sort By */}
         <FilterGroup label="Sort by">
           <FilterOptionRow
             options={SORT_OPTIONS}
@@ -346,7 +354,6 @@ export function FilterSheet({ visible, filters, countResults, onApply, onClose }
         </FilterGroup>
       </ScrollView>
 
-      {/* Footer CTA */}
       <View
         style={{
           paddingHorizontal: spacing.xl,
@@ -379,4 +386,3 @@ export function FilterSheet({ visible, filters, countResults, onApply, onClose }
     </ModalSheet>
   );
 }
-

@@ -1,52 +1,86 @@
 import type { Furnishing, Property, PropertyType } from "@/data/types";
 
-export type PurposeFilter = "all" | "buy" | "rent" | "commercial";
-export type BhkFilter = number;
+/** Matches web listings `FilterState.purpose`. */
+export type PurposeFilter = "all" | "buy" | "sell" | "rent" | "lease";
+
 export type FurnishingFilter = Furnishing;
-export type PriceFilter =
-  | "all"
-  // Rent intervals
-  | "under-25k"
-  | "25k-50k"
-  | "50k-1L"
-  | "over-1L"
-  // Buy intervals
-  | "under-50L"
-  | "50L-1Cr"
-  | "1Cr-2Cr"
-  | "over-2Cr"
-  // Fallbacks
-  | "under-50k"
-  | "under-2Cr";
 
-export type TypeFilter = PropertyType | "all";
-export type SortOption = "relevance" | "price-asc" | "price-desc" | "size-desc" | "featured";
+/** Matches web listings sort options (mobile labels differ slightly). */
+export type SortOption = "latest" | "price-asc" | "price-desc" | "size-desc";
 
+/**
+ * Explore / listings filters — aligned with web `FilterState`
+ * (`sqftgo` listings Filter Properties).
+ * City stays in app context (`selectedCity`), same as web syncing city into filters.
+ */
 export interface PropertyFilters {
+  /** Search bar text (title / type / description). Locality has its own field. */
   query: string;
+  locality: string;
   purpose: PurposeFilter;
-  type: TypeFilter;
-  bhk: number[]; // Multi-select array e.g. [1, 2, 3]
-  furnishing: FurnishingFilter[]; // Multi-select array e.g. ["Furnished", "Semi-Furnished"]
-  price: PriceFilter;
+  /** `"any"` or a `PropertyType`, or `"commercial"` for the Home shortcut. */
+  type: string;
+  /** Web uses string BHK values: "1" | "2" | "3" | "4" */
+  bhk: string[];
+  furnishing: FurnishingFilter[];
+  minPrice: string;
+  maxPrice: string;
+  minSize: string;
+  maxSize: string;
   reraApprovedOnly: boolean;
   featuredOnly: boolean;
-  selectedAmenities: string[]; // Dynamic multi-select amenity tags
+  selectedAmenities: string[];
   sort: SortOption;
 }
 
 export const defaultFilters: PropertyFilters = {
   query: "",
+  locality: "",
   purpose: "all",
-  type: "all",
+  type: "any",
   bhk: [],
   furnishing: [],
-  price: "all",
+  minPrice: "",
+  maxPrice: "",
+  minSize: "",
+  maxSize: "",
   reraApprovedOnly: false,
   featuredOnly: false,
   selectedAmenities: [],
-  sort: "relevance",
+  sort: "latest",
 };
+
+/** Same catalog as web `PROPERTY_TYPES`. */
+export const PROPERTY_TYPE_OPTIONS: PropertyType[] = [
+  "Home",
+  "Villa",
+  "Hotel",
+  "Agricultural Land",
+  "Apartment",
+  "Office Space",
+  "Commercial Space",
+  "Shop",
+  "Industrial Plot",
+];
+
+export const BHK_OPTIONS = ["1", "2", "3", "4"] as const;
+
+export const FURNISHING_OPTIONS: FurnishingFilter[] = [
+  "Furnished",
+  "Semi-Furnished",
+  "Unfurnished",
+];
+
+/** Same fallback amenities as web listings. */
+export const AMENITY_OPTIONS = [
+  "Swimming Pool",
+  "Gym",
+  "Garden",
+  "Parking",
+  "EV Charging",
+  "Power Backup",
+  "Security",
+] as const;
 
 export const COMMERCIAL_TYPES = new Set<PropertyType>([
   "Commercial Space",
@@ -56,16 +90,115 @@ export const COMMERCIAL_TYPES = new Set<PropertyType>([
   "Hotel",
 ]);
 
+/** Types that hide BHK / furnishing on web. */
+export const NON_RESIDENTIAL_TYPES = new Set<string>([
+  "Industrial Plot",
+  "Agricultural Land",
+  "Commercial Space",
+  "Office Space",
+  "Shop",
+  "Hotel",
+  "commercial",
+]);
+
+export const BUDGET_BUY_MIN_OPTIONS = [
+  { label: "Min Price", value: "" },
+  { label: "₹10 Lakhs", value: "1000000" },
+  { label: "₹25 Lakhs", value: "2500000" },
+  { label: "₹50 Lakhs", value: "5000000" },
+  { label: "₹75 Lakhs", value: "7500000" },
+  { label: "₹1 Crore", value: "10000000" },
+  { label: "₹2 Crores", value: "20000000" },
+  { label: "₹5 Crores", value: "50000000" },
+  { label: "₹10 Crores", value: "100000000" },
+];
+
+export const BUDGET_BUY_MAX_OPTIONS = [
+  { label: "Max Price", value: "" },
+  { label: "₹25 Lakhs", value: "2500000" },
+  { label: "₹50 Lakhs", value: "5000000" },
+  { label: "₹75 Lakhs", value: "7500000" },
+  { label: "₹1 Crore", value: "10000000" },
+  { label: "₹2 Crores", value: "20000000" },
+  { label: "₹5 Crores", value: "50000000" },
+  { label: "₹10 Crores", value: "100000000" },
+  { label: "₹15 Crores", value: "150000000" },
+];
+
+export const BUDGET_RENT_MIN_OPTIONS = [
+  { label: "Min Rent", value: "" },
+  { label: "₹5,000", value: "5000" },
+  { label: "₹10,000", value: "10000" },
+  { label: "₹15,000", value: "15000" },
+  { label: "₹20,000", value: "20000" },
+  { label: "₹30,000", value: "30000" },
+  { label: "₹50,000", value: "50000" },
+  { label: "₹1 Lakh", value: "100000" },
+];
+
+export const BUDGET_RENT_MAX_OPTIONS = [
+  { label: "Max Rent", value: "" },
+  { label: "₹10,000", value: "10000" },
+  { label: "₹15,000", value: "15000" },
+  { label: "₹20,000", value: "20000" },
+  { label: "₹30,000", value: "30000" },
+  { label: "₹50,000", value: "50000" },
+  { label: "₹1 Lakh", value: "100000" },
+  { label: "₹2 Lakhs", value: "200000" },
+];
+
+export const SIZE_MIN_OPTIONS = [
+  { label: "Min Size", value: "" },
+  { label: "500 sq.ft.", value: "500" },
+  { label: "1000 sq.ft.", value: "1000" },
+  { label: "1500 sq.ft.", value: "1500" },
+  { label: "2000 sq.ft.", value: "2000" },
+  { label: "3000 sq.ft.", value: "3000" },
+];
+
+export const SIZE_MAX_OPTIONS = [
+  { label: "Max Size", value: "" },
+  { label: "1000 sq.ft.", value: "1000" },
+  { label: "1500 sq.ft.", value: "1500" },
+  { label: "2000 sq.ft.", value: "2000" },
+  { label: "3000 sq.ft.", value: "3000" },
+  { label: "5000 sq.ft.", value: "5000" },
+];
+
+export function isRentLikePurpose(purpose: PurposeFilter): boolean {
+  return purpose === "rent" || purpose === "lease";
+}
+
+export function formatBudgetLabel(value: string, purpose: PurposeFilter): string {
+  if (!value) return "";
+  const opts = isRentLikePurpose(purpose)
+    ? [...BUDGET_RENT_MIN_OPTIONS, ...BUDGET_RENT_MAX_OPTIONS]
+    : [...BUDGET_BUY_MIN_OPTIONS, ...BUDGET_BUY_MAX_OPTIONS];
+  return opts.find((o) => o.value === value)?.label ?? value;
+}
+
+export function formatSizeLabel(value: string): string {
+  if (!value) return "";
+  return (
+    [...SIZE_MIN_OPTIONS, ...SIZE_MAX_OPTIONS].find((o) => o.value === value)?.label ??
+    `${value} sq.ft.`
+  );
+}
+
 export function countActiveFilters(f: PropertyFilters): number {
   let n = 0;
+  if (f.locality.trim()) n++;
   if (f.purpose !== "all") n++;
-  if (f.type !== "all") n++;
-  if (f.bhk && f.bhk.length > 0) n += f.bhk.length;
-  if (f.furnishing && f.furnishing.length > 0) n += f.furnishing.length;
-  if (f.price !== "all") n++;
+  if (f.type !== "any") n++;
+  if (f.bhk.length > 0) n += f.bhk.length;
+  if (f.furnishing.length > 0) n += f.furnishing.length;
+  if (f.minPrice) n++;
+  if (f.maxPrice) n++;
+  if (f.minSize) n++;
+  if (f.maxSize) n++;
   if (f.reraApprovedOnly) n++;
   if (f.featuredOnly) n++;
-  if (f.selectedAmenities && f.selectedAmenities.length > 0) n += f.selectedAmenities.length;
+  if (f.selectedAmenities.length > 0) n += f.selectedAmenities.length;
   return n;
 }
 
@@ -73,56 +206,33 @@ export function isFiltering(f: PropertyFilters): boolean {
   return f.query.trim() !== "" || countActiveFilters(f) > 0;
 }
 
-function matchesPurpose(p: Property, purpose: PurposeFilter): boolean {
-  switch (purpose) {
-    case "buy":
-      return p.purpose === "buy" || p.purpose === "sell";
-    case "rent":
-      return p.purpose === "rent" || p.purpose === "lease";
-    case "commercial":
-      return COMMERCIAL_TYPES.has(p.type);
-    default:
-      return true;
-  }
+function matchesType(p: Property, type: string): boolean {
+  if (!type || type === "any") return true;
+  if (type === "commercial") return COMMERCIAL_TYPES.has(p.type);
+  return p.type === type;
 }
 
-function matchesPrice(p: Property, price: PriceFilter): boolean {
-  switch (price) {
-    case "under-25k":
-      return p.price <= 25000;
-    case "25k-50k":
-      return p.price >= 25000 && p.price <= 50000;
-    case "50k-1L":
-      return p.price >= 50000 && p.price <= 100000;
-    case "over-1L":
-      return p.price > 100000;
-    case "under-50k":
-      return p.price <= 50000;
-    case "under-50L":
-      return p.price <= 5000000;
-    case "50L-1Cr":
-      return p.price >= 5000000 && p.price <= 10000000;
-    case "1Cr-2Cr":
-      return p.price >= 10000000 && p.price <= 20000000;
-    case "under-2Cr":
-      return p.price <= 20000000;
-    case "over-2Cr":
-      return p.price > 20000000;
-    default:
-      return true;
-  }
-}
-
+/** Client-side filter — same rules as web `listings/page.tsx` `filterProperties`. */
 export function filterProperties(
   properties: Property[],
   city: string,
   filters: PropertyFilters,
 ): Property[] {
   const q = filters.query.trim().toLowerCase();
+  const locality = filters.locality.trim().toLowerCase();
 
   const result = properties.filter((p) => {
     if (p.status !== "Active") return false;
-    if (city && p.city.toLowerCase() !== city.toLowerCase()) return false;
+
+    // City (from app context / web filters.city)
+    if (city && city.toLowerCase() !== "all india" && p.city.toLowerCase() !== city.toLowerCase()) {
+      return false;
+    }
+
+    // Locality
+    if (locality && !p.locality.toLowerCase().includes(locality)) return false;
+
+    // Search query (mobile search bar — OR across fields)
     if (
       q !== "" &&
       !p.title.toLowerCase().includes(q) &&
@@ -132,40 +242,58 @@ export function filterProperties(
     ) {
       return false;
     }
-    if (filters.type !== "all" && p.type !== filters.type) return false;
 
-    // Multi-select BHK
-    if (filters.bhk && filters.bhk.length > 0) {
-      if (p.bhk === undefined) return false;
-      const matchesBhk = filters.bhk.some((val) => (val >= 5 ? p.bhk! >= 5 : p.bhk === val));
-      if (!matchesBhk) return false;
+    // Purpose — exact match like web (not buy↔sell merge)
+    if (filters.purpose !== "all" && p.purpose !== filters.purpose) return false;
+
+    // Type
+    if (!matchesType(p, filters.type)) return false;
+
+    // BHK
+    if (filters.bhk.length > 0) {
+      if (p.bhk == null) return false;
+      if (!filters.bhk.includes(String(p.bhk))) return false;
     }
 
-    // Multi-select Furnishing
-    if (filters.furnishing && filters.furnishing.length > 0) {
-      if (!filters.furnishing.includes(p.furnished)) return false;
-    }
-
-    // RERA Approved Only
-    if (filters.reraApprovedOnly && !p.reraApproved) {
+    // Furnishing
+    if (filters.furnishing.length > 0 && !filters.furnishing.includes(p.furnished)) {
       return false;
     }
 
-    // Featured Only
-    if (filters.featuredOnly && !p.featured) {
-      return false;
+    // Min / max price
+    if (filters.minPrice) {
+      const minVal = parseInt(filters.minPrice, 10);
+      if (!Number.isNaN(minVal) && p.price < minVal) return false;
+    }
+    if (filters.maxPrice) {
+      const maxVal = parseInt(filters.maxPrice, 10);
+      if (!Number.isNaN(maxVal) && p.price > maxVal) return false;
     }
 
-    // Multi-select Amenities
-    if (filters.selectedAmenities && filters.selectedAmenities.length > 0) {
+    // RERA / featured
+    if (filters.reraApprovedOnly && !p.reraApproved) return false;
+    if (filters.featuredOnly && !p.featured) return false;
+
+    // Size
+    if (filters.minSize) {
+      const minS = parseInt(filters.minSize, 10);
+      if (!Number.isNaN(minS) && (p.size ?? 0) < minS) return false;
+    }
+    if (filters.maxSize) {
+      const maxS = parseInt(filters.maxSize, 10);
+      if (!Number.isNaN(maxS) && (p.size ?? 0) > maxS) return false;
+    }
+
+    // Amenities (AND) — web uses case-insensitive includes
+    if (filters.selectedAmenities.length > 0) {
       const propertyAmenities = p.amenities || [];
       const hasAll = filters.selectedAmenities.every((amenity) =>
-        propertyAmenities.includes(amenity),
+        propertyAmenities.some((a) => a.toLowerCase().includes(amenity.toLowerCase())),
       );
       if (!hasAll) return false;
     }
 
-    return matchesPurpose(p, filters.purpose) && matchesPrice(p, filters.price);
+    return true;
   });
 
   const sorted = [...result];
@@ -176,17 +304,8 @@ export function filterProperties(
       return sorted.sort((a, b) => b.price - a.price);
     case "size-desc":
       return sorted.sort((a, b) => (b.size || 0) - (a.size || 0));
-    case "featured":
-      return sorted.sort(
-        (a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0) || b.inquiryCount - a.inquiryCount,
-      );
-    case "relevance":
+    case "latest":
     default:
-      return sorted.sort(
-        (a, b) =>
-          (b.featured ? 1 : 0) - (a.featured ? 1 : 0) ||
-          b.inquiryCount - a.inquiryCount ||
-          a.title.localeCompare(b.title),
-      );
+      return sorted.sort((a, b) => b.id.localeCompare(a.id));
   }
 }
