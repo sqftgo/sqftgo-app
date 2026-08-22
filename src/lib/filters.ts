@@ -1,26 +1,14 @@
 import type { Furnishing, Property, PropertyType } from "@/data/types";
 
-/** Matches web listings `FilterState.purpose`. */
 export type PurposeFilter = "all" | "buy" | "sell" | "rent" | "lease";
-
 export type FurnishingFilter = Furnishing;
-
-/** Matches web listings sort options (mobile labels differ slightly). */
 export type SortOption = "latest" | "price-asc" | "price-desc" | "size-desc";
-
-/**
- * Explore / listings filters — aligned with web `FilterState`
- * (`sqftgo` listings Filter Properties).
- * City stays in app context (`selectedCity`), same as web syncing city into filters.
- */
 export interface PropertyFilters {
-  /** Search bar text (title / type / description). Locality has its own field. */
+
   query: string;
   locality: string;
   purpose: PurposeFilter;
-  /** `"any"` or a `PropertyType`, or `"commercial"` for the Home shortcut. */
   type: string;
-  /** Web uses string BHK values: "1" | "2" | "3" | "4" */
   bhk: string[];
   furnishing: FurnishingFilter[];
   minPrice: string;
@@ -63,7 +51,7 @@ export const PROPERTY_TYPE_OPTIONS: PropertyType[] = [
   "Industrial Plot",
 ];
 
-export const BHK_OPTIONS = ["1", "2", "3", "4"] as const;
+export const BHK_OPTIONS = ["1", "2", "3"] as const;
 
 export const FURNISHING_OPTIONS: FurnishingFilter[] = [
   "Furnished",
@@ -104,22 +92,30 @@ export const NON_RESIDENTIAL_TYPES = new Set<string>([
 export const BUDGET_BUY_MIN_OPTIONS = [
   { label: "Min Price", value: "" },
   { label: "₹10 Lakhs", value: "1000000" },
-  { label: "₹25 Lakhs", value: "2500000" },
+  { label: "₹20 Lakhs", value: "2000000" },
+  { label: "₹30 Lakhs", value: "3000000" },
+  { label: "₹40 Lakhs", value: "4000000" },
   { label: "₹50 Lakhs", value: "5000000" },
   { label: "₹75 Lakhs", value: "7500000" },
   { label: "₹1 Crore", value: "10000000" },
+  { label: "₹1.5 Crores", value: "15000000" },
   { label: "₹2 Crores", value: "20000000" },
+  { label: "₹3 Crores", value: "30000000" },
   { label: "₹5 Crores", value: "50000000" },
   { label: "₹10 Crores", value: "100000000" },
 ];
 
 export const BUDGET_BUY_MAX_OPTIONS = [
   { label: "Max Price", value: "" },
-  { label: "₹25 Lakhs", value: "2500000" },
+  { label: "₹20 Lakhs", value: "2000000" },
+  { label: "₹30 Lakhs", value: "3000000" },
+  { label: "₹40 Lakhs", value: "4000000" },
   { label: "₹50 Lakhs", value: "5000000" },
   { label: "₹75 Lakhs", value: "7500000" },
   { label: "₹1 Crore", value: "10000000" },
+  { label: "₹1.5 Crores", value: "15000000" },
   { label: "₹2 Crores", value: "20000000" },
+  { label: "₹3 Crores", value: "30000000" },
   { label: "₹5 Crores", value: "50000000" },
   { label: "₹10 Crores", value: "100000000" },
   { label: "₹15 Crores", value: "150000000" },
@@ -128,41 +124,61 @@ export const BUDGET_BUY_MAX_OPTIONS = [
 export const BUDGET_RENT_MIN_OPTIONS = [
   { label: "Min Rent", value: "" },
   { label: "₹5,000", value: "5000" },
+  { label: "₹7,500", value: "7500" },
   { label: "₹10,000", value: "10000" },
+  { label: "₹12,500", value: "12500" },
   { label: "₹15,000", value: "15000" },
   { label: "₹20,000", value: "20000" },
+  { label: "₹25,000", value: "25000" },
   { label: "₹30,000", value: "30000" },
+  { label: "₹40,000", value: "40000" },
   { label: "₹50,000", value: "50000" },
+  { label: "₹75,000", value: "75000" },
   { label: "₹1 Lakh", value: "100000" },
+  { label: "₹2 Lakhs", value: "200000" },
 ];
 
 export const BUDGET_RENT_MAX_OPTIONS = [
   { label: "Max Rent", value: "" },
+  { label: "₹7,500", value: "7500" },
   { label: "₹10,000", value: "10000" },
+  { label: "₹12,500", value: "12500" },
   { label: "₹15,000", value: "15000" },
   { label: "₹20,000", value: "20000" },
+  { label: "₹25,000", value: "25000" },
   { label: "₹30,000", value: "30000" },
+  { label: "₹40,000", value: "40000" },
   { label: "₹50,000", value: "50000" },
+  { label: "₹75,000", value: "75000" },
   { label: "₹1 Lakh", value: "100000" },
+  { label: "₹1.5 Lakhs", value: "150000" },
   { label: "₹2 Lakhs", value: "200000" },
 ];
 
 export const SIZE_MIN_OPTIONS = [
   { label: "Min Size", value: "" },
   { label: "500 sq.ft.", value: "500" },
-  { label: "1000 sq.ft.", value: "1000" },
-  { label: "1500 sq.ft.", value: "1500" },
-  { label: "2000 sq.ft.", value: "2000" },
-  { label: "3000 sq.ft.", value: "3000" },
+  { label: "750 sq.ft.", value: "750" },
+  { label: "1,000 sq.ft.", value: "1000" },
+  { label: "1,250 sq.ft.", value: "1250" },
+  { label: "1,500 sq.ft.", value: "1500" },
+  { label: "2,000 sq.ft.", value: "2000" },
+  { label: "2,500 sq.ft.", value: "2500" },
+  { label: "3,000 sq.ft.", value: "3000" },
+  { label: "5,000 sq.ft.", value: "5000" },
 ];
 
 export const SIZE_MAX_OPTIONS = [
   { label: "Max Size", value: "" },
-  { label: "1000 sq.ft.", value: "1000" },
-  { label: "1500 sq.ft.", value: "1500" },
-  { label: "2000 sq.ft.", value: "2000" },
-  { label: "3000 sq.ft.", value: "3000" },
-  { label: "5000 sq.ft.", value: "5000" },
+  { label: "750 sq.ft.", value: "750" },
+  { label: "1,000 sq.ft.", value: "1000" },
+  { label: "1,250 sq.ft.", value: "1250" },
+  { label: "1,500 sq.ft.", value: "1500" },
+  { label: "2,000 sq.ft.", value: "2000" },
+  { label: "2,500 sq.ft.", value: "2500" },
+  { label: "3,000 sq.ft.", value: "3000" },
+  { label: "5,000 sq.ft.", value: "5000" },
+  { label: "10,000 sq.ft.", value: "10000" },
 ];
 
 export function isRentLikePurpose(purpose: PurposeFilter): boolean {

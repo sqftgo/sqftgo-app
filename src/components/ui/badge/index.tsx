@@ -90,7 +90,7 @@ export function Badge({
           gap: 4,
           paddingHorizontal: padH,
           paddingVertical: padV,
-          borderRadius: radius.full,
+          borderRadius: radius.md,
           backgroundColor: bg,
           borderWidth: variant === "outline" ? 1 : 0,
           borderColor,

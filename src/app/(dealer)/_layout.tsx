@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Animated,
   Pressable,
@@ -21,14 +21,15 @@ import {
 } from "@react-navigation/material-top-tabs";
 import { withLayoutContext } from "expo-router";
 import {
-  Bookmark,
-  Grid,
-  Home,
+  BarChart3,
+  Building2,
+  Inbox,
+  LayoutDashboard,
   User,
-  Users,
 } from "@/components/ui/icons";
 
 import { useApp } from "@/context/AppContext";
+import { ownedPropertyIds, ownsInquiry } from "@/lib/ownership";
 import { colors, type } from "@/theme/tokens";
 
 interface TabDef {
@@ -42,17 +43,8 @@ interface TabDef {
   badge?: number;
 }
 
-const USER_TABS: TabDef[] = [
-  { name: "index", label: "Home", Icon: Home },
-  { name: "explore", label: "Explore", Icon: Grid },
-  { name: "favorites", label: "Saved", Icon: Bookmark },
-  { name: "my-inquiries", label: "Brokers", Icon: Users },
-  { name: "profile", label: "Profile", Icon: User },
-];
-
 const { Navigator } = createMaterialTopTabNavigator();
 
-/** Swipeable tabs (Instagram-style). Only declared screens are registered. */
 const SwipeTabs = withLayoutContext<
   MaterialTopTabNavigationOptions,
   typeof Navigator,
@@ -64,7 +56,7 @@ interface CustomTabBarProps extends MaterialTopTabBarProps {
   tabs: TabDef[];
 }
 
-function CustomTabBar({ state, navigation, position, tabs }: CustomTabBarProps) {
+function DealerTabBar({ state, navigation, position, tabs }: CustomTabBarProps) {
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
 
@@ -74,7 +66,6 @@ function CustomTabBar({ state, navigation, position, tabs }: CustomTabBarProps) 
 
   const TAB_WIDTH = screenWidth / Math.max(tabs.length, 1);
 
-  // Follow finger while swiping between pages (Instagram-style).
   const swipeTranslateX = position.interpolate({
     inputRange: tabs.map((_, i) => i),
     outputRange: tabs.map((_, i) => i * TAB_WIDTH),
@@ -189,22 +180,44 @@ function CustomTabBar({ state, navigation, position, tabs }: CustomTabBarProps) 
   );
 }
 
-export default function TabLayout() {
-  const { userRole } = useApp();
+const BASE_DEALER_TABS: TabDef[] = [
+  { name: "index", label: "Dashboard", Icon: LayoutDashboard },
+  { name: "properties", label: "Properties", Icon: Building2 },
+  { name: "inquiries", label: "Inbox", Icon: Inbox },
+  { name: "analytics", label: "Analytics", Icon: BarChart3 },
+  { name: "profile", label: "Profile", Icon: User },
+];
 
-  // Brokers have a dedicated layout in /(dealer) — redirect them out of user tabs.
-  if (userRole === "broker") {
-    return <Redirect href={"/(dealer)" as Href} />;
+export default function DealerLayout() {
+  const { userRole, inquiries, properties, userEmail, profile } = useApp();
+
+  // Always compute tabs (hooks must not be called conditionally)
+  const tabs = useMemo(() => {
+    if (userRole !== "broker") return BASE_DEALER_TABS;
+    const ownedIds = ownedPropertyIds(properties, {
+      userId: profile?.id,
+      email: userEmail,
+    });
+    const newCount = inquiries.filter(
+      (i) =>
+        ownsInquiry(i, { email: userEmail, ownedPropertyIds: ownedIds }) &&
+        (i.status === "new" || !i.status),
+    ).length;
+    return BASE_DEALER_TABS.map((t) =>
+      t.name === "inquiries" ? { ...t, badge: newCount } : t,
+    );
+  }, [userRole, inquiries, properties, userEmail, profile?.id]);
+
+  // Non-brokers are redirected back to the user tabs
+  if (userRole !== "broker") {
+    return <Redirect href={"/(tabs)" as Href} />;
   }
-
-  const tabs = USER_TABS;
 
   return (
     <SwipeTabs
-      key="user"
       initialRouteName="index"
       tabBarPosition="bottom"
-      tabBar={(props) => <CustomTabBar {...props} tabs={tabs} />}
+      tabBar={(props) => <DealerTabBar {...props} tabs={tabs} />}
       screenOptions={{
         swipeEnabled: true,
         animationEnabled: true,

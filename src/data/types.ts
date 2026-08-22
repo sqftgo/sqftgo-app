@@ -140,6 +140,18 @@ export interface DirectoryProfile {
   specialties?: string[];
   teamSize?: number;
   listingsCount?: number;
+  /** Professional headline / title for LinkedIn style view */
+  headline?: string;
+  /** Rating out of 5 */
+  rating?: number;
+  /** Number of client reviews */
+  reviewsCount?: number;
+  /** Spoken languages */
+  languages?: string[];
+  /** Profile avatar image URL */
+  avatarUrl?: string;
+  /** Cover background image URL */
+  coverUrl?: string;
   /** Links card to profiles when claimed */
   userId?: string;
 }

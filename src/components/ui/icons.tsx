@@ -40,6 +40,7 @@ export const Bell = wrapIcon(Iconoir.Bell);
 export const BellOff = wrapIcon(Iconoir.BellOff);
 export const Bookmark = wrapIcon(Iconoir.Bookmark);
 export const Building = wrapIcon(Iconoir.Building);
+export const Community = wrapIcon(Iconoir.Community);
 export const Calendar = wrapIcon(Iconoir.Calendar);
 export const ChatBubble = wrapIcon(Iconoir.ChatBubble);
 export const Check = wrapIcon(Iconoir.Check);

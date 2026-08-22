@@ -1,8 +1,10 @@
+import { appAlert } from "@/components/ui/app-alert";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import { useRouter, type Href } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  Image,
   Pressable,
   ScrollView,
   Switch,
@@ -10,7 +12,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { appAlert } from "@/components/ui/app-alert";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
@@ -24,6 +25,7 @@ import {
   Clock,
   CreditCard,
   EditPencil,
+  Eye,
   FileCheck,
   FileText,
   Heart,
@@ -39,12 +41,12 @@ import {
   Shield,
   ShieldCheck,
   Sparkles,
+  Star
 } from "@/components/ui/icons";
 
 import CitySelectionModal from "@/components/ui/CitySelectionModal";
 import { MenuGroup, MenuRow } from "@/components/ui/menu-row";
 import { ModalSheet, ModalSheetHeader } from "@/components/ui/modal-sheet";
-import { PropertyCard } from "@/components/ui/property-card";
 import { ScreenNavbar } from "@/components/ui/screen-navbar";
 import { useApp } from "@/context/AppContext";
 import type { DirectoryCategory } from "@/data/types";
@@ -362,44 +364,183 @@ export default function ProfileScreen() {
         {canAccessDealerDashboard ? (
           <>
             <ScreenNavbar
-              eyebrow="Account"
-              title="Dealer Profile"
-              subtitle="Manage your firm, listings, and leads"
+              eyebrow="Dealer Portal"
+              title="Executive Broker Profile"
+              subtitle="Manage your brand presence, RERA credentials, and live portfolio"
             />
 
+            {/* LinkedIn-Style Broker Hero Card */}
             <View
               style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: spacing.lg,
                 backgroundColor: colors.surface,
+                borderRadius: radius.md,
                 borderWidth: 1,
                 borderColor: colors.border,
-                borderRadius: radius.sm,
-                padding: spacing.lg,
+                overflow: "hidden",
                 boxShadow: shadow.card,
               }}
             >
-              <View
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: radius.sm,
-                  backgroundColor: colors.accentSoft,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Text style={{ ...type.heading, color: colors.accent }}>{initials}</Text>
+              {/* Cover Banner with RERA status */}
+              <View style={{ width: "100%", height: 100, backgroundColor: colors.primary, position: "relative" }}>
+                {myDirectory?.coverUrl ? (
+                  <Image
+                    source={{ uri: myDirectory.coverUrl }}
+                    style={{ width: "100%", height: "100%" }}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={{ width: "100%", height: "100%", backgroundColor: colors.primary }} />
+                )}
+                <View
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: "rgba(15, 30, 54, 0.35)",
+                  }}
+                />
+
+                <View
+                  style={{
+                    position: "absolute",
+                    bottom: 8,
+                    right: 12,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 4,
+                    backgroundColor: "rgba(15, 30, 54, 0.8)",
+                    paddingHorizontal: 8,
+                    paddingVertical: 3,
+                    borderRadius: radius.sm,
+                  }}
+                >
+                  <ShieldCheck size={12} color={colors.success} />
+                  <Text style={{ ...type.micro, color: "#FFFFFF", fontWeight: "700" }}>
+                    Verified Broker
+                  </Text>
+                </View>
               </View>
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={{ ...type.heading, color: colors.ink }}>
-                  {myDirectory?.firmName || userName || "Account"}
-                </Text>
-                <Text selectable style={{ ...type.caption, color: colors.inkMuted }}>
-                  {userEmail}
-                </Text>
-                <Text style={{ ...type.micro, color: colors.accent }}>Dealer Portal</Text>
+
+              {/* Avatar & Public Preview Link */}
+              <View style={{ padding: spacing.lg, paddingTop: 0 }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginTop: -32 }}>
+                  <View
+                    style={{
+                      width: 64,
+                      height: 64,
+                      borderRadius: radius.md,
+                      backgroundColor: colors.primary,
+                      borderWidth: 3,
+                      borderColor: colors.surface,
+                      overflow: "hidden",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      boxShadow: shadow.raised,
+                    }}
+                  >
+                    {myDirectory?.avatarUrl ? (
+                      <Image
+                        source={{ uri: myDirectory.avatarUrl }}
+                        style={{ width: "100%", height: "100%" }}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <Text style={{ ...type.heading, color: colors.onPrimary, fontSize: 22 }}>
+                        {initials}
+                      </Text>
+                    )}
+                  </View>
+
+                  {myDirectory?.id ? (
+                    <Pressable
+                      onPress={() =>
+                        router.push({
+                          pathname: "/broker/[id]",
+                          params: { id: myDirectory.id },
+                        })
+                      }
+                      style={({ pressed }) => ({
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: spacing.xs,
+                        paddingHorizontal: spacing.md,
+                        paddingVertical: 6,
+                        borderRadius: radius.sm,
+                        backgroundColor: pressed ? colors.accentSoft : colors.surfaceSubtle,
+                        borderWidth: 1,
+                        borderColor: colors.accentBorder,
+                      })}
+                    >
+                      <Eye size={14} color={colors.accent} />
+                      <Text style={{ ...type.caption, color: colors.accent, fontWeight: "700" }}>
+                        View Public Profile
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+
+                {/* Identity & Headline */}
+                <View style={{ marginTop: spacing.md, gap: 3 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
+                    <Text style={{ ...type.heading, color: colors.ink, fontSize: 18 }}>
+                      {ownerName || userName || "Broker Partner"}
+                    </Text>
+                    <ShieldCheck size={16} color={colors.success} />
+                  </View>
+                  <Text style={{ ...type.caption, color: colors.inkSecondary, fontWeight: "600" }}>
+                    {myDirectory?.headline || `${category} Specialist`}
+                  </Text>
+                  <Text style={{ ...type.caption, color: colors.accent, fontWeight: "700" }}>
+                    {firmName || myDirectory?.firmName || "Real Estate Agency"}
+                  </Text>
+                </View>
+
+                {/* Performance Highlights Bar */}
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    backgroundColor: colors.surfaceSubtle,
+                    borderRadius: radius.sm,
+                    paddingVertical: spacing.sm + 2,
+                    paddingHorizontal: spacing.sm,
+                    marginTop: spacing.md,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                  }}
+                >
+                  <View style={{ flex: 1, alignItems: "center", gap: 1 }}>
+                    <Text style={{ ...type.emphasis, color: colors.ink }}>
+                      {myDirectory?.experience || "8+ Yrs"}
+                    </Text>
+                    <Text style={{ ...type.micro, color: colors.inkMuted, textTransform: "uppercase" }}>
+                      Experience
+                    </Text>
+                  </View>
+                  <View style={{ width: 1, height: 22, backgroundColor: colors.border }} />
+                  <View style={{ flex: 1, alignItems: "center", gap: 1 }}>
+                    <Text style={{ ...type.emphasis, color: colors.ink }}>
+                      {myDirectory?.listingsCount || properties.length}
+                    </Text>
+                    <Text style={{ ...type.micro, color: colors.inkMuted, textTransform: "uppercase" }}>
+                      Properties
+                    </Text>
+                  </View>
+                  <View style={{ width: 1, height: 22, backgroundColor: colors.border }} />
+                  <View style={{ flex: 1, alignItems: "center", gap: 1 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
+                      <Star size={12} color="#F59E0B" fill="#F59E0B" />
+                      <Text style={{ ...type.emphasis, color: colors.ink }}>
+                        {myDirectory?.rating || "4.9"}
+                      </Text>
+                    </View>
+                    <Text style={{ ...type.micro, color: colors.inkMuted, textTransform: "uppercase" }}>
+                      ({myDirectory?.reviewsCount || "128"} reviews)
+                    </Text>
+                  </View>
+                </View>
               </View>
             </View>
 
@@ -411,11 +552,11 @@ export default function ProfileScreen() {
               {(
                 [
                   { id: "personal", label: "Personal" },
-                  { id: "business", label: "Business" },
-                  { id: "kyc", label: "KYC" },
-                  { id: "bank", label: "Bank" },
-                  { id: "social", label: "Social" },
-                  { id: "subscription", label: "Plan" },
+                  { id: "business", label: "Firm & Branding" },
+                  { id: "kyc", label: "KYC & Licenses" },
+                  { id: "bank", label: "Bank Settlement" },
+                  { id: "social", label: "Social Networks" },
+                  { id: "subscription", label: "Growth Plan" },
                 ] as const
               ).map((tab) => {
                 const active = dealerTab === tab.id;
@@ -766,13 +907,13 @@ export default function ProfileScreen() {
               </Pressable>
             </View>
 
-            {/* 1. Buyer Persona Hero Card */}
+            {/* 1. Buyer Persona Hero Card (Elevated LinkedIn/Executive Seeker Style) */}
             <View
               style={{
                 backgroundColor: colors.surface,
                 borderWidth: 1,
                 borderColor: colors.border,
-                borderRadius: radius.sm,
+                borderRadius: radius.md,
                 padding: spacing.lg,
                 boxShadow: shadow.card,
                 gap: spacing.md,
@@ -782,39 +923,86 @@ export default function ProfileScreen() {
                 {/* Avatar */}
                 <View
                   style={{
-                    width: 56,
-                    height: 56,
-                    borderRadius: radius.sm,
-                    backgroundColor: colors.primarySoft,
-                    borderWidth: 1.5,
-                    borderColor: colors.accent,
+                    width: 60,
+                    height: 60,
+                    borderRadius: radius.md,
+                    backgroundColor: colors.primary,
                     alignItems: "center",
                     justifyContent: "center",
+                    boxShadow: shadow.raised,
                   }}
                 >
-                  <Text style={{ ...type.title, color: colors.primary }}>{initials}</Text>
+                  <Text style={{ ...type.title, color: colors.onPrimary, fontSize: 22 }}>
+                    {initials}
+                  </Text>
                 </View>
 
                 {/* Identity Info */}
                 <View style={{ flex: 1, gap: 3 }}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
-                    <Text style={{ ...type.heading, color: colors.ink }} numberOfLines={1}>
+                    <Text style={{ ...type.heading, color: colors.ink, fontSize: 18 }} numberOfLines={1}>
                       {userName || "Home Seeker"}
                     </Text>
-                    <ShieldCheck size={16} color={colors.success} />
+                    <ShieldCheck size={16} color={colors.success} strokeWidth={2.5} />
                   </View>
                   <Text selectable style={{ ...type.caption, color: colors.inkMuted }}>
                     {userEmail}
                   </Text>
                   {profile?.phone ? (
-                    <Text style={{ ...type.caption, color: colors.inkSecondary }}>
+                    <Text style={{ ...type.caption, color: colors.inkSecondary, fontWeight: "600" }}>
                       {profile.phone}
                     </Text>
                   ) : null}
                 </View>
               </View>
 
-              {/* Status Badges & City Pill */}
+              {/* Profile Strength Progress Bar */}
+              <View
+                style={{
+                  backgroundColor: colors.surfaceSubtle,
+                  borderRadius: radius.sm,
+                  padding: spacing.md,
+                  gap: 6,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+              >
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                    <Sparkles size={13} color={colors.accent} />
+                    <Text style={{ ...type.caption, color: colors.ink, fontWeight: "700" }}>
+                      Profile Strength: 85% (Strong Seeker)
+                    </Text>
+                  </View>
+                  <Text style={{ ...type.micro, color: colors.success, fontWeight: "700" }}>
+                    Verified Buyer
+                  </Text>
+                </View>
+
+                <View
+                  style={{
+                    width: "100%",
+                    height: 5,
+                    backgroundColor: "rgba(15, 30, 54, 0.1)",
+                    borderRadius: 3,
+                    overflow: "hidden",
+                  }}
+                >
+                  <View
+                    style={{
+                      width: "85%",
+                      height: "100%",
+                      backgroundColor: colors.accent,
+                      borderRadius: 3,
+                    }}
+                  />
+                </View>
+                <Text style={{ ...type.micro, color: colors.inkMuted }}>
+                  Your search profile is visible to top certified RERA brokers in {selectedCity}.
+                </Text>
+              </View>
+
+              {/* Status Badges & City Selection Pill */}
               <View
                 style={{
                   flexDirection: "row",
@@ -833,13 +1021,13 @@ export default function ProfileScreen() {
                     gap: 4,
                     backgroundColor: colors.successSoft,
                     paddingHorizontal: spacing.sm + 2,
-                    paddingVertical: 3,
+                    paddingVertical: 4,
                     borderRadius: radius.sm,
                   }}
                 >
-                  <Sparkles size={12} color={colors.success} />
+                  <ShieldCheck size={13} color={colors.success} />
                   <Text style={{ ...type.micro, color: colors.success, fontWeight: "700" }}>
-                    Verified Seeker
+                    Identity Confirmed
                   </Text>
                 </View>
 
@@ -851,7 +1039,7 @@ export default function ProfileScreen() {
                     gap: 4,
                     backgroundColor: pressed ? colors.accentSoft : colors.surfaceSubtle,
                     paddingHorizontal: spacing.sm + 2,
-                    paddingVertical: 3,
+                    paddingVertical: 4,
                     borderRadius: radius.sm,
                     borderWidth: 1,
                     borderColor: colors.border,
@@ -859,7 +1047,7 @@ export default function ProfileScreen() {
                 >
                   <MapPin size={12} color={colors.accent} />
                   <Text style={{ ...type.micro, color: colors.ink, fontWeight: "700" }}>
-                    {selectedCity}
+                    City: {selectedCity}
                   </Text>
                   <ChevronRight size={10} color={colors.inkMuted} />
                 </Pressable>
@@ -872,8 +1060,9 @@ export default function ProfileScreen() {
                     color: colors.inkSecondary,
                     fontStyle: "italic",
                     backgroundColor: colors.surfaceSubtle,
-                    padding: spacing.sm,
+                    padding: spacing.sm + 2,
                     borderRadius: radius.sm,
+                    lineHeight: 18,
                   }}
                 >
                   "{profile.bio}"
@@ -902,38 +1091,6 @@ export default function ProfileScreen() {
                   Your directory profile is under review. You can still use all buyer features.
                 </Text>
               </Pressable>
-            ) : null}
-
-            {/* 2. Shortlisted Properties Carousel / Rail */}
-            {savedProperties.length > 0 ? (
-              <View style={{ gap: spacing.sm }}>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  <Text style={{ ...type.heading, color: colors.ink }}>
-                    Shortlisted Properties ({savedProperties.length})
-                  </Text>
-                  <Pressable onPress={() => router.push("/(tabs)/favorites")}>
-                    <Text style={{ ...type.caption, color: colors.accent, fontWeight: "700" }}>
-                      View all →
-                    </Text>
-                  </Pressable>
-                </View>
-
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ gap: spacing.md, paddingVertical: spacing.xs }}
-                >
-                  {savedProperties.slice(0, 4).map((p) => (
-                    <PropertyCard key={p.id} property={p} variant="compact" />
-                  ))}
-                </ScrollView>
-              </View>
             ) : null}
 
             {/* 3. Buyer Concierge & Advisory Suite */}

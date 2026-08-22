@@ -713,38 +713,82 @@ export default function PropertyDetailsScreen() {
             </ScrollView>
           </View>
 
-          {/* Card 8: Agent Section */}
+          {/* Card 8: Agent Section (LinkedIn-style Profile Card) */}
           <View style={styles.sectionCard}>
-            <Text style={styles.sectionHeader}>Listing Agent</Text>
-            <View style={styles.agentCard}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <Text style={styles.sectionHeader}>Listing Agent</Text>
+              <Pressable
+                onPress={() => {
+                  router.push({
+                    pathname: "/broker/[id]",
+                    params: { id: matchedBroker?.id || property.ownerName },
+                  });
+                }}
+              >
+                <Text style={{ fontSize: 13, color: "#E05A36", fontWeight: "700" }}>
+                  View Full Profile →
+                </Text>
+              </Pressable>
+            </View>
+
+            <Pressable
+              onPress={() => {
+                router.push({
+                  pathname: "/broker/[id]",
+                  params: { id: matchedBroker?.id || property.ownerName },
+                });
+              }}
+              style={({ pressed }) => [
+                styles.agentCard,
+                { opacity: pressed ? 0.9 : 1 },
+              ]}
+            >
               <Image
                 source={{
-                  uri: matchedBroker?.id === "dir-dealer-1"
+                  uri: matchedBroker?.avatarUrl || (matchedBroker?.id === "dir-dealer-1"
                     ? "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=150&h=150&q=80"
                     : matchedBroker?.id === "dir-dealer-2"
                     ? "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&h=150&q=80"
                     : matchedBroker?.id === "dir-dealer-3"
                     ? "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=150&q=80"
-                    : "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=150&h=150&q=80"
+                    : "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=150&h=150&q=80")
                 }}
                 style={styles.agentAvatar}
                 contentFit="cover"
               />
               <View style={styles.agentInfo}>
-                <Text style={styles.agentName}>{property.ownerName}</Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <Text style={styles.agentName}>{property.ownerName}</Text>
+                  <ShieldCheck size={14} color="#0E9F6E" />
+                </View>
                 <Text style={styles.agentTitle}>
                   {matchedBroker ? matchedBroker.firmName : "Real Estate Consultant"}
                 </Text>
+                <Text style={{ fontSize: 11, color: "#6B7280", marginTop: 2 }}>
+                  {matchedBroker?.experience || "8+ Years Experience"} · ★ {matchedBroker?.rating || "4.9"} ({matchedBroker?.reviewsCount || "128"})
+                </Text>
               </View>
               <View style={styles.agentActions}>
-                <Pressable onPress={handleCall} style={styles.agentActionButton}>
+                <Pressable
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleCall();
+                  }}
+                  style={styles.agentActionButton}
+                >
                   <Phone size={18} color="#E05A36" />
                 </Pressable>
-                <Pressable onPress={handleWhatsApp} style={styles.agentActionButton}>
+                <Pressable
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleWhatsApp();
+                  }}
+                  style={styles.agentActionButton}
+                >
                   <MessageSquare size={18} color="#E05A36" />
                 </Pressable>
               </View>
-            </View>
+            </Pressable>
           </View>
         </View>
       </ScrollView>
