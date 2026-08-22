@@ -134,7 +134,7 @@ const GUEST_SESSION: Session = {
 export const DEMO_ACCOUNTS: StoredAccount[] = [
   {
     id: "acc-buyer",
-    email: "buyer@svrepl.com",
+    email: "buyer@sqftgo.com",
     password: "SunValley26",
     name: "Riya Sharma",
     phone: "+91 98765 43210",
@@ -145,7 +145,7 @@ export const DEMO_ACCOUNTS: StoredAccount[] = [
   },
   {
     id: "acc-broker",
-    email: "broker@svrepl.com",
+    email: "broker@sqftgo.com",
     password: "SunValley26",
     name: "Aman Verma",
     phone: "+91 98111 22334",
@@ -164,7 +164,7 @@ export const DEMO_ACCOUNTS: StoredAccount[] = [
   },
   {
     id: "acc-pending",
-    email: "pending@svrepl.com",
+    email: "pending@sqftgo.com",
     password: "SunValley26",
     name: "Neha Patel",
     phone: "+91 99000 11122",
@@ -182,7 +182,7 @@ export const DEMO_ACCOUNTS: StoredAccount[] = [
   },
   {
     id: "acc-admin",
-    email: "admin@svrepl.com",
+    email: "admin@sqftgo.com",
     password: "SunValley26",
     name: "Admin",
     role: "admin",
@@ -194,8 +194,8 @@ export const DEMO_ACCOUNTS: StoredAccount[] = [
 
 const seedWithBroker: Property[] = seedProperties.map((p) => ({
   ...p,
-  brokerEmail: p.brokerEmail ?? "broker@svrepl.com",
-  ownerEmail: p.brokerEmail ?? "broker@svrepl.com",
+  brokerEmail: p.brokerEmail ?? "broker@sqftgo.com",
+  ownerEmail: p.brokerEmail ?? "broker@sqftgo.com",
   ownerId: "acc-broker",
 }));
 
@@ -206,7 +206,7 @@ const PENDING_DIRECTORY: DirectoryProfile = {
   category: "Agent & Broker",
   city: "Udaipur",
   address: "Near Fateh Sagar, Udaipur",
-  email: "pending@svrepl.com",
+  email: "pending@sqftgo.com",
   website: "https://patelrealty.example",
   mobile: "+91 99000 11122",
   description: "Awaiting dealer access approval from SqftGo web admin.",
@@ -1330,7 +1330,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         buyerEmail: input.email.trim().toLowerCase(),
         buyerPhone: input.phone?.trim(),
         message: input.message.trim(),
-        brokerEmail: property.brokerEmail ?? "broker@svrepl.com",
+        brokerEmail: property.brokerEmail ?? "broker@sqftgo.com",
         status: "new",
         createdAt: new Date().toISOString(),
       };
@@ -1609,7 +1609,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         buyerName: session.name,
         buyerEmail: session.email,
         buyerPhone: input.phone?.trim() || session.phone,
-        brokerEmail: property.brokerEmail ?? "broker@svrepl.com",
+        brokerEmail: property.brokerEmail ?? "broker@sqftgo.com",
         visitDate: input.visitDate,
         visitTime: input.visitTime,
         status: "pending",

@@ -176,21 +176,29 @@ function ActiveFilterChips({
 
 export default function ExploreScreen() {
   const { properties, selectedCity } = useApp();
-  const params = useLocalSearchParams<{ purpose?: string }>();
+  const params = useLocalSearchParams<{ purpose?: string; type?: string }>();
 
   const [filters, setFilters] = useState<PropertyFilters>(defaultFilters);
   const [sheetVisible, setSheetVisible] = useState(false);
   const [cityModalVisible, setCityModalVisible] = useState(false);
 
-  // Home shortcuts: Buy / Rent / Commercial (Commercial → type group, like listings commercial types).
+  // Home shortcuts: Buy / Rent / Commercial / Property Categories (Apartments, Villas, Commercial, Plots, etc.)
   useEffect(() => {
     const purpose = params.purpose;
-    if (purpose === "buy" || purpose === "sell" || purpose === "rent" || purpose === "lease") {
+    const type = params.type;
+
+    if (type) {
+      setFilters((prev) => ({
+        ...prev,
+        type,
+        purpose: (purpose === "buy" || purpose === "sell" || purpose === "rent" || purpose === "lease") ? purpose : "all",
+      }));
+    } else if (purpose === "buy" || purpose === "sell" || purpose === "rent" || purpose === "lease") {
       setFilters((prev) => ({ ...prev, purpose, type: "any" }));
     } else if (purpose === "commercial") {
       setFilters((prev) => ({ ...prev, purpose: "all", type: "commercial" }));
     }
-  }, [params.purpose]);
+  }, [params.purpose, params.type]);
 
   const results = useMemo(
     () => filterProperties(properties, selectedCity, filters),

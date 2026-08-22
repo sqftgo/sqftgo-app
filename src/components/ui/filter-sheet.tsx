@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
-import { Pressable, ScrollView, Switch, Text, TextInput, View } from "react-native";
 import * as Haptics from "expo-haptics";
+import React, { useEffect, useState } from "react";
+import { Pressable, ScrollView, Switch, Text, View } from "react-native";
 
 import { FilterOptionRow, MultiSelectChipRow } from "@/components/ui/chip";
 import { ModalSheet, ModalSheetHeader } from "@/components/ui/modal-sheet";
@@ -62,7 +62,7 @@ function FilterGroup({
   children: React.ReactNode;
 }) {
   return (
-    <View style={{ gap: spacing.sm }}>
+    <View style={{ gap: spacing.sm, marginBottom: 4 }}>
       <View>
         <Text
           style={{
@@ -162,7 +162,7 @@ export function FilterSheet({ visible, filters, countResults, onApply, onClose }
     ) : undefined;
 
   return (
-    <ModalSheet visible={visible} onClose={onClose} maxHeight="88%" avoidKeyboard>
+    <ModalSheet visible={visible} onClose={onClose} maxHeight="85%" avoidKeyboard>
       <ModalSheetHeader
         title={activeCount > 0 ? `Filter Properties (${activeCount})` : "Filter Properties"}
         rightAction={resetAction}
@@ -178,24 +178,6 @@ export function FilterSheet({ visible, filters, countResults, onApply, onClose }
           gap: spacing.xl,
         }}
       >
-        <FilterGroup label="Locality">
-          <TextInput
-            value={draft.locality}
-            onChangeText={(locality) => setDraft((prev) => ({ ...prev, locality }))}
-            placeholder="e.g. Fateh Sagar, Hiran Magri"
-            placeholderTextColor={colors.inkMuted}
-            style={{
-              height: 46,
-              borderRadius: radius.md,
-              borderWidth: 1,
-              borderColor: colors.border,
-              backgroundColor: colors.surface,
-              paddingHorizontal: spacing.md,
-              ...type.body,
-              color: colors.ink,
-            }}
-          />
-        </FilterGroup>
 
         <FilterGroup label="Looking to">
           <FilterOptionRow
@@ -358,7 +340,7 @@ export function FilterSheet({ visible, filters, countResults, onApply, onClose }
         style={{
           paddingHorizontal: spacing.xl,
           paddingTop: spacing.md,
-          paddingBottom: spacing.lg,
+          paddingBottom: spacing.md,
           borderTopWidth: 1,
           borderTopColor: colors.border,
           backgroundColor: colors.surface,

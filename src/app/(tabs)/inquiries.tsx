@@ -204,7 +204,7 @@ export default function CommunicationsScreen() {
                         style={{
                           paddingHorizontal: spacing.md,
                           paddingVertical: spacing.sm,
-                          borderRadius: radius.full,
+                          borderRadius: radius.md,
                           backgroundColor: active ? colors.ink : colors.surface,
                           borderWidth: 1,
                           borderColor: active ? colors.ink : colors.border,
@@ -265,7 +265,7 @@ export default function CommunicationsScreen() {
                         backgroundColor: tone.bg,
                         paddingHorizontal: spacing.sm,
                         paddingVertical: 2,
-                        borderRadius: radius.full,
+                        borderRadius: radius.md,
                       }}
                     >
                       <Text style={{ ...type.micro, color: tone.color, fontWeight: "700" }}>
@@ -355,7 +355,7 @@ export default function CommunicationsScreen() {
                         backgroundColor: colors.accent,
                         paddingHorizontal: spacing.md,
                         paddingVertical: spacing.sm,
-                        borderRadius: radius.full,
+                        borderRadius: radius.md,
                       }}
                     >
                       <Plus size={14} color={colors.onAccent} />

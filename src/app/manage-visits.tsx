@@ -161,7 +161,7 @@ export default function ManageVisitsScreen() {
                     backgroundColor: tone.bg,
                     paddingHorizontal: spacing.sm,
                     paddingVertical: 2,
-                    borderRadius: radius.full,
+                    borderRadius: radius.md,
                     alignSelf: "flex-start",
                   }}
                 >

@@ -1,181 +1,254 @@
-import React from "react";
-import { Pressable, Text, View } from "react-native";
+import { Bed, Heart, MapPin, Maximize2, ShieldCheck } from "@/components/ui/icons";
+import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import * as Haptics from "expo-haptics";
-import { Bed, Heart, MapPin, Maximize2, ShieldCheck } from "@/components/ui/icons";
+import React, { memo, useCallback, useMemo } from "react";
+import { Pressable, Text, View } from "react-native";
 
 import { useApp } from "@/context/AppContext";
 import type { Property } from "@/data/types";
 import { formatIndianPrice, formatSize, purposeLabel } from "@/lib/format";
-import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
+import { colors, radius, shadow } from "@/theme/tokens";
 
 interface PropertyCardProps {
   property: Property;
-  /** "full" is the default vertical card; "compact" is a fixed-width horizontal-rail card. */
   variant?: "full" | "compact";
 }
 
-/**
- * The single property card used everywhere a listing appears
- * (Home, Explore, Favorites). One design, two sizes.
- */
-export function PropertyCard({ property, variant = "full" }: PropertyCardProps) {
+const FALLBACK_IMAGE = {
+  uri: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80",
+};
+
+const FavoriteButton = memo(function FavoriteButton({
+  isFav,
+  onPress,
+}: {
+  isFav: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel={isFav ? "Remove from saved" : "Save property"}
+      style={({ pressed }) => ({
+        boxShadow: shadow.card,
+        transform: [{ scale: pressed ? 0.92 : 1 }],
+      })}
+      className="w-[34px] h-[34px] rounded-md bg-white items-center justify-center border border-black/5"
+    >
+      <Heart
+        size={16}
+        color={isFav ? colors.accent : colors.inkSecondary}
+        fill={isFav ? colors.accent : "transparent"}
+      />
+    </Pressable>
+  );
+});
+
+function PropertyCardBase({ property, variant = "full" }: PropertyCardProps) {
   const router = useRouter();
   const { favorites, toggleFavorite } = useApp();
   const isFav = favorites.includes(property.id);
   const compact = variant === "compact";
 
-  const handleOpen = () => {
+  const handleOpen = useCallback(() => {
     router.push({ pathname: "/property/[id]", params: { id: property.id } });
-  };
+  }, [router, property.id]);
 
-  const handleFavorite = () => {
+  const handleFavorite = useCallback(() => {
     if (process.env.EXPO_OS === "ios") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
     toggleFavorite(property.id);
-  };
+  }, [toggleFavorite, property.id]);
+
+  const priceLabel = useMemo(() => formatIndianPrice(property.price), [property.price]);
+  const sizeLabel = useMemo(() => formatSize(property.size), [property.size]);
+  const purposeText = useMemo(() => purposeLabel(property.purpose), [property.purpose]);
+  const showPerMonth = property.purpose === "rent" || property.purpose === "lease";
+  const imageSource = property.images?.[0] ? { uri: property.images[0] } : FALLBACK_IMAGE;
 
   return (
     <Pressable
       onPress={handleOpen}
       accessibilityRole="button"
-      accessibilityLabel={`${property.title}, ${formatIndianPrice(property.price)}, ${property.locality}`}
+      accessibilityLabel={`${property.title}, ${priceLabel}, ${property.locality}`}
       style={({ pressed }) => ({
-        width: compact ? 240 : undefined,
+        width: compact ? 260 : "100%",
         backgroundColor: colors.surface,
-        borderRadius: radius.sm,
+        borderRadius: radius.xl,
         borderCurve: "continuous",
         borderWidth: 1,
         borderColor: colors.border,
         overflow: "hidden",
         boxShadow: shadow.card,
-        transform: [{ scale: pressed ? 0.98 : 1 }],
+        transform: [{ scale: pressed ? 0.985 : 1 }],
       })}
     >
-      <View style={{ height: compact ? 128 : 180, backgroundColor: colors.surfaceSubtle }}>
+      {/* Image Container with Floating Badges */}
+      <View
+        style={{
+          width: "100%",
+          height: compact ? 144 : 196,
+          backgroundColor: colors.surfaceSubtle,
+          position: "relative",
+        }}
+      >
         <Image
-          source={{ uri: property.images[0] }}
+          source={imageSource}
           style={{ width: "100%", height: "100%" }}
           contentFit="cover"
           transition={200}
+          cachePolicy="memory-disk"
+          recyclingKey={property.id}
         />
 
+        {/* Floating Badges and Save Button */}
         <View
           style={{
             position: "absolute",
-            top: spacing.md,
-            left: spacing.md,
-            right: spacing.md,
+            top: 10,
+            left: 10,
+            right: 10,
             flexDirection: "row",
+            alignItems: "center",
             justifyContent: "space-between",
-            alignItems: "flex-start",
+            zIndex: 10,
           }}
         >
-          <View
-            style={{
-              backgroundColor: colors.surface,
-              paddingHorizontal: spacing.sm,
-              paddingVertical: spacing.xs,
-              borderRadius: radius.sm,
-              borderCurve: "continuous",
-            }}
-          >
-            <Text style={{ ...type.micro, color: colors.ink }}>
-              {purposeLabel(property.purpose)}
-            </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <View
+              style={{
+                backgroundColor: "rgba(255, 255, 255, 0.95)",
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderRadius: radius.md,
+                borderWidth: 1,
+                borderColor: "rgba(0, 0, 0, 0.05)",
+                boxShadow: shadow.card,
+              }}
+            >
+              <Text style={{ fontSize: 11, fontWeight: "600", color: colors.ink }}>
+                {purposeText}
+              </Text>
+            </View>
+
+            {property.featured && (
+              <View
+                style={{
+                  backgroundColor: colors.accent,
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  borderRadius: radius.md,
+                }}
+              >
+                <Text style={{ fontSize: 11, fontWeight: "700", color: colors.onAccent }}>
+                  Featured
+                </Text>
+              </View>
+            )}
           </View>
 
-          <Pressable
-            onPress={handleFavorite}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel={isFav ? "Remove from saved" : "Save property"}
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: radius.full,
-              backgroundColor: colors.surface,
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: shadow.card,
-            }}
-          >
-            <Heart
-              size={15}
-              color={isFav ? colors.accent : colors.inkMuted}
-              fill={isFav ? colors.accent : "transparent"}
-            />
-          </Pressable>
+          <FavoriteButton isFav={isFav} onPress={handleFavorite} />
         </View>
       </View>
 
-      <View style={{ padding: compact ? spacing.md : spacing.lg, gap: spacing.xs }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
-          <Text style={{ ...type.heading, color: colors.accent }}>
-            {formatIndianPrice(property.price)}
-            {(property.purpose === "rent" || property.purpose === "lease") && (
-              <Text style={{ ...type.caption, color: colors.inkMuted }}> /mo</Text>
+      {/* Card Body */}
+      <View style={{ padding: compact ? 12 : 16, gap: 6 }}>
+        {/* Price & RERA Verification Tag */}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "baseline",
+            justifyContent: "space-between",
+            gap: 8,
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "baseline", gap: 2 }}>
+            <Text style={{ fontSize: 18, fontWeight: "700", color: colors.accent }}>
+              {priceLabel}
+            </Text>
+            {showPerMonth && (
+              <Text style={{ fontSize: 12, fontWeight: "500", color: colors.inkMuted }}> /mo</Text>
             )}
-          </Text>
+          </View>
+
           {property.reraApproved && (
             <View
               style={{
                 flexDirection: "row",
                 alignItems: "center",
-                gap: 3,
+                gap: 4,
                 backgroundColor: colors.successSoft,
-                paddingHorizontal: spacing.sm - 2,
+                paddingHorizontal: 8,
                 paddingVertical: 2,
                 borderRadius: radius.sm,
-                borderCurve: "continuous",
               }}
             >
-              <ShieldCheck size={11} color={colors.success} />
-              <Text style={{ ...type.micro, color: colors.success }}>RERA</Text>
+              <ShieldCheck size={12} color={colors.success} strokeWidth={2.5} />
+              <Text style={{ fontSize: 10, fontWeight: "700", color: colors.success }}>RERA</Text>
             </View>
           )}
         </View>
 
-        <Text numberOfLines={1} style={{ ...type.emphasis, color: colors.ink }}>
+        {/* Title */}
+        <Text
+          numberOfLines={1}
+          style={{ fontSize: 15, fontWeight: "600", color: colors.ink }}
+        >
           {property.title}
         </Text>
 
-        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
-          <MapPin size={12} color={colors.inkMuted} />
-          <Text numberOfLines={1} style={{ ...type.caption, color: colors.inkMuted, flex: 1 }}>
+        {/* Locality with Pin */}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+          <MapPin size={13} color={colors.inkMuted} />
+          <Text
+            numberOfLines={1}
+            style={{ fontSize: 12, color: colors.inkMuted, flex: 1 }}
+          >
             {property.locality}, {property.city}
           </Text>
         </View>
 
+        {/* Specs Meta Footer */}
         <View
           style={{
             flexDirection: "row",
             alignItems: "center",
-            gap: spacing.lg,
-            marginTop: spacing.xs,
-            paddingTop: spacing.sm,
+            gap: 14,
+            marginTop: 4,
+            paddingTop: 10,
             borderTopWidth: 1,
             borderTopColor: colors.border,
           }}
         >
           {property.bhk != null && (
-            <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
-              <Bed size={13} color={colors.inkMuted} />
-              <Text style={{ ...type.caption, color: colors.inkSecondary }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+              <Bed size={13} color={colors.inkSecondary} />
+              <Text style={{ fontSize: 12, fontWeight: "500", color: colors.inkSecondary }}>
                 {property.bhk} BHK
               </Text>
             </View>
           )}
-          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
-            <Maximize2 size={12} color={colors.inkMuted} />
-            <Text style={{ ...type.caption, color: colors.inkSecondary }}>
-              {formatSize(property.size)}
+
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <Maximize2 size={12} color={colors.inkSecondary} />
+            <Text style={{ fontSize: 12, fontWeight: "500", color: colors.inkSecondary }}>
+              {sizeLabel}
             </Text>
           </View>
-          {!compact && (
-            <Text style={{ ...type.caption, color: colors.inkSecondary }}>
+
+          {!compact && property.furnished && (
+            <Text
+              style={{
+                fontSize: 12,
+                fontWeight: "500",
+                color: colors.inkMuted,
+                marginLeft: "auto",
+              }}
+            >
               {property.furnished}
             </Text>
           )}
@@ -184,3 +257,5 @@ export function PropertyCard({ property, variant = "full" }: PropertyCardProps) 
     </Pressable>
   );
 }
+
+export const PropertyCard = memo(PropertyCardBase);

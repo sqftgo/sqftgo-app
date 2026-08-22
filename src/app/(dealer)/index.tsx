@@ -6,12 +6,10 @@ import {
   BarChart3,
   Calendar,
   CheckCircle2,
-  ClipboardList,
   Inbox,
   Plus,
 } from "@/components/ui/icons";
 
-import { EmptyState } from "@/components/ui/empty-state";
 import { ScreenNavbar } from "@/components/ui/screen-navbar";
 import { useApp } from "@/context/AppContext";
 import type { Property } from "@/data/types";
@@ -34,7 +32,35 @@ const STATUS_TONE: Record<Property["status"], { bg: string; color: string }> = {
   Rejected: { bg: colors.dangerSoft, color: colors.danger },
 };
 
-export default function DashboardScreen() {
+function SectionHeader({
+  title,
+  action,
+  onAction,
+}: {
+  title: string;
+  action: string;
+  onAction: () => void;
+}) {
+  return (
+    <View
+      style={{
+        paddingHorizontal: spacing.xl,
+        marginTop: spacing.xl,
+        marginBottom: spacing.md,
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+      }}
+    >
+      <Text style={{ ...type.label, color: colors.inkMuted }}>{title.toUpperCase()}</Text>
+      <Pressable onPress={onAction}>
+        <Text style={{ ...type.caption, color: colors.accent, fontWeight: "700" }}>{action}</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+export default function DealerDashboardScreen() {
   const router = useRouter();
   const {
     properties,
@@ -43,8 +69,6 @@ export default function DashboardScreen() {
     userEmail,
     userName,
     profile,
-    canAccessDealerDashboard,
-    dealerAccess,
     updateVisitStatus,
   } = useApp();
 
@@ -58,10 +82,14 @@ export default function DashboardScreen() {
     [properties, ownerOpts],
   );
 
-  const ownedIds = useMemo(() => ownedPropertyIds(properties, ownerOpts), [properties, ownerOpts]);
+  const ownedIds = useMemo(
+    () => ownedPropertyIds(properties, ownerOpts),
+    [properties, ownerOpts],
+  );
 
   const myInquiries = useMemo(
-    () => inquiries.filter((i) => ownsInquiry(i, { email: userEmail, ownedPropertyIds: ownedIds })),
+    () =>
+      inquiries.filter((i) => ownsInquiry(i, { email: userEmail, ownedPropertyIds: ownedIds })),
     [inquiries, userEmail, ownedIds],
   );
 
@@ -83,34 +111,12 @@ export default function DashboardScreen() {
     () =>
       myVisits
         .filter((v) => v.status === "pending" || v.status === "confirmed")
-        .slice(0, 4),
+        .slice(0, 5),
     [myVisits],
   );
 
   const latestInquiries = useMemo(() => myInquiries.slice(0, 4), [myInquiries]);
   const recentListings = useMemo(() => mine.slice(0, 5), [mine]);
-
-  if (!canAccessDealerDashboard) {
-    return (
-      <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.bg }}>
-        <EmptyState
-          icon={ClipboardList}
-          title="Pending dealer access"
-          message={
-            dealerAccess === "pending"
-              ? "Your directory is submitted. Full dashboard unlocks after web admin sets role to broker."
-              : "Register your dealer directory first. A card alone is not enough — you need broker role."
-          }
-          actionLabel={dealerAccess === "pending" ? "View status" : "Become a dealer"}
-          onAction={() =>
-            router.push(
-              (dealerAccess === "pending" ? "/dealer-pending" : "/dealer-register") as Href,
-            )
-          }
-        />
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -126,6 +132,7 @@ export default function DashboardScreen() {
           />
         </View>
 
+        {/* KPI Cards */}
         <View
           style={{
             flexDirection: "row",
@@ -161,6 +168,7 @@ export default function DashboardScreen() {
           ))}
         </View>
 
+        {/* Quick Actions */}
         <View
           style={{
             flexDirection: "row",
@@ -188,7 +196,7 @@ export default function DashboardScreen() {
             <Text style={{ ...type.emphasis, color: colors.onAccent }}>List New Property</Text>
           </Pressable>
           <Pressable
-            onPress={() => router.push("/analytics" as Href)}
+            onPress={() => router.push("/(dealer)/analytics" as Href)}
             style={({ pressed }) => ({
               height: 48,
               paddingHorizontal: spacing.lg,
@@ -207,10 +215,11 @@ export default function DashboardScreen() {
           </Pressable>
         </View>
 
+        {/* Recent Listings */}
         <SectionHeader
           title="Recent listings"
           action="All"
-          onAction={() => router.push("/(tabs)/properties" as Href)}
+          onAction={() => router.push("/(dealer)/properties" as Href)}
         />
         {recentListings.length === 0 ? (
           <View style={{ paddingHorizontal: spacing.xl }}>
@@ -268,6 +277,7 @@ export default function DashboardScreen() {
           </ScrollView>
         )}
 
+        {/* Upcoming Visits */}
         <SectionHeader
           title="Upcoming visits"
           action="Manage"
@@ -318,10 +328,11 @@ export default function DashboardScreen() {
           )}
         </View>
 
+        {/* Latest Inquiries */}
         <SectionHeader
           title="Latest inquiries"
           action="Inbox"
-          onAction={() => router.push("/(tabs)/inquiries" as Href)}
+          onAction={() => router.push("/(dealer)/inquiries" as Href)}
         />
         <View style={{ paddingHorizontal: spacing.xl, gap: spacing.sm }}>
           {latestInquiries.length === 0 ? (
@@ -330,7 +341,7 @@ export default function DashboardScreen() {
             latestInquiries.map((inq) => (
               <Pressable
                 key={inq.id}
-                onPress={() => router.push("/(tabs)/inquiries" as Href)}
+                onPress={() => router.push("/(dealer)/inquiries" as Href)}
                 style={{
                   backgroundColor: colors.surface,
                   borderWidth: 1,
@@ -352,33 +363,5 @@ export default function DashboardScreen() {
         </View>
       </ScrollView>
     </SafeAreaView>
-  );
-}
-
-function SectionHeader({
-  title,
-  action,
-  onAction,
-}: {
-  title: string;
-  action: string;
-  onAction: () => void;
-}) {
-  return (
-    <View
-      style={{
-        paddingHorizontal: spacing.xl,
-        marginTop: spacing.xl,
-        marginBottom: spacing.md,
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-      }}
-    >
-      <Text style={{ ...type.label, color: colors.inkMuted }}>{title.toUpperCase()}</Text>
-      <Pressable onPress={onAction}>
-        <Text style={{ ...type.caption, color: colors.accent, fontWeight: "700" }}>{action}</Text>
-      </Pressable>
-    </View>
   );
 }

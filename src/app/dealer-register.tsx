@@ -197,7 +197,7 @@ export default function DealerRegisterScreen() {
                   style={{
                     paddingHorizontal: spacing.md,
                     paddingVertical: spacing.sm,
-                    borderRadius: radius.full,
+                    borderRadius: radius.md,
                     borderWidth: 1,
                     borderColor: active ? colors.accent : colors.border,
                     backgroundColor: active ? colors.accentSoft : colors.surface,
@@ -228,7 +228,7 @@ export default function DealerRegisterScreen() {
                   style={{
                     paddingHorizontal: spacing.md,
                     paddingVertical: spacing.sm,
-                    borderRadius: radius.full,
+                    borderRadius: radius.md,
                     borderWidth: 1,
                     borderColor: active ? colors.accent : colors.border,
                     backgroundColor: active ? colors.accentSoft : colors.surface,

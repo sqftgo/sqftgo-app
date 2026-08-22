@@ -104,8 +104,10 @@ function RootLayoutNav() {
             anywhere drops the user back to auth automatically. */}
         <Stack.Protected guard={hasCompletedOnboarding && isLoggedIn}>
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="(dealer)" />
           <Stack.Screen name="services" />
           <Stack.Screen name="property/[id]" />
+          <Stack.Screen name="broker/[id]" />
           <Stack.Screen name="post-property" options={{ presentation: "modal" }} />
           <Stack.Screen name="edit-property/[id]" />
           <Stack.Screen name="analytics" />

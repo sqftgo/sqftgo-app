@@ -44,15 +44,13 @@ const STATUS_TONE: Record<PropertyStatus, { bg: string; color: string }> = {
   Rejected: { bg: colors.dangerSoft, color: colors.danger },
 };
 
-export default function MyPropertiesScreen() {
+export default function DealerPropertiesScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ status?: string }>();
   const {
     properties,
     userEmail,
     profile,
-    canAccessDealerDashboard,
-    dealerAccess,
     deleteProperty,
     updateProperty,
   } = useApp();
@@ -76,30 +74,8 @@ export default function MyPropertiesScreen() {
     [mine, filter],
   );
 
-  if (!canAccessDealerDashboard) {
-    return (
-      <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.bg }}>
-        <EmptyState
-          icon={ClipboardList}
-          title="Pending dealer access"
-          message={
-            dealerAccess === "pending"
-              ? "Your directory is submitted. Full dashboard unlocks after web admin sets role to broker."
-              : "Register your dealer directory first."
-          }
-          actionLabel={dealerAccess === "pending" ? "View status" : "Become a dealer"}
-          onAction={() =>
-            router.push(
-              (dealerAccess === "pending" ? "/dealer-pending" : "/dealer-register") as Href,
-            )
-          }
-        />
-      </SafeAreaView>
-    );
-  }
-
   const handleDelete = (item: Property) => {
-    appAlert("Delete listing", `Remove “${item.title}”?`, [
+    appAlert("Delete listing", `Remove "${item.title}"?`, [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",

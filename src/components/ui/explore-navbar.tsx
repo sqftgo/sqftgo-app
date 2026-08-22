@@ -54,7 +54,7 @@ export function ExploreNavbar({
           paddingVertical: spacing.xs,
           paddingHorizontal: spacing.sm,
           marginLeft: -spacing.sm,
-          borderRadius: radius.full,
+          borderRadius: radius.md,
           backgroundColor: pressed ? colors.surfaceSubtle : "transparent",
         })}
       >

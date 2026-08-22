@@ -41,7 +41,7 @@ export function Chip({
         gap: spacing.xs,
         paddingHorizontal: spacing.md,
         paddingVertical: spacing.sm,
-        borderRadius: radius.full,
+        borderRadius: radius.md,
         backgroundColor: selected ? colors.ink : colors.surface,
         borderWidth: 1,
         borderColor: selected ? colors.ink : colors.border,
@@ -58,7 +58,7 @@ export function Chip({
             backgroundColor: selected ? colors.accent : colors.surfaceSubtle,
             paddingHorizontal: 6,
             paddingVertical: 1,
-            borderRadius: radius.full,
+            borderRadius: radius.md,
           }}
         >
           <Text
@@ -161,7 +161,7 @@ export function RemovableFilterChip({ label, onRemove }: RemovableFilterChipProp
         backgroundColor: colors.accentSoft,
         borderWidth: 1,
         borderColor: colors.accentBorder,
-        borderRadius: radius.full,
+        borderRadius: radius.md,
         paddingHorizontal: spacing.md,
         paddingVertical: spacing.xs + 2,
         opacity: pressed ? 0.7 : 1,

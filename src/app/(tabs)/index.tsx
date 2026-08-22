@@ -1,8 +1,23 @@
+import {
+  ArrowRight,
+  Bell,
+  Building,
+  Building2,
+  CheckCircle,
+  ChevronRight,
+  Community,
+  Home as HomeIcon,
+  KeyRound,
+  Plus,
+  Search,
+  Shop,
+  Sparks,
+} from "@/components/ui/icons";
+import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import { FlatList, Pressable, ScrollView, Text, View } from "react-native";
-import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Bell, Building2, Home as HomeIcon, KeyRound, Plus, Search, Store } from "@/components/ui/icons";
+import * as Haptics from "expo-haptics";
 
 import CitySelectionModal from "@/components/ui/CitySelectionModal";
 import { ExpertCard } from "@/components/ui/expert-card";
@@ -11,17 +26,56 @@ import { PropertyCard } from "@/components/ui/property-card";
 import { ScreenNavbar } from "@/components/ui/screen-navbar";
 import { SectionHeader } from "@/components/ui/section-header";
 import { useApp } from "@/context/AppContext";
-import { displayNameFromEmail, greetingForHour } from "@/lib/format";
 import type { PurposeFilter } from "@/lib/filters";
-import { colors, radius, spacing, type } from "@/theme/tokens";
+import { displayNameFromEmail, greetingForHour } from "@/lib/format";
+import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
 
-/** Home shortcuts into Explore — `commercial` maps to commercial property types. */
+/** Home shortcuts into Explore */
 type ExploreIntent = PurposeFilter | "commercial";
 
 const INTENTS: { id: ExploreIntent; label: string; icon: typeof HomeIcon }[] = [
   { id: "buy", label: "Buy", icon: HomeIcon },
   { id: "rent", label: "Rent", icon: KeyRound },
-  { id: "commercial", label: "Commercial", icon: Store },
+];
+
+/** Category quick access buttons */
+const CATEGORIES = [
+  {
+    id: "Apartment",
+    title: "Apartments",
+    subtitle: "Flats & Societies",
+    icon: Building,
+    typeParam: "Apartment",
+    accentBg: "rgba(15, 30, 54, 0.05)",
+    iconColor: colors.primary,
+  },
+  {
+    id: "Villa",
+    title: "Villas & Homes",
+    subtitle: "Independent Living",
+    icon: HomeIcon,
+    typeParam: "Villa",
+    accentBg: "rgba(224, 90, 54, 0.08)",
+    iconColor: colors.accent,
+  },
+  {
+    id: "Commercial",
+    title: "Commercial",
+    subtitle: "Shops & Offices",
+    icon: Shop,
+    typeParam: "commercial",
+    accentBg: "rgba(0, 91, 150, 0.08)",
+    iconColor: colors.info,
+  },
+  {
+    id: "Plot",
+    title: "Plots & Land",
+    subtitle: "Residential & Agri",
+    icon: Community,
+    typeParam: "Industrial Plot",
+    accentBg: "rgba(14, 159, 110, 0.08)",
+    iconColor: colors.success,
+  },
 ];
 
 export default function HomeScreen() {
@@ -30,6 +84,7 @@ export default function HomeScreen() {
 
   const [cityModalVisible, setCityModalVisible] = useState(false);
   const [notificationsVisible, setNotificationsVisible] = useState(false);
+  const [selectedIntent, setSelectedIntent] = useState<ExploreIntent>("buy");
   const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
 
   const firstName = useMemo(() => {
@@ -39,21 +94,55 @@ export default function HomeScreen() {
     return fromEmail && !/^user$/i.test(fromEmail) ? fromEmail : "there";
   }, [userName, profile?.name, userEmail]);
 
-  const cityProperties = useMemo(
-    () => properties.filter((p) => p.city === selectedCity && p.status === "Active"),
-    [properties, selectedCity],
-  );
+  const cityProperties = useMemo(() => {
+    const active = properties.filter((p) => p.status === "Active");
+    if (!selectedCity || selectedCity.toLowerCase() === "all india") {
+      return active;
+    }
+    const matched = active.filter(
+      (p) => p.city.trim().toLowerCase() === selectedCity.trim().toLowerCase(),
+    );
+    return matched.length > 0 ? matched : active;
+  }, [properties, selectedCity]);
+
   const featured = useMemo(
-    () => properties.filter((p) => p.featured && p.status === "Active"),
+    () => {
+      const activeFeatured = properties.filter((p) => p.featured && p.status === "Active");
+      return activeFeatured.length > 0 ? activeFeatured : properties.filter((p) => p.status === "Active");
+    },
     [properties],
   );
+
   const cityExperts = useMemo(
-    () => directoryProfiles.filter((d) => d.city === selectedCity).slice(0, 2),
+    () => {
+      if (!selectedCity || selectedCity.toLowerCase() === "all india") {
+        return directoryProfiles.slice(0, 2);
+      }
+      const matched = directoryProfiles.filter(
+        (d) => d.city.trim().toLowerCase() === selectedCity.trim().toLowerCase(),
+      );
+      return (matched.length > 0 ? matched : directoryProfiles).slice(0, 2);
+    },
     [directoryProfiles, selectedCity],
   );
 
-  const goToExplore = (purpose?: ExploreIntent) => {
-    router.push(purpose ? { pathname: "/(tabs)/explore", params: { purpose } } : "/(tabs)/explore");
+  const goToExplore = (purpose?: ExploreIntent, type?: string) => {
+    const params: Record<string, string> = {};
+    if (purpose) params.purpose = purpose;
+    if (type) params.type = type;
+
+    router.push({
+      pathname: "/(tabs)/explore",
+      params,
+    });
+  };
+
+  const handleIntentPress = (id: ExploreIntent) => {
+    if (process.env.EXPO_OS === "ios") {
+      Haptics.selectionAsync();
+    }
+    setSelectedIntent(id);
+    goToExplore(id);
   };
 
   return (
@@ -61,10 +150,11 @@ export default function HomeScreen() {
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: spacing.xxl, gap: spacing.xl }}
+        contentContainerStyle={{ paddingBottom: spacing.xxl + spacing.lg, gap: spacing.xxl }}
       >
-        {/* Header + search + intents — tighter cluster */}
-        <View style={{ paddingHorizontal: spacing.xl, gap: spacing.md }}>
+        {/* Top Header & Search Hero */}
+        <View style={{ paddingHorizontal: spacing.lg, gap: spacing.md }}>
+          {/* Header Row */}
           <View
             style={{
               flexDirection: "row",
@@ -77,10 +167,11 @@ export default function HomeScreen() {
               <ScreenNavbar
                 eyebrow={`${greetingForHour(new Date().getHours())}, ${firstName}`}
                 title={selectedCity}
-                subtitle="Tap to change city"
+                subtitle="Tap to change location"
                 onPressTitle={() => setCityModalVisible(true)}
               />
             </View>
+
             <Pressable
               onPress={() => setNotificationsVisible(true)}
               accessibilityRole="button"
@@ -88,15 +179,16 @@ export default function HomeScreen() {
                 unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"
               }
               style={({ pressed }) => ({
-                marginTop: spacing.md + 14,
-                width: 40,
-                height: 40,
-                borderRadius: radius.full,
+                marginTop: spacing.md + 10,
+                width: 42,
+                height: 42,
+                borderRadius: radius.md,
                 backgroundColor: colors.surface,
                 borderWidth: 1,
                 borderColor: colors.border,
                 alignItems: "center",
                 justifyContent: "center",
+                boxShadow: shadow.card,
                 opacity: pressed ? 0.7 : 1,
               })}
             >
@@ -105,8 +197,8 @@ export default function HomeScreen() {
                 <View
                   style={{
                     position: "absolute",
-                    top: 8,
-                    right: 9,
+                    top: 9,
+                    right: 10,
                     width: 8,
                     height: 8,
                     borderRadius: radius.full,
@@ -119,78 +211,179 @@ export default function HomeScreen() {
             </Pressable>
           </View>
 
-          <Pressable
-            onPress={() => goToExplore()}
-            accessibilityRole="search"
-            accessibilityLabel="Search properties"
-            style={({ pressed }) => ({
-              flexDirection: "row",
-              alignItems: "center",
-              gap: spacing.sm,
-              backgroundColor: colors.surface,
-              borderWidth: 1,
-              borderColor: colors.border,
-              borderRadius: radius.md,
-              borderCurve: "continuous",
-              height: 44,
-              paddingHorizontal: spacing.md,
-              opacity: pressed ? 0.7 : 1,
-            })}
-          >
-            <Search size={16} color={colors.inkMuted} />
-            <Text style={{ ...type.body, lineHeight: undefined, color: colors.inkMuted }}>
-              Search by locality, project, or type
-            </Text>
-          </Pressable>
-
-          {/* Intent row — compact segmented chips, not tall cards */}
+          {/* Search Card Container with Intent Switcher */}
           <View
             style={{
-              flexDirection: "row",
               backgroundColor: colors.surface,
+              borderRadius: radius.xl,
+              borderCurve: "continuous",
               borderWidth: 1,
               borderColor: colors.border,
-              borderRadius: radius.md,
-              borderCurve: "continuous",
-              padding: spacing.xs,
-              gap: spacing.xs,
+              padding: spacing.md,
+              gap: spacing.md,
+              boxShadow: shadow.card,
             }}
           >
-            {INTENTS.map(({ id, label, icon: Icon }) => (
-              <Pressable
-                key={id}
-                onPress={() => goToExplore(id)}
-                accessibilityRole="button"
-                accessibilityLabel={`Browse ${label} properties`}
-                style={({ pressed }) => ({
-                  flex: 1,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: spacing.xs,
-                  paddingVertical: spacing.sm + 2,
-                  borderRadius: radius.sm,
-                  backgroundColor: pressed ? colors.accentSoft : "transparent",
-                })}
-              >
-                <Icon size={15} color={colors.accent} strokeWidth={2} />
-                <Text
-                  numberOfLines={1}
-                  style={{ ...type.caption, color: colors.ink, fontWeight: "600" }}
-                >
-                  {label}
+            {/* Intent Segmented Switcher */}
+            <View
+              style={{
+                flexDirection: "row",
+                backgroundColor: colors.surfaceSubtle,
+                borderRadius: radius.lg,
+                borderCurve: "continuous",
+                padding: spacing.xs,
+                gap: spacing.xs,
+              }}
+            >
+              {INTENTS.map(({ id, label, icon: Icon }) => {
+                const isActive = selectedIntent === id;
+                return (
+                  <Pressable
+                    key={id}
+                    onPress={() => handleIntentPress(id)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Browse ${label} properties`}
+                    style={({ pressed }) => ({
+                      flex: 1,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: spacing.xs + 2,
+                      paddingVertical: spacing.sm + 2,
+                      borderRadius: radius.md,
+                      borderCurve: "continuous",
+                      backgroundColor: isActive ? colors.surface : "transparent",
+                      boxShadow: isActive ? shadow.card : undefined,
+                      opacity: pressed ? 0.8 : 1,
+                    })}
+                  >
+                    <Icon
+                      size={15}
+                      color={isActive ? colors.accent : colors.inkMuted}
+                      strokeWidth={isActive ? 2.5 : 2}
+                    />
+                    <Text
+                      numberOfLines={1}
+                      style={{
+                        ...type.caption,
+                        color: isActive ? colors.ink : colors.inkMuted,
+                        fontWeight: isActive ? "700" : "500",
+                      }}
+                    >
+                      {label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {/* Tap Search Input */}
+            <Pressable
+              onPress={() => goToExplore(selectedIntent)}
+              accessibilityRole="search"
+              accessibilityLabel="Search properties"
+              style={({ pressed }) => ({
+                flexDirection: "row",
+                alignItems: "center",
+                gap: spacing.md,
+                backgroundColor: colors.surfaceSubtle,
+                borderRadius: radius.lg,
+                borderCurve: "continuous",
+                height: 48,
+                paddingHorizontal: spacing.lg,
+                borderWidth: 1,
+                borderColor: colors.border,
+                opacity: pressed ? 0.8 : 1,
+              })}
+            >
+              <Search size={18} color={colors.accent} strokeWidth={2} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ ...type.body, fontSize: 14, color: colors.inkMuted }}>
+                  Search locality, landmark, or builder...
                 </Text>
-              </Pressable>
-            ))}
+              </View>
+            </Pressable>
           </View>
         </View>
 
-        {/* Featured rail */}
+        {/* Explore Categories Section */}
+        <View style={{ paddingHorizontal: spacing.lg, gap: spacing.md }}>
+          <SectionHeader
+            title="Explore by Category"
+            actionLabel="All Filters"
+            onAction={() => goToExplore()}
+          />
+          <View
+            style={{
+              flexDirection: "row",
+              flexWrap: "wrap",
+              gap: spacing.sm,
+            }}
+          >
+            {CATEGORIES.map((cat) => {
+              const Icon = cat.icon;
+              return (
+                <Pressable
+                  key={cat.id}
+                  onPress={() => goToExplore(undefined, cat.typeParam)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Browse ${cat.title}`}
+                  style={({ pressed }) => ({
+                    flexBasis: "48.5%",
+                    flexGrow: 1,
+                    backgroundColor: colors.surface,
+                    borderRadius: radius.lg,
+                    borderCurve: "continuous",
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    padding: spacing.md,
+                    gap: spacing.sm,
+                    boxShadow: shadow.card,
+                    transform: [{ scale: pressed ? 0.98 : 1 }],
+                  })}
+                >
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: radius.md,
+                        backgroundColor: cat.accentBg,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Icon size={20} color={cat.iconColor} strokeWidth={2} />
+                    </View>
+                    <ChevronRight size={16} color={colors.inkMuted} />
+                  </View>
+
+                  <View style={{ gap: 2 }}>
+                    <Text style={{ ...type.emphasis, color: colors.ink, fontSize: 14 }}>
+                      {cat.title}
+                    </Text>
+                    <Text style={{ ...type.micro, color: colors.inkMuted }}>
+                      {cat.subtitle}
+                    </Text>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Featured Rail */}
         {featured.length > 0 && (
-          <View style={{ gap: spacing.lg }}>
-            <View style={{ paddingHorizontal: spacing.xl }}>
+          <View style={{ gap: spacing.md }}>
+            <View style={{ paddingHorizontal: spacing.lg }}>
               <SectionHeader
-                title="Featured homes"
+                title="Featured Properties"
                 actionLabel="See all"
                 onAction={() => goToExplore()}
               />
@@ -201,59 +394,74 @@ export default function HomeScreen() {
               keyExtractor={(item) => item.id}
               renderItem={({ item }) => <PropertyCard property={item} variant="compact" />}
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: spacing.xl, gap: spacing.md }}
+              contentContainerStyle={{ paddingHorizontal: spacing.lg, gap: spacing.md }}
             />
           </View>
         )}
 
-        {/* Post property CTA */}
-        <View style={{ paddingHorizontal: spacing.xl }}>
+        {/* Post Property Banner CTA */}
+        <View style={{ paddingHorizontal: spacing.lg }}>
           <Pressable
             onPress={() => router.push("/post-property")}
             accessibilityRole="button"
             style={({ pressed }) => ({
               flexDirection: "row",
               alignItems: "center",
-              gap: spacing.lg,
-              backgroundColor: colors.ink,
+              gap: spacing.md,
+              backgroundColor: colors.primary,
               borderRadius: radius.xl,
               borderCurve: "continuous",
               padding: spacing.lg,
-              opacity: pressed ? 0.9 : 1,
+              boxShadow: shadow.raised,
+              opacity: pressed ? 0.92 : 1,
             })}
           >
             <View
               style={{
-                width: 44,
-                height: 44,
-                borderRadius: radius.full,
+                width: 46,
+                height: 46,
+                borderRadius: radius.md,
                 backgroundColor: colors.accent,
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <Plus size={20} color={colors.onAccent} strokeWidth={2.5} />
+              <Plus size={22} color={colors.onAccent} strokeWidth={2.5} />
             </View>
             <View style={{ flex: 1, gap: 2 }}>
-              <Text style={{ ...type.emphasis, color: colors.surface }}>Post your property</Text>
-              <Text style={{ ...type.caption, color: "rgba(255,255,255,0.72)" }}>
-                List for free and reach verified buyers
+              <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
+                <Text style={{ ...type.emphasis, color: colors.surface, fontSize: 15 }}>
+                  List Your Property
+                </Text>
+                <View
+                  style={{
+                    backgroundColor: "rgba(255,255,255,0.15)",
+                    paddingHorizontal: spacing.xs + 2,
+                    paddingVertical: 1,
+                    borderRadius: radius.sm,
+                  }}
+                >
+                  <Text style={{ ...type.micro, color: colors.surface, fontSize: 10 }}>Free</Text>
+                </View>
+              </View>
+              <Text style={{ ...type.caption, color: "rgba(255,255,255,0.75)" }}>
+                Zero brokerage & connect with verified genuine buyers
               </Text>
             </View>
-            <Building2 size={22} color="rgba(255,255,255,0.4)" />
+            <Building2 size={24} color="rgba(255,255,255,0.35)" />
           </Pressable>
         </View>
 
-        {/* In-city listings */}
-        <View style={{ paddingHorizontal: spacing.xl, gap: spacing.lg }}>
+        {/* In-City Properties Rail / Feed */}
+        <View style={{ paddingHorizontal: spacing.lg, gap: spacing.md }}>
           <SectionHeader
-            title={`Homes in ${selectedCity}`}
+            title={selectedCity === "All India" ? "Recent Listings" : `Homes in ${selectedCity}`}
             actionLabel={cityProperties.length > 3 ? "See all" : undefined}
             onAction={cityProperties.length > 3 ? () => goToExplore() : undefined}
           />
           {cityProperties.length > 0 ? (
             <View style={{ gap: spacing.lg }}>
-              {cityProperties.slice(0, 3).map((property) => (
+              {cityProperties.slice(0, 4).map((property) => (
                 <PropertyCard key={property.id} property={property} />
               ))}
             </View>
@@ -263,36 +471,48 @@ export default function HomeScreen() {
                 backgroundColor: colors.surface,
                 borderWidth: 1,
                 borderColor: colors.border,
-                borderRadius: radius.lg,
+                borderRadius: radius.xl,
                 borderCurve: "continuous",
                 padding: spacing.xl,
+                alignItems: "center",
                 gap: spacing.sm,
               }}
             >
               <Text style={{ ...type.emphasis, color: colors.ink }}>
                 No listings in {selectedCity} yet
               </Text>
-              <Text style={{ ...type.caption, color: colors.inkMuted }}>
-                Try a nearby city, or browse featured homes above.
+              <Text style={{ ...type.caption, color: colors.inkMuted, textAlign: "center" }}>
+                Try exploring nearby areas or change your city filter.
               </Text>
-              <Pressable onPress={() => setCityModalVisible(true)} hitSlop={8}>
-                <Text style={{ ...type.label, color: colors.accent }}>Change city</Text>
+              <Pressable
+                onPress={() => setCityModalVisible(true)}
+                style={{
+                  marginTop: spacing.xs,
+                  paddingHorizontal: spacing.lg,
+                  paddingVertical: spacing.sm,
+                  backgroundColor: colors.accentSoft,
+                  borderRadius: radius.md,
+                }}
+              >
+                <Text style={{ ...type.label, color: colors.accent, fontWeight: "600" }}>
+                  Change Location
+                </Text>
               </Pressable>
             </View>
           )}
         </View>
 
-        {/* Local experts */}
+        {/* Local Verified Experts */}
         {cityExperts.length > 0 && (
-          <View style={{ paddingHorizontal: spacing.xl, gap: spacing.lg }}>
+          <View style={{ paddingHorizontal: spacing.lg, gap: spacing.md }}>
             <SectionHeader
-              title="Local experts"
-              actionLabel="See all"
+              title="Verified Local Experts"
+              actionLabel="View all"
               onAction={() => router.push("/services")}
             />
             <View style={{ gap: spacing.md }}>
-              {cityExperts.map((profile) => (
-                <ExpertCard key={profile.id} profile={profile} />
+              {cityExperts.map((expert) => (
+                <ExpertCard key={expert.id} profile={expert} />
               ))}
             </View>
           </View>
@@ -311,3 +531,4 @@ export default function HomeScreen() {
     </SafeAreaView>
   );
 }
+
