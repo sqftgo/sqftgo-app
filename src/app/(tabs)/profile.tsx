@@ -3,7 +3,6 @@ import * as Haptics from "expo-haptics";
 import { useRouter, type Href } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  Alert,
   Pressable,
   ScrollView,
   Switch,
@@ -11,6 +10,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { appAlert } from "@/components/ui/app-alert";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
@@ -218,7 +218,7 @@ export default function ProfileScreen() {
   ).length;
 
   const handleLogout = () => {
-    Alert.alert("Sign out", "Are you sure you want to sign out?", [
+    appAlert("Sign out", "Are you sure you want to sign out?", [
       { text: "Cancel", style: "cancel" },
       { text: "Sign out", style: "destructive", onPress: signOut },
     ]);
@@ -239,7 +239,7 @@ export default function ProfileScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch (e) {
-      Alert.alert("Error", "Could not update profile. Please try again.");
+      appAlert("Error", "Could not update profile. Please try again.");
     } finally {
       setSavingProfile(false);
     }
@@ -270,12 +270,12 @@ export default function ProfileScreen() {
   // Dealer save functions
   const savePersonal = () => {
     updateProfile({ name: displayName.trim(), phone: phone.trim() });
-    Alert.alert("Saved", "Personal details updated.");
+    appAlert("Saved", "Personal details updated.");
   };
 
   const saveBusiness = async () => {
     if (!myDirectory) {
-      Alert.alert("No directory card", "Complete dealer registration first.");
+      appAlert("No directory card", "Complete dealer registration first.");
       return;
     }
     setSaving(true);
@@ -293,10 +293,10 @@ export default function ProfileScreen() {
     });
     setSaving(false);
     if (!result.ok) {
-      Alert.alert("Save failed", result.message ?? "Try again.");
+      appAlert("Save failed", result.message ?? "Try again.");
       return;
     }
-    Alert.alert("Saved", "Business details updated on your directory card.");
+    appAlert("Saved", "Business details updated on your directory card.");
   };
 
   const toggleSpecialty = (s: string) => {
@@ -945,11 +945,11 @@ export default function ProfileScreen() {
                   label="RERA & Legal Verification"
                   sub="Verify title deeds, clearances & RERA filings"
                   onPress={() =>
-                    Alert.alert(
+                    appAlert(
                       "Legal Title Checks",
                       "All featured properties on SqftGo are verified with RERA documentation and clear titles. Contact our verified legal consultants in Directory for personalized assistance.",
                       [
-                        { text: "Explore Directory", onPress: () => router.push("/(tabs)/services") },
+                        { text: "Explore Directory", onPress: () => router.push("/services") },
                         { text: "Close", style: "cancel" },
                       ],
                     )
@@ -959,7 +959,7 @@ export default function ProfileScreen() {
                   icon={Building2}
                   label="Interior Design & Shifting"
                   sub="Connect with top local decorators & moving pros"
-                  onPress={() => router.push("/(tabs)/services")}
+                  onPress={() => router.push("/services")}
                   showDivider={false}
                 />
               </MenuGroup>
@@ -1026,7 +1026,7 @@ export default function ProfileScreen() {
                   icon={FileText}
                   label="Terms of service & privacy"
                   onPress={() =>
-                    Alert.alert(
+                    appAlert(
                       "SqftGo Terms & Privacy",
                       "SqftGo protects buyer confidentiality. Your contact details are only shared with dealers when you submit an explicit inquiry or site visit request.",
                     )
@@ -1542,7 +1542,7 @@ export default function ProfileScreen() {
           <Pressable
             onPress={() => {
               setFaqModalVisible(false);
-              Alert.alert(
+              appAlert(
                 "Contact Buyer Support",
                 "Email: support@sqftgo.com\nHelpline: +91 80000 12345 (Mon-Sat, 9am-7pm IST)",
               );

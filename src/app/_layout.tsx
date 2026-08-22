@@ -6,6 +6,7 @@ import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
 import "@/global.css";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { View } from "react-native";
 
 import { useFonts, Fredoka_600SemiBold } from "@expo-google-fonts/fredoka";
@@ -21,6 +22,7 @@ import { AppProvider, useApp } from "@/context/AppContext";
 import { colors } from "@/theme/tokens";
 import { AuthLoadingScreen } from "@/components/ui/auth-loading";
 import { AuthErrorScreen } from "@/components/ui/auth-error";
+import { AppAlertProvider } from "@/components/ui/app-alert";
 
 // Keep native splash screen visible until initial hydration & routing check finishes
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -102,6 +104,7 @@ function RootLayoutNav() {
             anywhere drops the user back to auth automatically. */}
         <Stack.Protected guard={hasCompletedOnboarding && isLoggedIn}>
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="services" />
           <Stack.Screen name="property/[id]" />
           <Stack.Screen name="post-property" options={{ presentation: "modal" }} />
           <Stack.Screen name="edit-property/[id]" />
@@ -126,11 +129,15 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   return (
-    <SafeAreaProvider>
-      <AppProvider>
-        <RootLayoutNav />
-      </AppProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <AppAlertProvider>
+          <AppProvider>
+            <RootLayoutNav />
+          </AppProvider>
+        </AppAlertProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 

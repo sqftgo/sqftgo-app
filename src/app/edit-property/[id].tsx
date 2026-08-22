@@ -1,12 +1,12 @@
 import React, { useMemo, useState } from "react";
 import {
-  Alert,
   Pressable,
   ScrollView,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { appAlert } from "@/components/ui/app-alert";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ChevronLeft } from "@/components/ui/icons";
@@ -63,7 +63,7 @@ export default function EditPropertyScreen() {
 
   const handleSave = async (submitForReview: boolean) => {
     if (!title.trim() || !price || !locality.trim() || !size || !description.trim()) {
-      Alert.alert("Missing fields", "Title, price, locality, size, and description are required.");
+      appAlert("Missing fields", "Title, price, locality, size, and description are required.");
       return;
     }
     setSaving(true);
@@ -81,10 +81,10 @@ export default function EditPropertyScreen() {
     const updated = await updateProperty(existing.id, patch);
     setSaving(false);
     if (!updated) {
-      Alert.alert("Save failed", "Could not update listing. Brokers cannot set Active.");
+      appAlert("Save failed", "Could not update listing. Brokers cannot set Active.");
       return;
     }
-    Alert.alert(
+    appAlert(
       "Saved",
       submitForReview
         ? "Listing submitted for review."

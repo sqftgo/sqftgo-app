@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
-import { Alert, FlatList, Pressable, Text, View } from "react-native";
+import { FlatList, Pressable, Text, View } from "react-native";
+import { appAlert } from "@/components/ui/app-alert";
 import { useRouter, type Href } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Calendar } from "@/components/ui/icons";
@@ -205,7 +206,7 @@ export default function ManageVisitsScreen() {
                   ) : null}
                   <Pressable
                     onPress={() =>
-                      Alert.alert("Cancel visit", "Mark this visit as cancelled?", [
+                      appAlert("Cancel visit", "Mark this visit as cancelled?", [
                         { text: "Keep", style: "cancel" },
                         {
                           text: "Cancel visit",

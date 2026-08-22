@@ -1,5 +1,6 @@
 import React from "react";
-import { Alert, Linking, Pressable, Text, View } from "react-native";
+import { Linking, Pressable, Text, View } from "react-native";
+import { appAlert } from "@/components/ui/app-alert";
 import { Mail, Phone, ShieldCheck } from "@/components/ui/icons";
 
 import type { DirectoryProfile } from "@/data/types";
@@ -10,7 +11,7 @@ import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
 export function ExpertCard({ profile }: { profile: DirectoryProfile }) {
   const handleCall = () => {
     Linking.openURL(`tel:${profile.mobile.replace(/\s/g, "")}`).catch(() => {
-      Alert.alert("Unable to call", "Calls are not supported on this device.");
+      appAlert("Unable to call", "Calls are not supported on this device.");
     });
   };
 
@@ -18,7 +19,7 @@ export function ExpertCard({ profile }: { profile: DirectoryProfile }) {
     Linking.openURL(
       `mailto:${profile.email}?subject=${encodeURIComponent(`Inquiry: ${profile.firmName}`)}`,
     ).catch(() => {
-      Alert.alert("Unable to email", "No email app is configured on this device.");
+      appAlert("Unable to email", "No email app is configured on this device.");
     });
   };
 

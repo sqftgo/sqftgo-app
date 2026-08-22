@@ -1,5 +1,4 @@
-import { Tabs } from "expo-router";
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useMemo } from "react";
 import {
   Animated,
   Pressable,
@@ -9,6 +8,17 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
+import {
+  ParamListBase,
+  TabNavigationState,
+} from "@react-navigation/native";
+import type { MaterialTopTabBarProps } from "@react-navigation/material-top-tabs";
+import {
+  createMaterialTopTabNavigator,
+  type MaterialTopTabNavigationEventMap,
+  type MaterialTopTabNavigationOptions,
+} from "@react-navigation/material-top-tabs";
+import { withLayoutContext } from "expo-router";
 import {
   Bookmark,
   Building2,
@@ -28,7 +38,11 @@ import { colors, type } from "@/theme/tokens";
 interface TabDef {
   name: string;
   label: string;
-  Icon: React.ComponentType<{ size?: number; color?: string; strokeWidth?: number | string }>;
+  Icon: React.ComponentType<{
+    size?: number;
+    color?: string;
+    strokeWidth?: number | string;
+  }>;
   badge?: number;
 }
 
@@ -53,14 +67,21 @@ function tabsForRole(role: UserRole | null): TabDef[] {
   return USER_TABS;
 }
 
-interface CustomTabBarProps {
-  state: any;
-  descriptors: any;
-  navigation: any;
+const { Navigator } = createMaterialTopTabNavigator();
+
+/** Swipeable tabs (Instagram-style). Only declared screens are registered. */
+const SwipeTabs = withLayoutContext<
+  MaterialTopTabNavigationOptions,
+  typeof Navigator,
+  TabNavigationState<ParamListBase>,
+  MaterialTopTabNavigationEventMap
+>(Navigator, undefined, true);
+
+interface CustomTabBarProps extends MaterialTopTabBarProps {
   tabs: TabDef[];
 }
 
-function CustomTabBar({ state, navigation, tabs }: CustomTabBarProps) {
+function CustomTabBar({ state, navigation, position, tabs }: CustomTabBarProps) {
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
 
@@ -68,22 +89,13 @@ function CustomTabBar({ state, navigation, tabs }: CustomTabBarProps) {
   const activeIdx = tabs.findIndex((t) => t.name === activeRouteName);
   const safeActiveIdx = activeIdx === -1 ? 0 : activeIdx;
 
-  const indicatorAnim = useRef(new Animated.Value(safeActiveIdx)).current;
+  const TAB_WIDTH = screenWidth / Math.max(tabs.length, 1);
 
-  useEffect(() => {
-    Animated.spring(indicatorAnim, {
-      toValue: safeActiveIdx,
-      useNativeDriver: true,
-      tension: 70,
-      friction: 12,
-    }).start();
-  }, [safeActiveIdx, indicatorAnim]);
-
-  const TAB_WIDTH = screenWidth / tabs.length;
-
-  const indicatorTranslateX = indicatorAnim.interpolate({
+  // Follow finger while swiping between pages (Instagram-style).
+  const swipeTranslateX = position.interpolate({
     inputRange: tabs.map((_, i) => i),
     outputRange: tabs.map((_, i) => i * TAB_WIDTH),
+    extrapolate: "clamp",
   });
 
   const handlePress = (routeName: string, routeKey?: string) => {
@@ -98,7 +110,7 @@ function CustomTabBar({ state, navigation, tabs }: CustomTabBarProps) {
       });
       if (event.defaultPrevented) return;
     }
-    navigation.navigate(routeName);
+    navigation.navigate(routeName as never);
   };
 
   return (
@@ -121,12 +133,12 @@ function CustomTabBar({ state, navigation, tabs }: CustomTabBarProps) {
           backgroundColor: colors.accent,
           borderBottomLeftRadius: 3,
           borderBottomRightRadius: 3,
-          transform: [{ translateX: indicatorTranslateX }],
+          transform: [{ translateX: swipeTranslateX }],
         }}
       />
 
       {tabs.map((tab, idx) => {
-        const route = state.routes.find((r: any) => r.name === tab.name);
+        const route = state.routes.find((r) => r.name === tab.name);
         const isActive = safeActiveIdx === idx;
 
         return (
@@ -166,7 +178,13 @@ function CustomTabBar({ state, navigation, tabs }: CustomTabBarProps) {
                     paddingHorizontal: 3,
                   }}
                 >
-                  <Text style={{ color: colors.onAccent, fontSize: 10, fontWeight: "800" }}>
+                  <Text
+                    style={{
+                      color: colors.onAccent,
+                      fontSize: 10,
+                      fontWeight: "800",
+                    }}
+                  >
                     {tab.badge > 9 ? "9+" : tab.badge}
                   </Text>
                 </View>
@@ -188,18 +206,6 @@ function CustomTabBar({ state, navigation, tabs }: CustomTabBarProps) {
   );
 }
 
-const ALL_TAB_NAMES = [
-  "index",
-  "explore",
-  "services",
-  "favorites",
-  "profile",
-  "dashboard",
-  "properties",
-  "inquiries",
-  "my-inquiries",
-] as const;
-
 export default function TabLayout() {
   const { userRole, inquiries, properties, userEmail, profile } = useApp();
   const tabs = useMemo(() => {
@@ -214,23 +220,30 @@ export default function TabLayout() {
         ownsInquiry(i, { email: userEmail, ownedPropertyIds: ownedIds }) &&
         (i.status === "new" || !i.status),
     ).length;
-    return base.map((t) => (t.name === "inquiries" ? { ...t, badge: newCount } : t));
+    return base.map((t) =>
+      t.name === "inquiries" ? { ...t, badge: newCount } : t,
+    );
   }, [userRole, inquiries, properties, userEmail, profile?.id]);
-  const visible = useMemo(() => new Set(tabs.map((t) => t.name)), [tabs]);
+
+  const initialRouteName =
+    userRole === "broker" ? "dashboard" : "index";
 
   return (
-    <Tabs
-      initialRouteName={userRole === "broker" ? "dashboard" : "index"}
+    <SwipeTabs
+      key={userRole ?? "user"}
+      initialRouteName={initialRouteName}
+      tabBarPosition="bottom"
       tabBar={(props) => <CustomTabBar {...props} tabs={tabs} />}
-      screenOptions={{ headerShown: false }}
+      screenOptions={{
+        swipeEnabled: true,
+        animationEnabled: true,
+        lazy: true,
+        sceneStyle: { backgroundColor: colors.bg },
+      }}
     >
-      {ALL_TAB_NAMES.map((name) => (
-        <Tabs.Screen
-          key={name}
-          name={name}
-          options={{ href: visible.has(name) ? undefined : null }}
-        />
+      {tabs.map((tab) => (
+        <SwipeTabs.Screen key={tab.name} name={tab.name} />
       ))}
-    </Tabs>
+    </SwipeTabs>
   );
 }

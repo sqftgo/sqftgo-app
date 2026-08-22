@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from "react";
 import { FlatList, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Briefcase, MapPin, ChevronDown } from "@/components/ui/icons";
+import { useRouter } from "expo-router";
+import { Briefcase, ChevronLeft, MapPin, ChevronDown } from "@/components/ui/icons";
 
 import CitySelectionModal from "@/components/ui/CitySelectionModal";
 import { Chip } from "@/components/ui/chip";
@@ -16,6 +17,7 @@ import { colors, spacing, type } from "@/theme/tokens";
 type CategoryFilter = DirectoryCategory | "all";
 
 export default function ServicesScreen() {
+  const router = useRouter();
   const { directoryProfiles, selectedCity } = useApp();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<CategoryFilter>("all");
@@ -48,7 +50,17 @@ export default function ServicesScreen() {
             justifyContent: "space-between",
           }}
         >
-          <Text style={{ ...type.title, color: colors.ink }}>Services</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, flex: 1 }}>
+            <Pressable
+              onPress={() => router.back()}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+            >
+              <ChevronLeft size={22} color={colors.ink} />
+            </Pressable>
+            <Text style={{ ...type.title, color: colors.ink }}>Services</Text>
+          </View>
           <Pressable
             onPress={() => setCityModalVisible(true)}
             hitSlop={8}

@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from "react";
 import {
-  Alert,
   FlatList,
   Pressable,
   Text,
   View,
 } from "react-native";
+import { appAlert } from "@/components/ui/app-alert";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -98,14 +98,14 @@ export default function MyPropertiesScreen() {
   }
 
   const handleDelete = (item: Property) => {
-    Alert.alert("Delete listing", `Remove “${item.title}”?`, [
+    appAlert("Delete listing", `Remove “${item.title}”?`, [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
           const ok = await deleteProperty(item.id);
-          if (!ok) Alert.alert("Could not delete", "Try again or check ownership.");
+          if (!ok) appAlert("Could not delete", "Try again or check ownership.");
         },
       },
     ]);
@@ -115,10 +115,10 @@ export default function MyPropertiesScreen() {
     if (item.status !== "Draft") return;
     const updated = await updateProperty(item.id, { status: "Pending Review" });
     if (!updated) {
-      Alert.alert("Could not submit", "Brokers cannot self-activate listings.");
+      appAlert("Could not submit", "Brokers cannot self-activate listings.");
       return;
     }
-    Alert.alert("Submitted", "Listing is now Pending Review for web admin approval.");
+    appAlert("Submitted", "Listing is now Pending Review for web admin approval.");
   };
 
   const renderItem = ({ item }: { item: Property }) => {
