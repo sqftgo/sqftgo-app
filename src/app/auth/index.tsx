@@ -9,7 +9,6 @@ import { useRouter, type Href } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Pressable,
   ScrollView,
@@ -17,6 +16,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { appAlert } from "@/components/ui/app-alert";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
@@ -83,7 +83,7 @@ export default function AuthScreen() {
 
     if (loginType === "user" && result.role === "broker") {
       signOut();
-      Alert.alert(
+      appAlert(
         "Dealer account",
         "This email is registered as a Dealer. Switch to Dealer login and try again.",
       );
@@ -97,7 +97,7 @@ export default function AuthScreen() {
         return;
       }
       signOut();
-      Alert.alert(
+      appAlert(
         "Not a dealer account",
         "This email is a User account. Switch to User login, or sign up as Dealer to register your directory.",
       );
@@ -120,7 +120,7 @@ export default function AuthScreen() {
           name: name.trim(),
         });
         if (!result.ok) {
-          Alert.alert("Sign up failed", result.message);
+          appAlert("Sign up failed", result.message);
           return;
         }
         setPreferredRole(loginTypeToPreferred(loginType));
@@ -132,7 +132,7 @@ export default function AuthScreen() {
 
       const result = await signIn(email.trim(), password);
       if (!result.ok) {
-        Alert.alert(
+        appAlert(
           result.code === "admin_unsupported" ? "Use web admin" : "Sign in failed",
           result.message,
         );
@@ -346,12 +346,12 @@ export default function AuthScreen() {
                 onPress={() => {
                   const target = email.trim();
                   if (!target) {
-                    Alert.alert("Email required", "Enter your account email address.");
+                    appAlert("Email required", "Enter your account email address.");
                     return;
                   }
                   void (async () => {
                     const res = await forgotPassword(target);
-                    Alert.alert(
+                    appAlert(
                       res.ok ? "Check your inbox" : "Reset failed",
                       res.message ?? (res.ok ? "Password reset instructions sent." : "Unable to send reset email."),
                     );

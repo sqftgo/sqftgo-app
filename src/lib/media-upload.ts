@@ -1,5 +1,5 @@
+import { appAlert } from "@/components/ui/app-alert";
 import * as ImagePicker from "expo-image-picker";
-import { Alert } from "react-native";
 
 import { isApiMode } from "@/lib/api/config";
 import { apiUploadPropertyImage, apiUploadAvatar } from "@/lib/api/services/uploads";
@@ -9,7 +9,7 @@ import type { KycDocumentType } from "@/data/types";
 async function ensureLibraryPermission(): Promise<boolean> {
   const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (status !== "granted") {
-    Alert.alert("Permission needed", "Allow photo library access to upload images.");
+    appAlert("Permission needed", "Allow photo library access to upload images.");
     return false;
   }
   return true;
@@ -17,7 +17,7 @@ async function ensureLibraryPermission(): Promise<boolean> {
 
 export async function pickAndUploadPropertyImage(): Promise<string | null> {
   if (!isApiMode) {
-    Alert.alert("API mode required", "Image upload needs EXPO_PUBLIC_API_URL.");
+    appAlert("API mode required", "Image upload needs EXPO_PUBLIC_API_URL.");
     return null;
   }
   if (!(await ensureLibraryPermission())) return null;
@@ -39,7 +39,7 @@ export async function pickAndUploadPropertyImage(): Promise<string | null> {
     });
     return url;
   } catch (e) {
-    Alert.alert("Upload failed", e instanceof Error ? e.message : "Could not upload image.");
+    appAlert("Upload failed", e instanceof Error ? e.message : "Could not upload image.");
     return null;
   }
 }
@@ -73,7 +73,7 @@ export async function pickAndUploadKycDocument(
   type: KycDocumentType,
 ): Promise<boolean> {
   if (!isApiMode) {
-    Alert.alert("API mode required", "KYC document upload needs EXPO_PUBLIC_API_URL.");
+    appAlert("API mode required", "KYC document upload needs EXPO_PUBLIC_API_URL.");
     return false;
   }
   if (!(await ensureLibraryPermission())) return false;
@@ -94,7 +94,7 @@ export async function pickAndUploadKycDocument(
     });
     return true;
   } catch (e) {
-    Alert.alert("Upload failed", e instanceof Error ? e.message : "Could not upload document.");
+    appAlert("Upload failed", e instanceof Error ? e.message : "Could not upload document.");
     return false;
   }
 }

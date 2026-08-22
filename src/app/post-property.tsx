@@ -6,9 +6,9 @@ import {
   TextInput,
   ScrollView,
   Pressable,
-  Alert,
-  Switch
+  Switch,
 } from "react-native";
+import { appAlert } from "@/components/ui/app-alert";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useApp } from "@/context/AppContext";
@@ -179,11 +179,11 @@ export default function PostPropertyScreen() {
 
   const validate = () => {
     if (!title || !price || !locality || !size || !description) {
-      Alert.alert("Error", "Please fill in all mandatory fields.");
+      appAlert("Error", "Please fill in all mandatory fields.");
       return false;
     }
     if (isNaN(parseFloat(price)) || isNaN(parseFloat(size))) {
-      Alert.alert("Error", "Price and size must be valid numeric values.");
+      appAlert("Error", "Price and size must be valid numeric values.");
       return false;
     }
     return true;
@@ -199,15 +199,15 @@ export default function PostPropertyScreen() {
   const handleSaveDraft = async () => {
     if (!validate()) return;
     if (!isBroker) {
-      Alert.alert("Dealer access required", "Only approved brokers can create listings.");
+      appAlert("Dealer access required", "Only approved brokers can create listings.");
       return;
     }
     const created = await addProperty({ ...buildPayload(), status: "Draft" });
     if (!created) {
-      Alert.alert("Could not save", "Dealer dashboard access is required.");
+      appAlert("Could not save", "Dealer dashboard access is required.");
       return;
     }
-    Alert.alert("Draft saved", "Open this draft later from your dashboard and submit when ready.", [
+    appAlert("Draft saved", "Open this draft later from your dashboard and submit when ready.", [
       { text: "OK", onPress: () => router.back() }
     ]);
   };
@@ -215,15 +215,15 @@ export default function PostPropertyScreen() {
   const handleSubmitForReview = async () => {
     if (!validate()) return;
     if (!isBroker) {
-      Alert.alert("Dealer access required", "Only approved brokers can create listings.");
+      appAlert("Dealer access required", "Only approved brokers can create listings.");
       return;
     }
     const created = await addProperty({ ...buildPayload(), status: "Pending Review" });
     if (!created) {
-      Alert.alert("Could not submit", "Dealer dashboard access is required.");
+      appAlert("Could not submit", "Dealer dashboard access is required.");
       return;
     }
-    Alert.alert(
+    appAlert(
       "Submitted for review",
       "Your listing is pending web admin approval. It will appear to buyers once Active.",
       [{ text: "OK", onPress: () => router.back() }],

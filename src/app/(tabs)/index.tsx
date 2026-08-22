@@ -286,7 +286,7 @@ export default function HomeScreen() {
             <SectionHeader
               title="Local experts"
               actionLabel="See all"
-              onAction={() => router.push("/(tabs)/services")}
+              onAction={() => router.push("/services")}
             />
             <View style={{ gap: spacing.md }}>
               {cityExperts.map((profile) => (

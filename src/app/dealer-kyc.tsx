@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import {
-  Alert,
   KeyboardAvoidingView,
   Pressable,
   ScrollView,
@@ -8,6 +7,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { appAlert } from "@/components/ui/app-alert";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ChevronLeft } from "@/components/ui/icons";
@@ -41,11 +41,11 @@ export default function DealerKycScreen() {
 
   const handleSubmit = () => {
     if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/i.test(panNumber.trim())) {
-      Alert.alert("Invalid PAN", "Enter a valid 10-character PAN (e.g. ABCDE1234F).");
+      appAlert("Invalid PAN", "Enter a valid 10-character PAN (e.g. ABCDE1234F).");
       return;
     }
     if (!/^\d{4}$/.test(aadhaarLast4.trim())) {
-      Alert.alert("Invalid Aadhaar", "Enter the last 4 digits of Aadhaar only.");
+      appAlert("Invalid Aadhaar", "Enter the last 4 digits of Aadhaar only.");
       return;
     }
     void (async () => {
@@ -54,7 +54,7 @@ export default function DealerKycScreen() {
         aadhaarLast4: aadhaarLast4.trim(),
         dealerNotes: dealerNotes.trim() || undefined,
       });
-      Alert.alert(
+      appAlert(
         "KYC submitted",
         "Status is pending. Web admin reviews documents — this app only shows status.",
         [{ text: "OK", onPress: () => router.back() }],
@@ -185,7 +185,7 @@ export default function DealerKycScreen() {
                             setUploadedDocs((prev) =>
                               prev.includes(doc.type) ? prev : [...prev, doc.type],
                             );
-                            Alert.alert("Uploaded", `${doc.label} uploaded.`);
+                            appAlert("Uploaded", `${doc.label} uploaded.`);
                           }
                         })();
                       }}

@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import {
-  Alert,
   Pressable,
   ScrollView,
   Switch,
@@ -8,6 +7,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { appAlert } from "@/components/ui/app-alert";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ChevronLeft } from "@/components/ui/icons";
@@ -31,19 +31,19 @@ export default function DealerSettingsScreen() {
 
   const handlePassword = async () => {
     if (!currentPassword || !newPassword) {
-      Alert.alert("Missing fields", "Enter current and new password.");
+      appAlert("Missing fields", "Enter current and new password.");
       return;
     }
     setSaving(true);
     const result = await updatePassword({ currentPassword, newPassword });
     setSaving(false);
     if (!result.ok) {
-      Alert.alert("Could not update", result.message ?? "Try again.");
+      appAlert("Could not update", result.message ?? "Try again.");
       return;
     }
     setCurrentPassword("");
     setNewPassword("");
-    Alert.alert("Password updated", "Your password has been changed.");
+    appAlert("Password updated", "Your password has been changed.");
   };
 
   const inputStyle = {
@@ -160,7 +160,7 @@ export default function DealerSettingsScreen() {
           </Text>
           <Pressable
             onPress={() =>
-              Alert.alert(
+              appAlert(
                 "Deactivate account",
                 "Account deactivation is not available in the app yet. Contact support from the web portal.",
               )

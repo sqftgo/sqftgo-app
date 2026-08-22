@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import {
-  Alert,
   KeyboardAvoidingView,
   Pressable,
   ScrollView,
@@ -8,6 +7,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { appAlert } from "@/components/ui/app-alert";
 import { useRouter, type Href } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ChevronLeft } from "@/components/ui/icons";
@@ -91,7 +91,7 @@ export default function DealerRegisterScreen() {
 
   const handleSubmit = async () => {
     if (!firmName.trim() || !ownerName.trim() || !address.trim() || !mobile.trim()) {
-      Alert.alert("Missing details", "Firm name, owner, address, and mobile are required.");
+      appAlert("Missing details", "Firm name, owner, address, and mobile are required.");
       return;
     }
     const result = await registerAsDealer({
@@ -107,10 +107,10 @@ export default function DealerRegisterScreen() {
       reraId: reraId.trim() || undefined,
     });
     if (!result.ok) {
-      Alert.alert("Could not register", result.message ?? "Try again.");
+      appAlert("Could not register", result.message ?? "Try again.");
       return;
     }
-    Alert.alert(
+    appAlert(
       "Directory submitted",
       isDealerCategory(category)
         ? "Your dealer card is live in the directory. Full dashboard unlocks after web admin sets your role to broker."

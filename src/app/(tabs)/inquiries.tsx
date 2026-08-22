@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from "react";
 import {
-  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -8,6 +7,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { appAlert } from "@/components/ui/app-alert";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Inbox, MessageSquare, Plus, X } from "@/components/ui/icons";
@@ -94,18 +94,18 @@ export default function CommunicationsScreen() {
 
   const handleReply = () => {
     if (!replyTarget || !replyText.trim()) {
-      Alert.alert("Reply required", "Write a short reply before sending.");
+      appAlert("Reply required", "Write a short reply before sending.");
       return;
     }
     replyInquiry(replyTarget.id, replyText);
     setReplyTarget(null);
     setReplyText("");
-    Alert.alert("Sent", "Reply saved and lead marked as read.");
+    appAlert("Sent", "Reply saved and lead marked as read.");
   };
 
   const handleCompose = async () => {
     if (!composeEmail.trim() || !composeBody.trim()) {
-      Alert.alert("Missing fields", "Buyer email and message are required.");
+      appAlert("Missing fields", "Buyer email and message are required.");
       return;
     }
     const thread = await createMessageThread({
@@ -113,7 +113,7 @@ export default function CommunicationsScreen() {
       body: composeBody.trim(),
     });
     if (!thread) {
-      Alert.alert("Could not send", "Try again.");
+      appAlert("Could not send", "Try again.");
       return;
     }
     setComposeOpen(false);
@@ -315,7 +315,7 @@ export default function CommunicationsScreen() {
                       </Pressable>
                       <Pressable
                         onPress={() =>
-                          Alert.alert("Archive inquiry", "Move this lead to archived?", [
+                          appAlert("Archive inquiry", "Move this lead to archived?", [
                             { text: "Cancel", style: "cancel" },
                             { text: "Archive", onPress: () => archiveInquiry(item.id) },
                           ])

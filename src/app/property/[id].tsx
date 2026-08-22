@@ -7,11 +7,11 @@ import {
   Pressable,
   Dimensions,
   Share,
-  Alert,
   Linking,
   Modal,
   TextInput,
 } from "react-native";
+import { appAlert } from "@/components/ui/app-alert";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter, Stack, type Href } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -157,7 +157,7 @@ export default function PropertyDetailsScreen() {
 
   const handleCall = () => {
     Linking.openURL(`tel:${property.ownerPhone}`).catch(() => {
-      Alert.alert("Error", "Unable to open phone dialer.");
+      appAlert("Error", "Unable to open phone dialer.");
     });
   };
 
@@ -165,7 +165,7 @@ export default function PropertyDetailsScreen() {
     const message = `Namaste, I'm interested in your property: "${property.title}" in ${property.locality}, ${property.city}.`;
     Linking.openURL(`whatsapp://send?phone=${property.ownerPhone}&text=${encodeURIComponent(message)}`).catch(() => {
       Linking.openURL(`https://wa.me/${property.ownerPhone}?text=${encodeURIComponent(message)}`).catch(() => {
-        Alert.alert("Error", "Unable to open WhatsApp.");
+        appAlert("Error", "Unable to open WhatsApp.");
       });
     });
   };
@@ -184,7 +184,7 @@ export default function PropertyDetailsScreen() {
 
   const handleRentOrBuy = () => {
     const isRent = property.purpose === "rent" || property.purpose === "lease";
-    Alert.alert(
+    appAlert(
       isRent ? "Rent Property" : "Buy Property",
       `Would you like to connect with ${property.ownerName} regarding "${property.title}"?`,
       [
@@ -196,11 +196,11 @@ export default function PropertyDetailsScreen() {
 
   const handleSubmitInquiry = async () => {
     if (!inquiryName.trim()) {
-      Alert.alert("Name required", "Enter your name for the inquiry.");
+      appAlert("Name required", "Enter your name for the inquiry.");
       return;
     }
     if (!inquiryMessage.trim()) {
-      Alert.alert("Message required", "Tell the dealer what you are looking for.");
+      appAlert("Message required", "Tell the dealer what you are looking for.");
       return;
     }
     const created = await submitInquiry({
@@ -211,12 +211,12 @@ export default function PropertyDetailsScreen() {
       message: inquiryMessage,
     });
     if (!created) {
-      Alert.alert("Error", "Could not submit inquiry. Listing must be Active.");
+      appAlert("Error", "Could not submit inquiry. Listing must be Active.");
       return;
     }
     setShowInquiry(false);
     setInquiryMessage("");
-    Alert.alert("Inquiry sent", "The dealer will see this in their leads inbox.", [
+    appAlert("Inquiry sent", "The dealer will see this in their leads inbox.", [
       { text: "View my inquiries", onPress: () => router.push("/(tabs)/my-inquiries" as Href) },
       { text: "OK" },
     ]);
@@ -224,7 +224,7 @@ export default function PropertyDetailsScreen() {
 
   const handleBookVisit = async () => {
     if (!visitDate.trim()) {
-      Alert.alert("Date required", "Enter a visit date (YYYY-MM-DD).");
+      appAlert("Date required", "Enter a visit date (YYYY-MM-DD).");
       return;
     }
     const created = await bookVisit({
@@ -234,11 +234,11 @@ export default function PropertyDetailsScreen() {
       phone: visitPhone.trim() || undefined,
     });
     if (!created) {
-      Alert.alert("Error", "Could not book visit. Sign in as a buyer on an Active listing.");
+      appAlert("Error", "Could not book visit. Sign in as a buyer on an Active listing.");
       return;
     }
     setShowVisit(false);
-    Alert.alert("Visit requested", "Status: Pending Approval. The dealer will confirm.", [
+    appAlert("Visit requested", "Status: Pending Approval. The dealer will confirm.", [
       { text: "My visits", onPress: () => router.push("/my-visits" as Href) },
       { text: "OK" },
     ]);
@@ -678,7 +678,7 @@ export default function PropertyDetailsScreen() {
           <View style={styles.sectionCard}>
             <View style={styles.reviewsHeaderRow}>
               <Text style={styles.sectionHeader}>Neighborhood Reviews</Text>
-              <Pressable onPress={() => Alert.alert("Reviews", "Showing all neighborhood feedback")}>
+              <Pressable onPress={() => appAlert("Reviews", "Showing all neighborhood feedback")}>
                 <Text style={styles.seeAllLink}>See all</Text>
               </Pressable>
             </View>
