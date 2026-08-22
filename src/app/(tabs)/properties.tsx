@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/icons";
 
 import { EmptyState } from "@/components/ui/empty-state";
+import { ScreenNavbar } from "@/components/ui/screen-navbar";
 import { useApp } from "@/context/AppContext";
 import type { Property, PropertyStatus } from "@/data/types";
 import { formatPriceWithPeriod } from "@/lib/format";
@@ -215,79 +216,6 @@ export default function MyPropertiesScreen() {
 
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.bg }}>
-      <View
-        style={{
-          paddingHorizontal: spacing.xl,
-          paddingTop: spacing.lg,
-          paddingBottom: spacing.md,
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <View>
-          <Text style={{ ...type.title, color: colors.ink }}>My Properties</Text>
-          <Text style={{ ...type.caption, color: colors.inkMuted }}>
-            {mine.length} listing{mine.length === 1 ? "" : "s"}
-          </Text>
-        </View>
-        <Pressable
-          onPress={() => router.push("/post-property" as Href)}
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 6,
-            backgroundColor: colors.accent,
-            paddingHorizontal: spacing.md,
-            paddingVertical: spacing.sm,
-            borderRadius: radius.full,
-            boxShadow: shadow.accent,
-          }}
-        >
-          <Plus size={16} color={colors.onAccent} />
-          <Text style={{ ...type.caption, color: colors.onAccent, fontWeight: "700" }}>Add</Text>
-        </Pressable>
-      </View>
-
-      <FlatList
-        horizontal
-        data={FILTERS}
-        keyExtractor={(item) => item}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{
-          paddingHorizontal: spacing.xl,
-          gap: spacing.sm,
-          paddingBottom: spacing.md,
-        }}
-        renderItem={({ item }) => {
-          const active = filter === item;
-          return (
-            <Pressable
-              onPress={() => setFilter(item)}
-              style={{
-                paddingHorizontal: spacing.md,
-                paddingVertical: spacing.sm,
-                borderRadius: radius.full,
-                backgroundColor: active ? colors.ink : colors.surface,
-                borderWidth: 1,
-                borderColor: active ? colors.ink : colors.border,
-              }}
-            >
-              <Text
-                style={{
-                  ...type.caption,
-                  fontWeight: "700",
-                  color: active ? colors.onAccent : colors.inkSecondary,
-                }}
-              >
-                {item}
-              </Text>
-            </Pressable>
-          );
-        }}
-        style={{ flexGrow: 0 }}
-      />
-
       <FlatList
         data={filtered}
         keyExtractor={(item) => item.id}
@@ -297,6 +225,68 @@ export default function MyPropertiesScreen() {
           flexGrow: 1,
         }}
         renderItem={renderItem}
+        ListHeaderComponent={
+          <View style={{ gap: spacing.md, marginBottom: spacing.md }}>
+            <ScreenNavbar
+              eyebrow="Dealer listings"
+              title="My Properties"
+              subtitle={`${mine.length} listing${mine.length === 1 ? "" : "s"}`}
+              rightAction={
+                <Pressable
+                  onPress={() => router.push("/post-property" as Href)}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                    backgroundColor: colors.accent,
+                    paddingHorizontal: spacing.md,
+                    paddingVertical: spacing.sm,
+                    borderRadius: radius.full,
+                    boxShadow: shadow.accent,
+                  }}
+                >
+                  <Plus size={16} color={colors.onAccent} />
+                  <Text style={{ ...type.caption, color: colors.onAccent, fontWeight: "700" }}>
+                    Add
+                  </Text>
+                </Pressable>
+              }
+            />
+            <FlatList
+              horizontal
+              data={FILTERS}
+              keyExtractor={(item) => item}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: spacing.sm }}
+              renderItem={({ item }) => {
+                const active = filter === item;
+                return (
+                  <Pressable
+                    onPress={() => setFilter(item)}
+                    style={{
+                      paddingHorizontal: spacing.md,
+                      paddingVertical: spacing.sm,
+                      borderRadius: radius.full,
+                      backgroundColor: active ? colors.ink : colors.surface,
+                      borderWidth: 1,
+                      borderColor: active ? colors.ink : colors.border,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        ...type.caption,
+                        fontWeight: "700",
+                        color: active ? colors.onAccent : colors.inkSecondary,
+                      }}
+                    >
+                      {item}
+                    </Text>
+                  </Pressable>
+                );
+              }}
+            />
+          </View>
+        }
         ListEmptyComponent={
           <EmptyState
             icon={ClipboardList}

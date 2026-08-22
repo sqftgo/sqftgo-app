@@ -2,17 +2,18 @@ import React, { useMemo, useState } from "react";
 import { FlatList, Pressable, ScrollView, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Bell, Building2, ChevronDown, Home as HomeIcon, KeyRound, MapPin, Plus, Search, Store } from "@/components/ui/icons";
+import { Bell, Building2, Home as HomeIcon, KeyRound, Plus, Search, Store } from "@/components/ui/icons";
 
 import CitySelectionModal from "@/components/ui/CitySelectionModal";
 import { ExpertCard } from "@/components/ui/expert-card";
 import { NotificationsSheet, useNotifications } from "@/components/ui/notifications-sheet";
 import { PropertyCard } from "@/components/ui/property-card";
+import { ScreenNavbar } from "@/components/ui/screen-navbar";
 import { SectionHeader } from "@/components/ui/section-header";
 import { useApp } from "@/context/AppContext";
 import { displayNameFromEmail, greetingForHour } from "@/lib/format";
 import type { PurposeFilter } from "@/lib/filters";
-import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
+import { colors, radius, spacing, type } from "@/theme/tokens";
 
 /** Home shortcuts into Explore — `commercial` maps to commercial property types. */
 type ExploreIntent = PurposeFilter | "commercial";
@@ -25,11 +26,18 @@ const INTENTS: { id: ExploreIntent; label: string; icon: typeof HomeIcon }[] = [
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { properties, selectedCity, userEmail, directoryProfiles } = useApp();
+  const { properties, selectedCity, userEmail, userName, profile, directoryProfiles } = useApp();
 
   const [cityModalVisible, setCityModalVisible] = useState(false);
   const [notificationsVisible, setNotificationsVisible] = useState(false);
   const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
+
+  const firstName = useMemo(() => {
+    const raw = (userName || profile?.name || "").trim();
+    if (raw && !/^user$/i.test(raw)) return raw.split(/\s+/)[0];
+    const fromEmail = displayNameFromEmail(userEmail).split(/\s+/)[0];
+    return fromEmail && !/^user$/i.test(fromEmail) ? fromEmail : "there";
+  }, [userName, profile?.name, userEmail]);
 
   const cityProperties = useMemo(
     () => properties.filter((p) => p.city === selectedCity && p.status === "Active"),
@@ -55,73 +63,62 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: spacing.xxl, gap: spacing.xl }}
       >
-        {/* Header: greeting, city, notifications */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            paddingHorizontal: spacing.xl,
-            paddingTop: spacing.lg,
-          }}
-        >
-          <View style={{ gap: spacing.xs, flex: 1 }}>
-            <Text style={{ ...type.caption, color: colors.inkMuted }}>
-              {greetingForHour(new Date().getHours())},{" "}
-              {displayNameFromEmail(userEmail).split(" ")[0]}
-            </Text>
+        {/* Header + search + intents — tighter cluster */}
+        <View style={{ paddingHorizontal: spacing.xl, gap: spacing.md }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              gap: spacing.md,
+            }}
+          >
+            <View style={{ flex: 1 }}>
+              <ScreenNavbar
+                eyebrow={`${greetingForHour(new Date().getHours())}, ${firstName}`}
+                title={selectedCity}
+                subtitle="Tap to change city"
+                onPressTitle={() => setCityModalVisible(true)}
+              />
+            </View>
             <Pressable
-              onPress={() => setCityModalVisible(true)}
-              hitSlop={8}
+              onPress={() => setNotificationsVisible(true)}
               accessibilityRole="button"
-              accessibilityLabel={`Change city, currently ${selectedCity}`}
-              style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}
+              accessibilityLabel={
+                unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"
+              }
+              style={({ pressed }) => ({
+                marginTop: spacing.md + 14,
+                width: 40,
+                height: 40,
+                borderRadius: radius.full,
+                backgroundColor: colors.surface,
+                borderWidth: 1,
+                borderColor: colors.border,
+                alignItems: "center",
+                justifyContent: "center",
+                opacity: pressed ? 0.7 : 1,
+              })}
             >
-              <MapPin size={16} color={colors.accent} />
-              <Text style={{ ...type.title, color: colors.ink }}>{selectedCity}</Text>
-              <ChevronDown size={16} color={colors.inkMuted} />
+              <Bell size={18} color={colors.ink} />
+              {unreadCount > 0 && (
+                <View
+                  style={{
+                    position: "absolute",
+                    top: 8,
+                    right: 9,
+                    width: 8,
+                    height: 8,
+                    borderRadius: radius.full,
+                    backgroundColor: colors.accent,
+                    borderWidth: 1.5,
+                    borderColor: colors.surface,
+                  }}
+                />
+              )}
             </Pressable>
           </View>
 
-          <Pressable
-            onPress={() => setNotificationsVisible(true)}
-            accessibilityRole="button"
-            accessibilityLabel={
-              unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"
-            }
-            style={({ pressed }) => ({
-              width: 40,
-              height: 40,
-              borderRadius: radius.full,
-              backgroundColor: colors.surface,
-              borderWidth: 1,
-              borderColor: colors.border,
-              alignItems: "center",
-              justifyContent: "center",
-              opacity: pressed ? 0.7 : 1,
-            })}
-          >
-            <Bell size={18} color={colors.ink} />
-            {unreadCount > 0 && (
-              <View
-                style={{
-                  position: "absolute",
-                  top: 8,
-                  right: 9,
-                  width: 8,
-                  height: 8,
-                  borderRadius: radius.full,
-                  backgroundColor: colors.accent,
-                  borderWidth: 1.5,
-                  borderColor: colors.surface,
-                }}
-              />
-            )}
-          </Pressable>
-        </View>
-
-        {/* Search hand-off to Explore */}
-        <View style={{ paddingHorizontal: spacing.xl }}>
           <Pressable
             onPress={() => goToExplore()}
             accessibilityRole="search"
@@ -135,10 +132,9 @@ export default function HomeScreen() {
               borderColor: colors.border,
               borderRadius: radius.md,
               borderCurve: "continuous",
-              height: 46,
+              height: 44,
               paddingHorizontal: spacing.md,
               opacity: pressed ? 0.7 : 1,
-              boxShadow: shadow.card,
             })}
           >
             <Search size={16} color={colors.inkMuted} />
@@ -146,44 +142,47 @@ export default function HomeScreen() {
               Search by locality, project, or type
             </Text>
           </Pressable>
-        </View>
 
-        {/* Intent shortcuts */}
-        <View style={{ flexDirection: "row", gap: spacing.md, paddingHorizontal: spacing.xl }}>
-          {INTENTS.map(({ id, label, icon: Icon }) => (
-            <Pressable
-              key={id}
-              onPress={() => goToExplore(id)}
-              accessibilityRole="button"
-              accessibilityLabel={`Browse ${label} properties`}
-              style={({ pressed }) => ({
-                flex: 1,
-                alignItems: "center",
-                gap: spacing.sm,
-                backgroundColor: colors.surface,
-                borderWidth: 1,
-                borderColor: colors.border,
-                borderRadius: radius.lg,
-                borderCurve: "continuous",
-                paddingVertical: spacing.lg,
-                opacity: pressed ? 0.7 : 1,
-              })}
-            >
-              <View
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: radius.full,
-                  backgroundColor: colors.accentSoft,
+          {/* Intent row — compact segmented chips, not tall cards */}
+          <View
+            style={{
+              flexDirection: "row",
+              backgroundColor: colors.surface,
+              borderWidth: 1,
+              borderColor: colors.border,
+              borderRadius: radius.md,
+              borderCurve: "continuous",
+              padding: spacing.xs,
+              gap: spacing.xs,
+            }}
+          >
+            {INTENTS.map(({ id, label, icon: Icon }) => (
+              <Pressable
+                key={id}
+                onPress={() => goToExplore(id)}
+                accessibilityRole="button"
+                accessibilityLabel={`Browse ${label} properties`}
+                style={({ pressed }) => ({
+                  flex: 1,
+                  flexDirection: "row",
                   alignItems: "center",
                   justifyContent: "center",
-                }}
+                  gap: spacing.xs,
+                  paddingVertical: spacing.sm + 2,
+                  borderRadius: radius.sm,
+                  backgroundColor: pressed ? colors.accentSoft : "transparent",
+                })}
               >
-                <Icon size={18} color={colors.accent} />
-              </View>
-              <Text style={{ ...type.label, color: colors.ink }}>{label}</Text>
-            </Pressable>
-          ))}
+                <Icon size={15} color={colors.accent} strokeWidth={2} />
+                <Text
+                  numberOfLines={1}
+                  style={{ ...type.caption, color: colors.ink, fontWeight: "600" }}
+                >
+                  {label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
 
         {/* Featured rail */}

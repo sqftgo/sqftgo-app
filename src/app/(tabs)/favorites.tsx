@@ -6,8 +6,9 @@ import { Heart } from "@/components/ui/icons";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { PropertyCard } from "@/components/ui/property-card";
+import { ScreenNavbar } from "@/components/ui/screen-navbar";
 import { useApp } from "@/context/AppContext";
-import { colors, spacing, type } from "@/theme/tokens";
+import { colors, spacing } from "@/theme/tokens";
 
 export default function FavoritesScreen() {
   const router = useRouter();
@@ -18,19 +19,15 @@ export default function FavoritesScreen() {
     [properties, favorites],
   );
 
+  const subtitle =
+    saved.length === 0
+      ? "Homes you heart will appear here"
+      : saved.length === 1
+        ? "1 saved property"
+        : `${saved.length} saved properties`;
+
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.bg }}>
-      <View style={{ paddingHorizontal: spacing.xl, paddingTop: spacing.lg, gap: spacing.xs }}>
-        <Text style={{ ...type.title, color: colors.ink }}>Saved</Text>
-        <Text style={{ ...type.caption, color: colors.inkMuted }}>
-          {saved.length === 0
-            ? "Homes you heart will appear here"
-            : saved.length === 1
-              ? "1 saved property"
-              : `${saved.length} saved properties`}
-        </Text>
-      </View>
-
       <FlatList
         data={saved}
         keyExtractor={(item) => item.id}
@@ -39,11 +36,13 @@ export default function FavoritesScreen() {
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{
           paddingHorizontal: spacing.xl,
-          paddingTop: spacing.lg,
           paddingBottom: spacing.xxl,
           gap: spacing.lg,
           flexGrow: 1,
         }}
+        ListHeaderComponent={
+          <ScreenNavbar eyebrow="Shortlist" title="Saved" subtitle={subtitle} />
+        }
         ListEmptyComponent={
           <EmptyState
             icon={Heart}

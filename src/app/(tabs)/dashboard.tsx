@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/icons";
 
 import { EmptyState } from "@/components/ui/empty-state";
+import { ScreenNavbar } from "@/components/ui/screen-navbar";
 import { useApp } from "@/context/AppContext";
 import type { Property } from "@/data/types";
 import { formatPriceWithPeriod } from "@/lib/format";
@@ -117,13 +118,12 @@ export default function DashboardScreen() {
         contentContainerStyle={{ paddingBottom: spacing.xxl }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={{ paddingHorizontal: spacing.xl, paddingTop: spacing.lg, gap: spacing.xs }}>
-          <Text style={{ ...type.title, color: colors.ink }}>
-            Welcome{userName ? `, ${userName.split(" ")[0]}` : ""}
-          </Text>
-          <Text style={{ ...type.caption, color: colors.inkMuted }}>
-            Dealer Portal — listings go live after web admin approval
-          </Text>
+        <View style={{ paddingHorizontal: spacing.xl }}>
+          <ScreenNavbar
+            eyebrow="Dealer portal"
+            title={userName ? `Welcome, ${userName.split(" ")[0]}` : "Welcome"}
+            subtitle="Listings go live after web admin approval"
+          />
         </View>
 
         <View

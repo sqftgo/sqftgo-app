@@ -14,6 +14,7 @@ import { Inbox, MessageSquare, Plus, X } from "@/components/ui/icons";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { ModalSheet, ModalSheetHeader } from "@/components/ui/modal-sheet";
+import { ScreenNavbar } from "@/components/ui/screen-navbar";
 import { useApp } from "@/context/AppContext";
 import type { Inquiry, InquiryStatus, MessageThread } from "@/data/types";
 import { ownedPropertyIds, ownsInquiry } from "@/lib/ownership";
@@ -136,105 +137,94 @@ export default function CommunicationsScreen() {
 
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.bg }}>
-      <View style={{ paddingHorizontal: spacing.xl, paddingTop: spacing.lg, gap: spacing.xs }}>
-        <Text style={{ ...type.title, color: colors.ink }}>Communications</Text>
-        <Text style={{ ...type.caption, color: colors.inkMuted }}>
-          Inquiries and message threads with buyers
-        </Text>
-      </View>
-
-      <View
-        style={{
-          flexDirection: "row",
-          marginHorizontal: spacing.xl,
-          marginTop: spacing.md,
-          backgroundColor: colors.surfaceSubtle,
-          borderRadius: radius.md,
-          padding: spacing.xs,
-        }}
-      >
-        {(
-          [
-            { id: "inquiries", label: "Inquiries" },
-            { id: "messages", label: "Messages" },
-          ] as const
-        ).map((tab) => {
-          const active = mainTab === tab.id;
-          return (
-            <Pressable
-              key={tab.id}
-              onPress={() => setMainTab(tab.id)}
-              style={{
-                flex: 1,
-                paddingVertical: spacing.sm,
-                borderRadius: radius.sm,
-                backgroundColor: active ? colors.surface : "transparent",
-                alignItems: "center",
-              }}
-            >
-              <Text style={{ ...type.label, color: active ? colors.ink : colors.inkMuted }}>
-                {tab.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
       {mainTab === "inquiries" ? (
-        <>
-          <View
-            style={{
-              flexDirection: "row",
-              marginHorizontal: spacing.xl,
-              marginTop: spacing.md,
-              gap: spacing.sm,
-            }}
-          >
-            {(
-              [
-                { id: "inbox", label: "Inbox" },
-                { id: "archived", label: "Archived" },
-              ] as const
-            ).map((tab) => {
-              const active = filter === tab.id;
-              return (
-                <Pressable
-                  key={tab.id}
-                  onPress={() => setFilter(tab.id)}
-                  style={{
-                    paddingHorizontal: spacing.md,
-                    paddingVertical: spacing.sm,
-                    borderRadius: radius.full,
-                    backgroundColor: active ? colors.ink : colors.surface,
-                    borderWidth: 1,
-                    borderColor: active ? colors.ink : colors.border,
-                  }}
-                >
-                  <Text
-                    style={{
-                      ...type.caption,
-                      fontWeight: "700",
-                      color: active ? colors.onAccent : colors.inkSecondary,
-                    }}
-                  >
-                    {tab.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
           <FlatList
             data={list}
             keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{
               paddingHorizontal: spacing.xl,
-              paddingTop: spacing.lg,
               paddingBottom: spacing.xxl,
               gap: spacing.md,
               flexGrow: 1,
             }}
+            ListHeaderComponent={
+              <View style={{ gap: spacing.md, marginBottom: spacing.sm }}>
+                <ScreenNavbar
+                  eyebrow="Dealer inbox"
+                  title="Communications"
+                  subtitle="Inquiries and message threads with buyers"
+                />
+                <View
+                  style={{
+                    flexDirection: "row",
+                    backgroundColor: colors.surfaceSubtle,
+                    borderRadius: radius.md,
+                    padding: spacing.xs,
+                  }}
+                >
+                  {(
+                    [
+                      { id: "inquiries", label: "Inquiries" },
+                      { id: "messages", label: "Messages" },
+                    ] as const
+                  ).map((tab) => {
+                    const active = mainTab === tab.id;
+                    return (
+                      <Pressable
+                        key={tab.id}
+                        onPress={() => setMainTab(tab.id)}
+                        style={{
+                          flex: 1,
+                          paddingVertical: spacing.sm,
+                          borderRadius: radius.sm,
+                          backgroundColor: active ? colors.surface : "transparent",
+                          alignItems: "center",
+                        }}
+                      >
+                        <Text style={{ ...type.label, color: active ? colors.ink : colors.inkMuted }}>
+                          {tab.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <View style={{ flexDirection: "row", gap: spacing.sm }}>
+                  {(
+                    [
+                      { id: "inbox", label: "Inbox" },
+                      { id: "archived", label: "Archived" },
+                    ] as const
+                  ).map((tab) => {
+                    const active = filter === tab.id;
+                    return (
+                      <Pressable
+                        key={tab.id}
+                        onPress={() => setFilter(tab.id)}
+                        style={{
+                          paddingHorizontal: spacing.md,
+                          paddingVertical: spacing.sm,
+                          borderRadius: radius.full,
+                          backgroundColor: active ? colors.ink : colors.surface,
+                          borderWidth: 1,
+                          borderColor: active ? colors.ink : colors.border,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            ...type.caption,
+                            fontWeight: "700",
+                            color: active ? colors.onAccent : colors.inkSecondary,
+                          }}
+                        >
+                          {tab.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            }
             ListEmptyComponent={
               <EmptyState
                 icon={Inbox}
@@ -339,45 +329,78 @@ export default function CommunicationsScreen() {
               );
             }}
           />
-        </>
       ) : (
-        <>
-          <View
-            style={{
-              paddingHorizontal: spacing.xl,
-              paddingTop: spacing.md,
-              flexDirection: "row",
-              justifyContent: "flex-end",
-            }}
-          >
-            <Pressable
-              onPress={() => setComposeOpen(true)}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 6,
-                backgroundColor: colors.accent,
-                paddingHorizontal: spacing.md,
-                paddingVertical: spacing.sm,
-                borderRadius: radius.full,
-              }}
-            >
-              <Plus size={14} color={colors.onAccent} />
-              <Text style={{ ...type.caption, color: colors.onAccent, fontWeight: "700" }}>
-                Compose
-              </Text>
-            </Pressable>
-          </View>
           <FlatList
             data={messageThreads}
             keyExtractor={(item) => item.id}
             contentContainerStyle={{
               paddingHorizontal: spacing.xl,
-              paddingTop: spacing.md,
               paddingBottom: spacing.xxl,
               gap: spacing.md,
               flexGrow: 1,
             }}
+            ListHeaderComponent={
+              <View style={{ gap: spacing.md, marginBottom: spacing.sm }}>
+                <ScreenNavbar
+                  eyebrow="Dealer inbox"
+                  title="Communications"
+                  subtitle="Inquiries and message threads with buyers"
+                  rightAction={
+                    <Pressable
+                      onPress={() => setComposeOpen(true)}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 6,
+                        backgroundColor: colors.accent,
+                        paddingHorizontal: spacing.md,
+                        paddingVertical: spacing.sm,
+                        borderRadius: radius.full,
+                      }}
+                    >
+                      <Plus size={14} color={colors.onAccent} />
+                      <Text style={{ ...type.caption, color: colors.onAccent, fontWeight: "700" }}>
+                        Compose
+                      </Text>
+                    </Pressable>
+                  }
+                />
+                <View
+                  style={{
+                    flexDirection: "row",
+                    backgroundColor: colors.surfaceSubtle,
+                    borderRadius: radius.md,
+                    padding: spacing.xs,
+                  }}
+                >
+                  {(
+                    [
+                      { id: "inquiries", label: "Inquiries" },
+                      { id: "messages", label: "Messages" },
+                    ] as const
+                  ).map((tab) => {
+                    const active = mainTab === tab.id;
+                    return (
+                      <Pressable
+                        key={tab.id}
+                        onPress={() => setMainTab(tab.id)}
+                        style={{
+                          flex: 1,
+                          paddingVertical: spacing.sm,
+                          borderRadius: radius.sm,
+                          backgroundColor: active ? colors.surface : "transparent",
+                          alignItems: "center",
+                        }}
+                      >
+                        <Text style={{ ...type.label, color: active ? colors.ink : colors.inkMuted }}>
+                          {tab.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            }
             ListEmptyComponent={
               <EmptyState
                 icon={MessageSquare}
@@ -414,7 +437,6 @@ export default function CommunicationsScreen() {
               </Pressable>
             )}
           />
-        </>
       )}
 
       <ModalSheet
