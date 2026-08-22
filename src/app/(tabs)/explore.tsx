@@ -15,8 +15,9 @@ import {
   countActiveFilters,
   defaultFilters,
   filterProperties,
+  formatBudgetLabel,
+  formatSizeLabel,
   isFiltering,
-  type PriceFilter,
   type PropertyFilters,
   type PurposeFilter,
 } from "@/lib/filters";
@@ -24,26 +25,13 @@ import { colors, radius, spacing, type } from "@/theme/tokens";
 
 const PURPOSE_LABELS: Record<Exclude<PurposeFilter, "all">, string> = {
   buy: "Buy",
+  sell: "Sell",
   rent: "Rent",
-  commercial: "Commercial",
-};
-
-const PRICE_LABELS: Record<Exclude<PriceFilter, "all">, string> = {
-  "under-25k": "Under ₹25k/mo",
-  "25k-50k": "₹25k - ₹50k/mo",
-  "50k-1L": "₹50k - ₹1L/mo",
-  "over-1L": "₹1L+/mo",
-  "under-50L": "Under ₹50 L",
-  "50L-1Cr": "₹50 L - ₹1 Cr",
-  "1Cr-2Cr": "₹1 Cr - ₹2 Cr",
-  "over-2Cr": "₹2 Cr+",
-  "under-50k": "Under ₹50k/mo",
-  "under-2Cr": "Under ₹2 Cr",
+  lease: "Lease",
 };
 
 const SORT_LABELS: Record<PropertyFilters["sort"], string> = {
-  relevance: "Relevance",
-  featured: "Featured first",
+  latest: "Latest",
   "price-asc": "Price: low to high",
   "price-desc": "Price: high to low",
   "size-desc": "Largest first",
@@ -59,7 +47,14 @@ function ActiveFilterChips({
 }) {
   const chips: { key: string; label: string; clear: () => void }[] = [];
 
-  // Purpose
+  if (filters.locality.trim()) {
+    chips.push({
+      key: "locality",
+      label: filters.locality.trim(),
+      clear: () => onChange({ ...filters, locality: "" }),
+    });
+  }
+
   if (filters.purpose !== "all") {
     chips.push({
       key: `purpose-${filters.purpose}`,
@@ -68,37 +63,55 @@ function ActiveFilterChips({
     });
   }
 
-  // Type
-  if (filters.type !== "all") {
+  if (filters.type !== "any") {
     chips.push({
       key: `type-${filters.type}`,
-      label: filters.type === "Industrial Plot" ? "Plot" : filters.type,
-      clear: () => onChange({ ...filters, type: "all" }),
+      label: filters.type === "commercial" ? "Commercial" : filters.type,
+      clear: () => onChange({ ...filters, type: "any" }),
     });
   }
 
-  // Multi-select BHK
-  if (filters.bhk && filters.bhk.length > 0) {
+  if (filters.bhk.length > 0) {
     filters.bhk.forEach((b) => {
       chips.push({
         key: `bhk-${b}`,
-        label: `${b >= 5 ? "5+" : b} BHK`,
+        label: `${b} BHK`,
         clear: () => onChange({ ...filters, bhk: filters.bhk.filter((x) => x !== b) }),
       });
     });
   }
 
-  // Budget
-  if (filters.price !== "all") {
+  if (filters.minPrice) {
     chips.push({
-      key: `price-${filters.price}`,
-      label: PRICE_LABELS[filters.price] || filters.price,
-      clear: () => onChange({ ...filters, price: "all" }),
+      key: "minPrice",
+      label: `Min ${formatBudgetLabel(filters.minPrice, filters.purpose)}`,
+      clear: () => onChange({ ...filters, minPrice: "" }),
+    });
+  }
+  if (filters.maxPrice) {
+    chips.push({
+      key: "maxPrice",
+      label: `Max ${formatBudgetLabel(filters.maxPrice, filters.purpose)}`,
+      clear: () => onChange({ ...filters, maxPrice: "" }),
     });
   }
 
-  // Multi-select Furnishing
-  if (filters.furnishing && filters.furnishing.length > 0) {
+  if (filters.minSize) {
+    chips.push({
+      key: "minSize",
+      label: `Min ${formatSizeLabel(filters.minSize)}`,
+      clear: () => onChange({ ...filters, minSize: "" }),
+    });
+  }
+  if (filters.maxSize) {
+    chips.push({
+      key: "maxSize",
+      label: `Max ${formatSizeLabel(filters.maxSize)}`,
+      clear: () => onChange({ ...filters, maxSize: "" }),
+    });
+  }
+
+  if (filters.furnishing.length > 0) {
     filters.furnishing.forEach((f) => {
       chips.push({
         key: `furnishing-${f}`,
@@ -109,16 +122,14 @@ function ActiveFilterChips({
     });
   }
 
-  // RERA Verified
   if (filters.reraApprovedOnly) {
     chips.push({
       key: "rera",
-      label: "RERA Verified",
+      label: "RERA Approved",
       clear: () => onChange({ ...filters, reraApprovedOnly: false }),
     });
   }
 
-  // Featured
   if (filters.featuredOnly) {
     chips.push({
       key: "featured",
@@ -127,8 +138,7 @@ function ActiveFilterChips({
     });
   }
 
-  // Multi-select Amenities
-  if (filters.selectedAmenities && filters.selectedAmenities.length > 0) {
+  if (filters.selectedAmenities.length > 0) {
     filters.selectedAmenities.forEach((a) => {
       chips.push({
         key: `amenity-${a}`,
@@ -170,10 +180,13 @@ export default function ExploreScreen() {
   const [filters, setFilters] = useState<PropertyFilters>(defaultFilters);
   const [sheetVisible, setSheetVisible] = useState(false);
 
-  // Apply the intent shortcut from Home ("Buy", "Rent", "Commercial").
+  // Home shortcuts: Buy / Rent / Commercial (Commercial → type group, like listings commercial types).
   useEffect(() => {
-    if (params.purpose === "buy" || params.purpose === "rent" || params.purpose === "commercial") {
-      setFilters((prev) => ({ ...prev, purpose: params.purpose as PurposeFilter }));
+    const purpose = params.purpose;
+    if (purpose === "buy" || purpose === "sell" || purpose === "rent" || purpose === "lease") {
+      setFilters((prev) => ({ ...prev, purpose, type: "any" }));
+    } else if (purpose === "commercial") {
+      setFilters((prev) => ({ ...prev, purpose: "all", type: "commercial" }));
     }
   }, [params.purpose]);
 
@@ -321,4 +334,3 @@ export default function ExploreScreen() {
     </SafeAreaView>
   );
 }
-

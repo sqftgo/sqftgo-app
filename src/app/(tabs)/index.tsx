@@ -14,7 +14,10 @@ import { displayNameFromEmail, greetingForHour } from "@/lib/format";
 import type { PurposeFilter } from "@/lib/filters";
 import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
 
-const INTENTS: { id: PurposeFilter; label: string; icon: typeof HomeIcon }[] = [
+/** Home shortcuts into Explore — `commercial` maps to commercial property types. */
+type ExploreIntent = PurposeFilter | "commercial";
+
+const INTENTS: { id: ExploreIntent; label: string; icon: typeof HomeIcon }[] = [
   { id: "buy", label: "Buy", icon: HomeIcon },
   { id: "rent", label: "Rent", icon: KeyRound },
   { id: "commercial", label: "Commercial", icon: Store },
@@ -41,7 +44,7 @@ export default function HomeScreen() {
     [directoryProfiles, selectedCity],
   );
 
-  const goToExplore = (purpose?: PurposeFilter) => {
+  const goToExplore = (purpose?: ExploreIntent) => {
     router.push(purpose ? { pathname: "/(tabs)/explore", params: { purpose } } : "/(tabs)/explore");
   };
 
