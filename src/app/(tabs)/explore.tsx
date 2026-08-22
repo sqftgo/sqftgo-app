@@ -3,13 +3,14 @@ import { FlatList, Pressable, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import { SearchX, SlidersHorizontal } from "@/components/ui/icons";
+import { SearchX } from "@/components/ui/icons";
 
+import CitySelectionModal from "@/components/ui/CitySelectionModal";
 import { RemovableFilterChip } from "@/components/ui/chip";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ExploreNavbar } from "@/components/ui/explore-navbar";
 import { FilterSheet } from "@/components/ui/filter-sheet";
 import { PropertyCard } from "@/components/ui/property-card";
-import { SearchBar } from "@/components/ui/search-bar";
 import { useApp } from "@/context/AppContext";
 import {
   countActiveFilters,
@@ -21,7 +22,7 @@ import {
   type PropertyFilters,
   type PurposeFilter,
 } from "@/lib/filters";
-import { colors, radius, spacing, type } from "@/theme/tokens";
+import { colors, spacing, type } from "@/theme/tokens";
 
 const PURPOSE_LABELS: Record<Exclude<PurposeFilter, "all">, string> = {
   buy: "Buy",
@@ -179,6 +180,7 @@ export default function ExploreScreen() {
 
   const [filters, setFilters] = useState<PropertyFilters>(defaultFilters);
   const [sheetVisible, setSheetVisible] = useState(false);
+  const [cityModalVisible, setCityModalVisible] = useState(false);
 
   // Home shortcuts: Buy / Rent / Commercial (Commercial → type group, like listings commercial types).
   useEffect(() => {
@@ -209,97 +211,45 @@ export default function ExploreScreen() {
     setSheetVisible(true);
   };
 
+  const openCityPicker = () => {
+    if (process.env.EXPO_OS === "ios") {
+      Haptics.selectionAsync();
+    }
+    setCityModalVisible(true);
+  };
+
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.bg }}>
-      <View style={{ paddingHorizontal: spacing.xl, paddingTop: spacing.lg, gap: spacing.md }}>
-        <Text style={{ ...type.title, color: colors.ink }}>Explore {selectedCity}</Text>
-
-        <View style={{ flexDirection: "row", gap: spacing.sm }}>
-          <View style={{ flex: 1 }}>
-            <SearchBar
-              value={filters.query}
-              onChangeText={(query) => setFilters((prev) => ({ ...prev, query }))}
-              placeholder="Locality, project, or type"
-            />
-          </View>
-          <Pressable
-            onPress={openFilters}
-            accessibilityRole="button"
-            accessibilityLabel={
-              activeCount > 0 ? `Filters, ${activeCount} active` : "Open filters"
-            }
-            style={({ pressed }) => ({
-              width: 46,
-              height: 46,
-              borderRadius: radius.md,
-              borderCurve: "continuous",
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: activeCount > 0 ? colors.ink : colors.surface,
-              borderWidth: 1,
-              borderColor: activeCount > 0 ? colors.ink : colors.border,
-              opacity: pressed ? 0.8 : 1,
-            })}
-          >
-            <SlidersHorizontal
-              size={18}
-              color={activeCount > 0 ? colors.surface : colors.ink}
-            />
-            {activeCount > 0 && (
-              <View
-                style={{
-                  position: "absolute",
-                  top: -5,
-                  right: -5,
-                  minWidth: 18,
-                  height: 18,
-                  borderRadius: radius.full,
-                  backgroundColor: colors.accent,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  paddingHorizontal: 4,
-                }}
-              >
-                <Text style={{ ...type.micro, color: colors.onAccent, fontWeight: "700" }}>
-                  {activeCount}
-                </Text>
-              </View>
-            )}
-          </Pressable>
-        </View>
-
-        <ActiveFilterChips filters={filters} onChange={setFilters} />
-
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <Text style={{ ...type.caption, color: colors.inkMuted }}>
-            {results.length === 1 ? "1 property" : `${results.length} properties`}
-          </Text>
-          <Pressable onPress={openFilters} hitSlop={8} accessibilityRole="button">
-            <Text style={{ ...type.caption, color: colors.inkSecondary }}>
-              Sorted by {SORT_LABELS[filters.sort]}
-            </Text>
-          </Pressable>
-        </View>
-      </View>
-
       <FlatList
         data={results}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => <PropertyCard property={item} />}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{
           paddingHorizontal: spacing.xl,
-          paddingTop: spacing.lg,
           paddingBottom: spacing.xxl,
           gap: spacing.lg,
+          flexGrow: 1,
         }}
+        ListHeaderComponent={
+          <View style={{ gap: spacing.md, marginBottom: spacing.sm }}>
+            <ExploreNavbar
+              city={selectedCity}
+              query={filters.query}
+              onQueryChange={(query) => setFilters((prev) => ({ ...prev, query }))}
+              onPressCity={openCityPicker}
+              onPressFilters={openFilters}
+              activeFilterCount={activeCount}
+              resultCount={results.length}
+              sortLabel={SORT_LABELS[filters.sort]}
+            />
+            {activeCount > 0 ? (
+              <ActiveFilterChips filters={filters} onChange={setFilters} />
+            ) : null}
+          </View>
+        }
         ListEmptyComponent={
           <EmptyState
             icon={SearchX}
@@ -330,6 +280,11 @@ export default function ExploreScreen() {
         countResults={countResults}
         onApply={setFilters}
         onClose={() => setSheetVisible(false)}
+      />
+
+      <CitySelectionModal
+        visible={cityModalVisible}
+        onClose={() => setCityModalVisible(false)}
       />
     </SafeAreaView>
   );

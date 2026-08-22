@@ -5,6 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MessageSquare } from "@/components/ui/icons";
 
 import { EmptyState } from "@/components/ui/empty-state";
+import { ScreenNavbar } from "@/components/ui/screen-navbar";
 import { useApp } from "@/context/AppContext";
 import type { InquiryStatus } from "@/data/types";
 import { INQUIRY_STATUS_LABEL } from "@/lib/status-labels";
@@ -20,34 +21,31 @@ export default function MyInquiriesScreen() {
   const router = useRouter();
   const { inquiries, userEmail } = useApp();
 
-  // Matched by email (API: GET /api/inquiries?mine=1), not user_id.
   const mine = useMemo(
     () => inquiries.filter((i) => i.buyerEmail.toLowerCase() === userEmail.toLowerCase()),
     [inquiries, userEmail],
   );
 
+  const subtitle =
+    mine.length === 0
+      ? "Track messages you send to dealers"
+      : `${mine.length} inquir${mine.length === 1 ? "y" : "ies"}`;
+
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.bg }}>
-      <View style={{ paddingHorizontal: spacing.xl, paddingTop: spacing.lg, gap: spacing.xs }}>
-        <Text style={{ ...type.title, color: colors.ink }}>My Inquiries</Text>
-        <Text style={{ ...type.caption, color: colors.inkMuted }}>
-          {mine.length === 0
-            ? "Track messages you send to dealers"
-            : `${mine.length} inquir${mine.length === 1 ? "y" : "ies"}`}
-        </Text>
-      </View>
-
       <FlatList
         data={mine}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingHorizontal: spacing.xl,
-          paddingTop: spacing.lg,
           paddingBottom: spacing.xxl,
           gap: spacing.md,
           flexGrow: 1,
         }}
+        ListHeaderComponent={
+          <ScreenNavbar eyebrow="Buyer inbox" title="My Inquiries" subtitle={subtitle} />
+        }
         ListEmptyComponent={
           <EmptyState
             icon={MessageSquare}

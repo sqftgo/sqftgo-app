@@ -45,6 +45,7 @@ import CitySelectionModal from "@/components/ui/CitySelectionModal";
 import { MenuGroup, MenuRow } from "@/components/ui/menu-row";
 import { ModalSheet, ModalSheetHeader } from "@/components/ui/modal-sheet";
 import { PropertyCard } from "@/components/ui/property-card";
+import { ScreenNavbar } from "@/components/ui/screen-navbar";
 import { useApp } from "@/context/AppContext";
 import type { DirectoryCategory } from "@/data/types";
 import { formatIndianPrice, initialsFromName } from "@/lib/format";
@@ -360,7 +361,11 @@ export default function ProfileScreen() {
         {/* ========================================================================= */}
         {canAccessDealerDashboard ? (
           <>
-            <Text style={{ ...type.title, color: colors.ink }}>Dealer Profile</Text>
+            <ScreenNavbar
+              eyebrow="Account"
+              title="Dealer Profile"
+              subtitle="Manage your firm, listings, and leads"
+            />
 
             <View
               style={{
@@ -727,18 +732,21 @@ export default function ProfileScreen() {
               style={{
                 flexDirection: "row",
                 justifyContent: "space-between",
-                alignItems: "center",
+                alignItems: "flex-start",
+                gap: spacing.md,
               }}
             >
-              <View>
-                <Text style={{ ...type.title, color: colors.ink }}>Buyer Profile</Text>
-                <Text style={{ ...type.caption, color: colors.inkMuted }}>
-                  Your personal real estate hub & shortlisted properties
-                </Text>
+              <View style={{ flex: 1 }}>
+                <ScreenNavbar
+                  eyebrow="Account"
+                  title="Buyer Profile"
+                  subtitle="Your personal real estate hub"
+                />
               </View>
               <Pressable
                 onPress={() => setEditProfileModalVisible(true)}
                 style={({ pressed }) => ({
+                  marginTop: spacing.md + 14,
                   flexDirection: "row",
                   alignItems: "center",
                   gap: spacing.xs,
