@@ -22,6 +22,7 @@ import {
   type PropertyFilters,
   type PurposeFilter,
 } from "@/lib/filters";
+import { useListingFilters } from "@/hooks/useListingFilters";
 import { colors, spacing, type } from "@/theme/tokens";
 
 const PURPOSE_LABELS: Record<Exclude<PurposeFilter, "all">, string> = {
@@ -176,6 +177,7 @@ function ActiveFilterChips({
 
 export default function ExploreScreen() {
   const { properties, selectedCity } = useApp();
+  const { filters: listingFilters } = useListingFilters();
   const params = useLocalSearchParams<{ purpose?: string; type?: string }>();
 
   const [filters, setFilters] = useState<PropertyFilters>(defaultFilters);
@@ -201,13 +203,14 @@ export default function ExploreScreen() {
   }, [params.purpose, params.type]);
 
   const results = useMemo(
-    () => filterProperties(properties, selectedCity, filters),
-    [properties, selectedCity, filters],
+    () => filterProperties(properties, selectedCity, filters, listingFilters),
+    [properties, selectedCity, filters, listingFilters],
   );
 
   const countResults = useCallback(
-    (draft: PropertyFilters) => filterProperties(properties, selectedCity, draft).length,
-    [properties, selectedCity],
+    (draft: PropertyFilters) =>
+      filterProperties(properties, selectedCity, draft, listingFilters).length,
+    [properties, selectedCity, listingFilters],
   );
 
   const activeCount = countActiveFilters(filters);
@@ -288,6 +291,7 @@ export default function ExploreScreen() {
         countResults={countResults}
         onApply={setFilters}
         onClose={() => setSheetVisible(false)}
+        listingFilters={listingFilters}
       />
 
       <CitySelectionModal

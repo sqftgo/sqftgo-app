@@ -1,4 +1,5 @@
 import type { Furnishing, Property, PropertyType } from "@/data/types";
+import type { ListingFilter } from "@/data/listing-filters";
 
 export type PurposeFilter = "all" | "buy" | "sell" | "rent" | "lease";
 export type FurnishingFilter = Furnishing;
@@ -18,6 +19,7 @@ export interface PropertyFilters {
   reraApprovedOnly: boolean;
   featuredOnly: boolean;
   selectedAmenities: string[];
+  extra: Record<string, string | string[] | boolean>;
   sort: SortOption;
 }
 
@@ -35,6 +37,7 @@ export const defaultFilters: PropertyFilters = {
   reraApprovedOnly: false,
   featuredOnly: false,
   selectedAmenities: [],
+  extra: {},
   sort: "latest",
 };
 
@@ -215,6 +218,13 @@ export function countActiveFilters(f: PropertyFilters): number {
   if (f.reraApprovedOnly) n++;
   if (f.featuredOnly) n++;
   if (f.selectedAmenities.length > 0) n += f.selectedAmenities.length;
+  if (f.extra) {
+    for (const val of Object.values(f.extra)) {
+      if (val === true) n++;
+      else if (typeof val === "string" && val.trim()) n++;
+      else if (Array.isArray(val) && val.length) n += val.length;
+    }
+  }
   return n;
 }
 
@@ -233,9 +243,12 @@ export function filterProperties(
   properties: Property[],
   city: string,
   filters: PropertyFilters,
+  catalog?: ListingFilter[],
 ): Property[] {
   const q = filters.query.trim().toLowerCase();
   const locality = filters.locality.trim().toLowerCase();
+  const enabled = (key: string) =>
+    !catalog || catalog.length === 0 || catalog.some((f) => f.key === key && f.active);
 
   const result = properties.filter((p) => {
     if (p.status !== "Active") return false;
@@ -246,7 +259,7 @@ export function filterProperties(
     }
 
     // Locality
-    if (locality && !p.locality.toLowerCase().includes(locality)) return false;
+    if (enabled("locality") && locality && !p.locality.toLowerCase().includes(locality)) return false;
 
     // Search query (mobile search bar — OR across fields)
     if (
@@ -260,53 +273,75 @@ export function filterProperties(
     }
 
     // Purpose — exact match like web (not buy↔sell merge)
-    if (filters.purpose !== "all" && p.purpose !== filters.purpose) return false;
+    if (enabled("purpose") && filters.purpose !== "all" && p.purpose !== filters.purpose) return false;
 
     // Type
-    if (!matchesType(p, filters.type)) return false;
+    if (enabled("type") && !matchesType(p, filters.type)) return false;
 
     // BHK
-    if (filters.bhk.length > 0) {
+    if (enabled("bhk") && filters.bhk.length > 0) {
       if (p.bhk == null) return false;
       if (!filters.bhk.includes(String(p.bhk))) return false;
     }
 
     // Furnishing
-    if (filters.furnishing.length > 0 && !filters.furnishing.includes(p.furnished)) {
+    if (enabled("furnishing") && filters.furnishing.length > 0 && !filters.furnishing.includes(p.furnished)) {
       return false;
     }
 
     // Min / max price
-    if (filters.minPrice) {
+    if (enabled("price") && filters.minPrice) {
       const minVal = parseInt(filters.minPrice, 10);
       if (!Number.isNaN(minVal) && p.price < minVal) return false;
     }
-    if (filters.maxPrice) {
+    if (enabled("price") && filters.maxPrice) {
       const maxVal = parseInt(filters.maxPrice, 10);
       if (!Number.isNaN(maxVal) && p.price > maxVal) return false;
     }
 
     // RERA / featured
-    if (filters.reraApprovedOnly && !p.reraApproved) return false;
-    if (filters.featuredOnly && !p.featured) return false;
+    if (enabled("rera") && filters.reraApprovedOnly && !p.reraApproved) return false;
+    if (enabled("featured") && filters.featuredOnly && !p.featured) return false;
 
     // Size
-    if (filters.minSize) {
+    if (enabled("size") && filters.minSize) {
       const minS = parseInt(filters.minSize, 10);
       if (!Number.isNaN(minS) && (p.size ?? 0) < minS) return false;
     }
-    if (filters.maxSize) {
+    if (enabled("size") && filters.maxSize) {
       const maxS = parseInt(filters.maxSize, 10);
       if (!Number.isNaN(maxS) && (p.size ?? 0) > maxS) return false;
     }
 
     // Amenities (AND) — web uses case-insensitive includes
-    if (filters.selectedAmenities.length > 0) {
+    if (enabled("amenities") && filters.selectedAmenities.length > 0) {
       const propertyAmenities = p.amenities || [];
       const hasAll = filters.selectedAmenities.every((amenity) =>
         propertyAmenities.some((a) => a.toLowerCase().includes(amenity.toLowerCase())),
       );
       if (!hasAll) return false;
+    }
+
+    const extra = filters.extra ?? {};
+    const customDefs = (catalog ?? []).filter(
+      (f) => f.active && (f.kind === "text" || f.kind === "toggle" || f.kind === "multi"),
+    );
+    for (const def of customDefs) {
+      const raw = extra[def.key];
+      if (raw == null || raw === false || raw === "") continue;
+      if (Array.isArray(raw) && raw.length === 0) continue;
+      const rec = p as unknown as Record<string, unknown>;
+      const fieldValue = def.propertyField ? rec[def.propertyField] : undefined;
+      if (def.kind === "toggle") {
+        if (!fieldValue) return false;
+        continue;
+      }
+      const haystack = Array.isArray(fieldValue)
+        ? fieldValue.map((v) => String(v).toLowerCase())
+        : [String(fieldValue ?? "").toLowerCase()];
+      const needles = Array.isArray(raw) ? raw.map(String) : [String(raw)];
+      const ok = needles.some((n) => haystack.some((h) => h.includes(n.trim().toLowerCase())));
+      if (!ok) return false;
     }
 
     return true;
