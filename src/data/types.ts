@@ -54,6 +54,9 @@ export interface Property {
   state?: string;
   country?: string;
   locality: string;
+  nearbyHospital?: string;
+  nearbySchool?: string;
+  nearbyTransportation?: string;
   /** In sq.ft. */
   size: number;
   furnished: Furnishing;

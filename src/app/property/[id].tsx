@@ -30,7 +30,6 @@ import {
   Phone,
   MessageSquare,
   Train,
-  ShoppingBag,
   PlusCircle,
   Star,
   ShieldCheck,
@@ -72,13 +71,33 @@ const LOCALITY_REVIEWS = [
   }
 ];
 
-// Indian Public Facilities
-const PUBLIC_FACILITIES = [
-  { id: "metro", name: "Metro Station", icon: Train, detail: "City Center Metro • 1.2 km" },
-  { id: "temple", name: "Temple / Mandir", icon: Compass, detail: "Ganesh Mandir • 0.4 km" },
-  { id: "bazaar", name: "Local Bazaar", icon: ShoppingBag, detail: "Daily Needs Market • 0.6 km" },
-  { id: "hosp", name: "Hospital", icon: PlusCircle, detail: "Fortis Super Specialty • 2.5 km" }
-];
+// Nearby landmarks from the dealer listing, with generic fallbacks for older properties.
+function nearbyFacilities(property: {
+  nearbyHospital?: string;
+  nearbySchool?: string;
+  nearbyTransportation?: string;
+}) {
+  return [
+    {
+      id: "hospital",
+      name: "Hospital",
+      icon: PlusCircle,
+      detail: property.nearbyHospital || "Ask the dealer for the nearest hospital",
+    },
+    {
+      id: "school",
+      name: "School",
+      icon: Sparkles,
+      detail: property.nearbySchool || "Ask the dealer for the nearest school",
+    },
+    {
+      id: "transport",
+      name: "Transportation",
+      icon: Train,
+      detail: property.nearbyTransportation || "Ask the dealer for transit access",
+    },
+  ];
+}
 
 const FALLBACK_GALLERY = [
   "https://images.unsplash.com/photo-1613977257363-707ba9348227?auto=format&fit=crop&w=1200&q=80",
@@ -111,7 +130,7 @@ export default function PropertyDetailsScreen() {
   // States
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isDescExpanded, setIsDescExpanded] = useState(false);
-  const [selectedFacility, setSelectedFacility] = useState("metro");
+  const [selectedFacility, setSelectedFacility] = useState("hospital");
   const [showInquiry, setShowInquiry] = useState(false);
   const [showVisit, setShowVisit] = useState(false);
   const [inquiryName, setInquiryName] = useState(userName || "");
@@ -270,7 +289,8 @@ export default function PropertyDetailsScreen() {
   const parkingInfo = property.amenities.includes("Parking") ? "1 Covered Parking" : "Open Parking Space";
   const statusInfo = property.purpose === "buy" || property.purpose === "sell" ? "For Sale" : "For Rent";
 
-  const selectedFacilityObj = PUBLIC_FACILITIES.find(f => f.id === selectedFacility) || PUBLIC_FACILITIES[0];
+  const publicFacilities = nearbyFacilities(property);
+  const selectedFacilityObj = publicFacilities.find(f => f.id === selectedFacility) || publicFacilities[0];
 
   // EMI Calculator calculations
   const calculateEMI = () => {
@@ -605,7 +625,7 @@ export default function PropertyDetailsScreen() {
             
             {/* Scrollable Facility Chips */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.facilityChipsContainer}>
-              {PUBLIC_FACILITIES.map((facility) => {
+              {publicFacilities.map((facility) => {
                 const IconComponent = facility.icon;
                 const isSelected = selectedFacility === facility.id;
                 return (
