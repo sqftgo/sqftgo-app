@@ -34,9 +34,9 @@ export default function EditPropertyScreen() {
   );
 
   const canEdit =
-    canAccessDealerDashboard &&
-    existing &&
-    ownsProperty(existing, { userId: profile?.id, email: userEmail });
+    Boolean(existing) &&
+    ownsProperty(existing!, { userId: profile?.id, email: userEmail }) &&
+    (canAccessDealerDashboard || profile?.role === "user");
 
   const [title, setTitle] = useState(existing?.title ?? "");
   const [price, setPrice] = useState(existing ? String(existing.price) : "");

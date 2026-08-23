@@ -79,15 +79,15 @@ export default function CommunicationsScreen() {
     return mine.filter((i) => i.status === "new" || i.status === "read");
   }, [mine, filter]);
 
-  if (!canAccessDealerDashboard) {
+  if (!canAccessDealerDashboard && ownedIds.size === 0) {
     return (
       <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.bg }}>
         <EmptyState
           icon={Inbox}
-          title="Dealer access required"
-          message="Communications unlock when your role is broker."
-          actionLabel="Check dealer status"
-          onAction={() => router.push("/dealer-pending" as Href)}
+          title="No listing inbox yet"
+          message="When you have an Active listing, buyer inquiries appear here. You can also open My listings from Profile."
+          actionLabel="My listings"
+          onAction={() => router.push("/my-listings" as Href)}
         />
       </SafeAreaView>
     );

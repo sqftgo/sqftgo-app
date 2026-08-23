@@ -1135,6 +1135,18 @@ export default function ProfileScreen() {
               <Text style={{ ...type.label, color: colors.inkMuted }}>MY ACTIVITY</Text>
               <MenuGroup>
                 <MenuRow
+                  icon={Building2}
+                  label="My listings"
+                  sub="Your properties, verification, and buyer inquiries"
+                  value={String(
+                    properties.filter((p) =>
+                      p.ownerEmail?.toLowerCase() === userEmail.toLowerCase() ||
+                      p.ownerId === profile?.id,
+                    ).length,
+                  )}
+                  onPress={() => router.push("/my-listings" as Href)}
+                />
+                <MenuRow
                   icon={Heart}
                   label="Saved properties"
                   value={String(savedProperties.length)}

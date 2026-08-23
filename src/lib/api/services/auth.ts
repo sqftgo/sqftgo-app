@@ -1,6 +1,6 @@
 import { apiFetch } from "@/lib/api/client";
 import { setAccessToken } from "@/lib/api/auth-token";
-import type { AccountStatus, DealerAccessStatus, DealerKyc, UserRole } from "@/data/types";
+import type { AccountStatus, DealerAccessStatus, DealerKyc, ListerStatus, UserRole } from "@/data/types";
 
 export interface AuthMeResponse {
   id: string;
@@ -10,6 +10,8 @@ export interface AuthMeResponse {
   role: UserRole | "admin";
   status: AccountStatus;
   dealerAccess?: DealerAccessStatus;
+  listingStatus?: ListerStatus;
+  listingVerifiedAt?: string | null;
   directoryProfileId?: string;
   kyc?: DealerKyc;
   joinedDate?: string;
