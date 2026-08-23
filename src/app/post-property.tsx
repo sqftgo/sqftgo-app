@@ -102,8 +102,11 @@ const DropdownSelect: React.FC<DropdownSelectProps> = ({
 
 export default function PostPropertyScreen() {
   const router = useRouter();
-  const { addProperty, selectedCity, canAccessDealerDashboard } = useApp();
-  const isBroker = canAccessDealerDashboard;
+  const { addProperty, selectedCity, canAccessDealerDashboard, profile, userRole } = useApp();
+  const canList =
+    (canAccessDealerDashboard || userRole === "user") &&
+    profile?.status === "active" &&
+    profile?.listingStatus !== "rejected";
 
   // Dropdown states
   const [activeDropdown, setActiveDropdown] = useState<"city" | "type" | "furnished" | null>(null);
@@ -204,13 +207,18 @@ export default function PostPropertyScreen() {
 
   const handleSaveDraft = async () => {
     if (!validate()) return;
-    if (!isBroker) {
-      appAlert("Dealer access required", "Only approved brokers can create listings.");
+    if (!canList) {
+      appAlert(
+        "Cannot list",
+        profile?.listingStatus === "rejected"
+          ? "Admin declined listing access for this account."
+          : "Sign in as a client or approved dealer to save a listing.",
+      );
       return;
     }
     const created = await addProperty({ ...buildPayload(), status: "Draft" });
     if (!created) {
-      appAlert("Could not save", "Dealer dashboard access is required.");
+      appAlert("Could not save", "You may have reached the 2-listing limit, or listing access is off.");
       return;
     }
     appAlert("Draft saved", "Open this draft later from your dashboard and submit when ready.", [
@@ -220,13 +228,18 @@ export default function PostPropertyScreen() {
 
   const handleSubmitForReview = async () => {
     if (!validate()) return;
-    if (!isBroker) {
-      appAlert("Dealer access required", "Only approved brokers can create listings.");
+    if (!canList) {
+      appAlert(
+        "Cannot list",
+        profile?.listingStatus === "rejected"
+          ? "Admin declined listing access for this account."
+          : "Sign in as a client or approved dealer to submit a listing.",
+      );
       return;
     }
     const created = await addProperty({ ...buildPayload(), status: "Pending Review" });
     if (!created) {
-      appAlert("Could not submit", "Dealer dashboard access is required.");
+      appAlert("Could not submit", "You may have reached the 2-listing limit, or listing access is off.");
       return;
     }
     appAlert(
@@ -243,7 +256,7 @@ export default function PostPropertyScreen() {
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
           <ChevronLeft size={22} color={colors.ink} />
         </Pressable>
-        <Text style={styles.headerTitle}>{isBroker ? "Add Property" : "Post Property"}</Text>
+        <Text style={styles.headerTitle}>{canAccessDealerDashboard ? "Add Property" : "Post Property"}</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -519,7 +532,7 @@ export default function PostPropertyScreen() {
         </View>
 
         <View style={styles.submitRow}>
-          {isBroker ? (
+          {canList ? (
             <>
               <Pressable onPress={handleSaveDraft} style={styles.draftBtn}>
                 <Text style={styles.draftBtnText}>Save draft</Text>

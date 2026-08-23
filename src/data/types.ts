@@ -181,6 +181,8 @@ export type AccountStatus = "active" | "suspended";
 /** After directory claim, wait for web admin to promote role → broker */
 export type DealerAccessStatus = "none" | "pending" | "approved";
 
+export type ListerStatus = "none" | "pending" | "approved" | "rejected";
+
 export interface UserProfile {
   id: string;
   email: string;
@@ -193,6 +195,8 @@ export interface UserProfile {
   status: AccountStatus;
   joinedDate: string;
   dealerAccess: DealerAccessStatus;
+  listingStatus?: ListerStatus;
+  listingVerifiedAt?: string | null;
   directoryProfileId?: string;
   kyc?: DealerKyc;
 }

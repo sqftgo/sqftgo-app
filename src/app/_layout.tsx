@@ -117,6 +117,7 @@ function RootLayoutNav() {
           <Stack.Screen name="dealer-pending" />
           <Stack.Screen name="dealer-kyc" />
           <Stack.Screen name="my-visits" />
+          <Stack.Screen name="my-listings" />
           <Stack.Screen name="manage-visits" />
           <Stack.Screen
             name="modal"
