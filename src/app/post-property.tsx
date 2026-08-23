@@ -116,6 +116,9 @@ export default function PostPropertyScreen() {
   const [bhk, setBhk] = useState("");
   const [city, setCity] = useState(selectedCity);
   const [locality, setLocality] = useState("");
+  const [nearbyHospital, setNearbyHospital] = useState("");
+  const [nearbySchool, setNearbySchool] = useState("");
+  const [nearbyTransportation, setNearbyTransportation] = useState("");
   const [size, setSize] = useState("");
   const [furnished, setFurnished] = useState<Property["furnished"]>("Semi-Furnished");
   const [description, setDescription] = useState("");
@@ -166,6 +169,9 @@ export default function PostPropertyScreen() {
       bhk: bhk ? parseInt(bhk) : undefined,
       city,
       locality,
+      nearbyHospital: nearbyHospital.trim(),
+      nearbySchool: nearbySchool.trim(),
+      nearbyTransportation: nearbyTransportation.trim(),
       size: sizeNum,
       furnished,
       description,
@@ -178,8 +184,8 @@ export default function PostPropertyScreen() {
   };
 
   const validate = () => {
-    if (!title || !price || !locality || !size || !description) {
-      appAlert("Error", "Please fill in all mandatory fields.");
+    if (!title || !price || !locality || !size || !description || !nearbyHospital.trim() || !nearbySchool.trim() || !nearbyTransportation.trim()) {
+      appAlert("Error", "Please fill in all mandatory fields, including hospital, school, and transportation.");
       return false;
     }
     if (isNaN(parseFloat(price)) || isNaN(parseFloat(size))) {
@@ -310,6 +316,33 @@ export default function PostPropertyScreen() {
             value={locality}
             onChangeText={setLocality}
             placeholder="e.g. C-Scheme or Panchwati"
+            placeholderTextColor="#9CA3AF"
+            style={styles.input}
+          />
+
+          <Text style={styles.label}>Nearby hospital *</Text>
+          <TextInput
+            value={nearbyHospital}
+            onChangeText={setNearbyHospital}
+            placeholder="e.g. GBH American Hospital, 2 km"
+            placeholderTextColor="#9CA3AF"
+            style={styles.input}
+          />
+
+          <Text style={styles.label}>Nearby school *</Text>
+          <TextInput
+            value={nearbySchool}
+            onChangeText={setNearbySchool}
+            placeholder="e.g. Seedling Public School, 1 km"
+            placeholderTextColor="#9CA3AF"
+            style={styles.input}
+          />
+
+          <Text style={styles.label}>Nearby transportation *</Text>
+          <TextInput
+            value={nearbyTransportation}
+            onChangeText={setNearbyTransportation}
+            placeholder="e.g. City Bus Stand, 3 km"
             placeholderTextColor="#9CA3AF"
             style={styles.input}
           />
