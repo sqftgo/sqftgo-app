@@ -2,7 +2,7 @@ import React from "react";
 import { Pressable, TextInput, View } from "react-native";
 import { Search, X } from "@/components/ui/icons";
 
-import { colors, radius, spacing, type } from "@/theme/tokens";
+import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
 
 interface SearchBarProps {
   value: string;
@@ -21,14 +21,15 @@ export function SearchBar({ value, onChangeText, placeholder, autoFocus }: Searc
         gap: spacing.sm,
         backgroundColor: colors.surface,
         borderWidth: 1,
-        borderColor: colors.border,
-        borderRadius: radius.sm,
+        borderColor: colors.borderStrong,
+        borderRadius: radius.md,
         borderCurve: "continuous",
         paddingHorizontal: spacing.md,
         height: 46,
+        boxShadow: shadow.card,
       }}
     >
-      <Search size={16} color={colors.inkMuted} />
+      <Search size={17} color={colors.inkMuted} />
       <TextInput
         value={value}
         onChangeText={onChangeText}
@@ -37,7 +38,7 @@ export function SearchBar({ value, onChangeText, placeholder, autoFocus }: Searc
         autoFocus={autoFocus}
         returnKeyType="search"
         accessibilityLabel={placeholder}
-        style={{ flex: 1, ...type.body, lineHeight: undefined, color: colors.ink }}
+        style={{ flex: 1, ...type.body, lineHeight: undefined, color: colors.ink, padding: 0 }}
       />
       {value !== "" && (
         <Pressable
@@ -46,7 +47,7 @@ export function SearchBar({ value, onChangeText, placeholder, autoFocus }: Searc
           accessibilityRole="button"
           accessibilityLabel="Clear search"
         >
-          <X size={15} color={colors.inkMuted} />
+          <X size={16} color={colors.inkMuted} />
         </Pressable>
       )}
     </View>

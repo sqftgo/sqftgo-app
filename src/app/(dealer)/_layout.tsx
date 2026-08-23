@@ -13,13 +13,14 @@ import {
   ParamListBase,
   TabNavigationState,
 } from "@react-navigation/native";
-import type { MaterialTopTabBarProps } from "@react-navigation/material-top-tabs";
 import {
   createMaterialTopTabNavigator,
+  type MaterialTopTabBarProps,
   type MaterialTopTabNavigationEventMap,
   type MaterialTopTabNavigationOptions,
 } from "@react-navigation/material-top-tabs";
 import { withLayoutContext } from "expo-router";
+
 import {
   BarChart3,
   Building2,

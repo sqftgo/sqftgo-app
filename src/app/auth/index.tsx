@@ -9,7 +9,6 @@ import { useRouter, type Href } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
-  Dimensions,
   KeyboardAvoidingView,
   Pressable,
   ScrollView,
@@ -17,6 +16,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+
 import { appAlert } from "@/components/ui/app-alert";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -29,7 +29,7 @@ type Mode = "sign-in" | "sign-up";
 type LoginType = "user" | "dealer";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const { width: SCREEN_W } = Dimensions.get("window");
+
 
 function preferredToLoginType(role: UserRole): LoginType {
   return role === "broker" ? "dealer" : "user";

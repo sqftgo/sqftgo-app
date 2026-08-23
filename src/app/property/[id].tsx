@@ -8,7 +8,6 @@ import {
   Dimensions,
   Share,
   Linking,
-  Modal,
   TextInput,
 } from "react-native";
 import { appAlert } from "@/components/ui/app-alert";
@@ -36,10 +35,10 @@ import {
   ShieldCheck,
   CheckCircle2,
   Info,
-  X,
 } from "@/components/ui/icons";
 import { ModalSheet, ModalSheetHeader } from "@/components/ui/modal-sheet";
-import { colors, type, radius, spacing } from "@/theme/tokens";
+import { colors } from "@/theme/tokens";
+
 
 const { width } = Dimensions.get("window");
 const CAROUSEL_WIDTH = width - 32;

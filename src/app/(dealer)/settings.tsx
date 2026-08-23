@@ -8,17 +8,18 @@ import {
   View,
 } from "react-native";
 import { appAlert } from "@/components/ui/app-alert";
-import { useRouter, type Href } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+
 
 import { ScreenNavbar } from "@/components/ui/screen-navbar";
 import { useApp } from "@/context/AppContext";
-import { colors, radius, spacing, type } from "@/theme/tokens";
+import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
 
 export default function DealerSettingsScreen() {
-  const router = useRouter();
   const {
     updatePassword,
+
     notifPrefs,
     setNotifPrefs,
     isApiMode,
@@ -59,7 +60,7 @@ export default function DealerSettingsScreen() {
 
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.bg }}>
-      <View style={{ paddingHorizontal: spacing.xl }}>
+      <View style={{ paddingHorizontal: spacing.lg }}>
         <ScreenNavbar
           eyebrow="Dealer portal"
           title="Settings"
@@ -67,10 +68,20 @@ export default function DealerSettingsScreen() {
         />
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, gap: spacing.lg }}>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing["3xl"], gap: spacing.lg }}>
         {/* Password */}
-        <View>
-          <Text style={{ ...type.label, color: colors.inkMuted, marginBottom: spacing.md }}>
+        <View
+          style={{
+            backgroundColor: colors.surface,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: radius.lg,
+            borderCurve: "continuous",
+            padding: spacing.lg,
+            boxShadow: shadow.card,
+          }}
+        >
+          <Text style={{ ...type.label, color: colors.inkMuted, marginBottom: spacing.sm }}>
             PASSWORD
           </Text>
           {!isApiMode ? (
@@ -98,12 +109,13 @@ export default function DealerSettingsScreen() {
             disabled={saving}
             onPress={() => void handlePassword()}
             style={{
-              height: 48,
+              height: 46,
               borderRadius: radius.md,
               backgroundColor: colors.accent,
               alignItems: "center",
               justifyContent: "center",
               opacity: saving ? 0.7 : 1,
+              boxShadow: shadow.button,
             }}
           >
             <Text style={{ ...type.emphasis, color: colors.onAccent }}>Update password</Text>
@@ -111,8 +123,18 @@ export default function DealerSettingsScreen() {
         </View>
 
         {/* Notifications */}
-        <View>
-          <Text style={{ ...type.label, color: colors.inkMuted, marginBottom: spacing.md }}>
+        <View
+          style={{
+            backgroundColor: colors.surface,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: radius.lg,
+            borderCurve: "continuous",
+            padding: spacing.lg,
+            boxShadow: shadow.card,
+          }}
+        >
+          <Text style={{ ...type.label, color: colors.inkMuted, marginBottom: spacing.xs }}>
             NOTIFICATIONS (DEVICE LOCAL)
           </Text>
           <Text style={{ ...type.caption, color: colors.inkMuted, marginBottom: spacing.md }}>
@@ -124,15 +146,15 @@ export default function DealerSettingsScreen() {
               { key: "visits" as const, label: "Visit updates" },
               { key: "messages" as const, label: "Messages" },
             ] as const
-          ).map((row) => (
+          ).map((row, index, arr) => (
             <View
               key={row.key}
               style={{
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "space-between",
-                paddingVertical: spacing.sm,
-                borderBottomWidth: 1,
+                paddingVertical: spacing.sm + 2,
+                borderBottomWidth: index === arr.length - 1 ? 0 : 1,
                 borderBottomColor: colors.border,
               }}
             >
@@ -147,8 +169,18 @@ export default function DealerSettingsScreen() {
         </View>
 
         {/* Danger Zone */}
-        <View>
-          <Text style={{ ...type.label, color: colors.inkMuted, marginBottom: spacing.md }}>
+        <View
+          style={{
+            backgroundColor: colors.surface,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: radius.lg,
+            borderCurve: "continuous",
+            padding: spacing.lg,
+            boxShadow: shadow.card,
+          }}
+        >
+          <Text style={{ ...type.label, color: colors.inkMuted, marginBottom: spacing.sm }}>
             ACCOUNT
           </Text>
           <Pressable
@@ -159,7 +191,7 @@ export default function DealerSettingsScreen() {
               )
             }
             style={{
-              height: 48,
+              height: 46,
               borderRadius: radius.md,
               borderWidth: 1,
               borderColor: colors.danger,
@@ -173,4 +205,5 @@ export default function DealerSettingsScreen() {
       </ScrollView>
     </SafeAreaView>
   );
+
 }

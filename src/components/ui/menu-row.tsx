@@ -40,7 +40,7 @@ export function MenuRow({
         flexDirection: "row",
         alignItems: "center",
         gap: spacing.md,
-        paddingVertical: spacing.md + 1,
+        paddingVertical: spacing.md,
         paddingHorizontal: spacing.lg,
         borderBottomWidth: showDivider ? 1 : 0,
         borderBottomColor: colors.border,
@@ -53,39 +53,61 @@ export function MenuRow({
     >
       <View
         style={{
-          width: 34,
-          height: 34,
-          borderRadius: radius.sm,
+          width: 36,
+          height: 36,
+          borderRadius: radius.md,
           borderCurve: "continuous",
           backgroundColor: destructive ? colors.dangerSoft : colors.surfaceSubtle,
           alignItems: "center",
           justifyContent: "center",
         }}
       >
-        <Icon size={16} color={tint} />
+        <Icon size={17} color={tint} strokeWidth={2} />
       </View>
-      <View style={{ flex: 1, gap: 1 }}>
-        <Text style={{ ...type.body, lineHeight: undefined, color: destructive ? colors.danger : colors.ink }}>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text
+          style={{
+            ...type.emphasis,
+            color: destructive ? colors.danger : colors.ink,
+          }}
+        >
           {label}
         </Text>
-        {sub && <Text style={{ ...type.caption, color: colors.inkMuted }}>{sub}</Text>}
+        {sub && (
+          <Text style={{ ...type.caption, color: colors.inkMuted }} numberOfLines={1}>
+            {sub}
+          </Text>
+        )}
       </View>
       <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
-        {value && <Text style={{ ...type.caption, color: colors.inkMuted }}>{value}</Text>}
+        {value && (
+          <View
+            style={{
+              backgroundColor: colors.surfaceSubtle,
+              paddingHorizontal: spacing.sm,
+              paddingVertical: 2,
+              borderRadius: radius.full,
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}
+          >
+            <Text style={{ ...type.micro, color: colors.inkSecondary }}>{value}</Text>
+          </View>
+        )}
         {rightElement}
-        {showChevron && <ChevronRight size={15} color={colors.inkMuted} />}
+        {showChevron && <ChevronRight size={16} color={colors.inkMuted} />}
       </View>
     </Pressable>
   );
 }
 
-/** Card wrapper that groups MenuRows. */
+/** Group container that groups MenuRows with subtle border. */
 export function MenuGroup({ children }: { children: React.ReactNode }) {
   return (
     <View
       style={{
         backgroundColor: colors.surface,
-        borderRadius: radius.sm,
+        borderRadius: radius.md,
         borderCurve: "continuous",
         borderWidth: 1,
         borderColor: colors.border,
@@ -96,3 +118,4 @@ export function MenuGroup({ children }: { children: React.ReactNode }) {
     </View>
   );
 }
+

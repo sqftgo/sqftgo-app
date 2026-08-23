@@ -1,19 +1,18 @@
 import {
-  ArrowRight,
   Bell,
+  Bookmark,
   Building,
   Building2,
-  CheckCircle,
   ChevronRight,
   Community,
   Home as HomeIcon,
   KeyRound,
+  MapPin,
   Plus,
   Search,
   Shop,
-  Sparks,
 } from "@/components/ui/icons";
-import { useRouter } from "expo-router";
+import { useRouter, type Href } from "expo-router";
 import React, { useMemo, useState } from "react";
 import { FlatList, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -23,6 +22,7 @@ import CitySelectionModal from "@/components/ui/CitySelectionModal";
 import { ExpertCard } from "@/components/ui/expert-card";
 import { NotificationsSheet, useNotifications } from "@/components/ui/notifications-sheet";
 import { PropertyCard } from "@/components/ui/property-card";
+
 import { ScreenNavbar } from "@/components/ui/screen-navbar";
 import { SectionHeader } from "@/components/ui/section-header";
 import { useApp } from "@/context/AppContext";
@@ -80,12 +80,14 @@ const CATEGORIES = [
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { properties, selectedCity, userEmail, userName, profile, directoryProfiles } = useApp();
+  const { properties, favorites, selectedCity, userEmail, userName, profile, directoryProfiles } = useApp();
 
   const [cityModalVisible, setCityModalVisible] = useState(false);
   const [notificationsVisible, setNotificationsVisible] = useState(false);
   const [selectedIntent, setSelectedIntent] = useState<ExploreIntent>("buy");
   const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
+
+  const savedCount = favorites.length;
 
   const firstName = useMemo(() => {
     const raw = (userName || profile?.name || "").trim();
@@ -153,7 +155,7 @@ export default function HomeScreen() {
         contentContainerStyle={{ paddingBottom: spacing.xxl + spacing.lg, gap: spacing.xxl }}
       >
         {/* Top Header & Search Hero */}
-        <View style={{ paddingHorizontal: spacing.lg, gap: spacing.md }}>
+        <View style={{ paddingHorizontal: spacing.lg, gap: spacing.md, paddingTop: spacing.xs }}>
           {/* Header Row */}
           <View
             style={{
@@ -172,43 +174,108 @@ export default function HomeScreen() {
               />
             </View>
 
-            <Pressable
-              onPress={() => setNotificationsVisible(true)}
-              accessibilityRole="button"
-              accessibilityLabel={
-                unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"
-              }
-              style={({ pressed }) => ({
-                marginTop: spacing.md + 10,
-                width: 42,
-                height: 42,
-                borderRadius: radius.md,
-                backgroundColor: colors.surface,
-                borderWidth: 1,
-                borderColor: colors.border,
+            {/* Header Action Controls: Notifications | Saved */}
+            <View
+              style={{
+                flexDirection: "row",
                 alignItems: "center",
-                justifyContent: "center",
-                boxShadow: shadow.card,
-                opacity: pressed ? 0.7 : 1,
-              })}
+                gap: spacing.xs + 2,
+                marginTop: spacing.md + 10,
+              }}
             >
-              <Bell size={18} color={colors.ink} />
-              {unreadCount > 0 && (
-                <View
-                  style={{
-                    position: "absolute",
-                    top: 9,
-                    right: 10,
-                    width: 8,
-                    height: 8,
-                    borderRadius: radius.full,
-                    backgroundColor: colors.accent,
-                    borderWidth: 1.5,
-                    borderColor: colors.surface,
-                  }}
+              {/* Notifications Button */}
+              <Pressable
+                onPress={() => setNotificationsVisible(true)}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"
+                }
+                style={({ pressed }) => ({
+                  width: 42,
+                  height: 42,
+                  borderRadius: radius.md,
+                  backgroundColor: colors.surface,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: shadow.card,
+                  opacity: pressed ? 0.7 : 1,
+                })}
+              >
+                <Bell size={18} color={colors.ink} />
+                {unreadCount > 0 && (
+                  <View
+                    style={{
+                      position: "absolute",
+                      top: 9,
+                      right: 10,
+                      width: 8,
+                      height: 8,
+                      borderRadius: radius.full,
+                      backgroundColor: colors.accent,
+                      borderWidth: 1.5,
+                      borderColor: colors.surface,
+                    }}
+                  />
+                )}
+              </Pressable>
+
+              {/* Saved Properties Button */}
+              <Pressable
+                onPress={() => router.push("/saved" as Href)}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  savedCount > 0 ? `Saved properties, ${savedCount} shortlisted` : "Saved properties"
+                }
+                style={({ pressed }) => ({
+                  width: 42,
+                  height: 42,
+                  borderRadius: radius.md,
+                  backgroundColor: colors.surface,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: shadow.card,
+                  opacity: pressed ? 0.7 : 1,
+                })}
+              >
+                <Bookmark
+                  size={18}
+                  color={savedCount > 0 ? colors.accent : colors.ink}
+                  strokeWidth={savedCount > 0 ? 2.5 : 2}
                 />
-              )}
-            </Pressable>
+                {savedCount > 0 && (
+                  <View
+                    style={{
+                      position: "absolute",
+                      top: -3,
+                      right: -3,
+                      minWidth: 16,
+                      height: 16,
+                      borderRadius: 8,
+                      backgroundColor: colors.accent,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      paddingHorizontal: 3,
+                      borderWidth: 1.5,
+                      borderColor: colors.surface,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: colors.onAccent,
+                        fontSize: 9,
+                        fontWeight: "800",
+                      }}
+                    >
+                      {savedCount > 9 ? "9+" : savedCount}
+                    </Text>
+                  </View>
+                )}
+              </Pressable>
+            </View>
           </View>
 
           {/* Search Card Container with Intent Switcher */}
