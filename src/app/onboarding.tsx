@@ -1,14 +1,10 @@
 import {
-  ArrowRight,
   Briefcase,
   Building2,
   Check,
   CheckCircle2,
   ChevronLeft,
-  ChevronRight,
-  Compass,
   Home,
-  MapPin,
   PhoneCall,
   ShieldCheck,
   TrendingUp,
@@ -35,18 +31,15 @@ import { colors, fonts, radius, shadow, spacing, type } from "@/theme/tokens";
 const UserIcon = User as any;
 const BriefcaseIcon = Briefcase as any;
 const CheckCircle2Icon = CheckCircle2 as any;
-const ChevronRightIcon = ChevronRight as any;
 const ChevronLeftIcon = ChevronLeft as any;
 const ShieldCheckIcon = ShieldCheck as any;
 const TrendingUpIcon = TrendingUp as any;
-const MapPinIcon = MapPin as any;
 const Building2Icon = Building2 as any;
 const HomeIcon = Home as any;
 const CheckIcon = Check as any;
-const CompassIcon = Compass as any;
 const ZapIcon = Zap as any;
 const PhoneCallIcon = PhoneCall as any;
-const ArrowRightIcon = ArrowRight as any;
+
 
 // Real photo city list for onboarding selection grid
 const ACTIVE_CITIES: City[] = CITIES.slice(0, 6);

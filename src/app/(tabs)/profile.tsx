@@ -241,9 +241,10 @@ export default function ProfileScreen() {
       if (process.env.EXPO_OS === "ios") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
-    } catch (e) {
+    } catch {
       appAlert("Error", "Could not update profile. Please try again.");
     } finally {
+
       setSavingProfile(false);
     }
   };
@@ -330,11 +331,11 @@ export default function ProfileScreen() {
           style={{
             position: "absolute",
             top: 50,
-            left: spacing.xl,
-            right: spacing.xl,
+            left: spacing.lg,
+            right: spacing.lg,
             zIndex: 999,
             backgroundColor: colors.primary,
-            borderRadius: radius.sm,
+            borderRadius: radius.md,
             paddingVertical: spacing.sm + 2,
             paddingHorizontal: spacing.lg,
             flexDirection: "row",
@@ -352,10 +353,10 @@ export default function ProfileScreen() {
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingHorizontal: spacing.xl,
-          paddingTop: spacing.lg,
-          paddingBottom: spacing.xxl * 2,
-          gap: spacing.xl,
+          paddingHorizontal: spacing.lg,
+          paddingTop: spacing.md,
+          paddingBottom: spacing["3xl"] * 2,
+          gap: spacing.lg,
         }}
       >
         {/* ========================================================================= */}
@@ -365,7 +366,7 @@ export default function ProfileScreen() {
           <>
             <ScreenNavbar
               eyebrow="Dealer Portal"
-              title="Executive Broker Profile"
+              title="Broker Profile"
               subtitle="Manage your brand presence, RERA credentials, and live portfolio"
             />
 
@@ -373,7 +374,8 @@ export default function ProfileScreen() {
             <View
               style={{
                 backgroundColor: colors.surface,
-                borderRadius: radius.md,
+                borderRadius: radius.lg,
+                borderCurve: "continuous",
                 borderWidth: 1,
                 borderColor: colors.border,
                 overflow: "hidden",
@@ -381,7 +383,7 @@ export default function ProfileScreen() {
               }}
             >
               {/* Cover Banner with RERA status */}
-              <View style={{ width: "100%", height: 100, backgroundColor: colors.primary, position: "relative" }}>
+              <View style={{ width: "100%", height: 110, backgroundColor: colors.primary, position: "relative" }}>
                 {myDirectory?.coverUrl ? (
                   <Image
                     source={{ uri: myDirectory.coverUrl }}
@@ -411,13 +413,13 @@ export default function ProfileScreen() {
                     alignItems: "center",
                     gap: 4,
                     backgroundColor: "rgba(15, 30, 54, 0.8)",
-                    paddingHorizontal: 8,
+                    paddingHorizontal: spacing.sm,
                     paddingVertical: 3,
                     borderRadius: radius.sm,
                   }}
                 >
                   <ShieldCheck size={12} color={colors.success} />
-                  <Text style={{ ...type.micro, color: "#FFFFFF", fontWeight: "700" }}>
+                  <Text style={{ ...type.micro, color: "#FFFFFF" }}>
                     Verified Broker
                   </Text>
                 </View>
@@ -430,7 +432,8 @@ export default function ProfileScreen() {
                     style={{
                       width: 64,
                       height: 64,
-                      borderRadius: radius.md,
+                      borderRadius: radius.lg,
+                      borderCurve: "continuous",
                       backgroundColor: colors.primary,
                       borderWidth: 3,
                       borderColor: colors.surface,
@@ -447,7 +450,7 @@ export default function ProfileScreen() {
                         resizeMode="cover"
                       />
                     ) : (
-                      <Text style={{ ...type.heading, color: colors.onPrimary, fontSize: 22 }}>
+                      <Text style={{ ...type.heading, color: colors.onPrimary, fontSize: 20 }}>
                         {initials}
                       </Text>
                     )}
@@ -474,7 +477,7 @@ export default function ProfileScreen() {
                       })}
                     >
                       <Eye size={14} color={colors.accent} />
-                      <Text style={{ ...type.caption, color: colors.accent, fontWeight: "700" }}>
+                      <Text style={{ ...type.caption, color: colors.accent, fontWeight: "600" }}>
                         View Public Profile
                       </Text>
                     </Pressable>
@@ -482,17 +485,17 @@ export default function ProfileScreen() {
                 </View>
 
                 {/* Identity & Headline */}
-                <View style={{ marginTop: spacing.md, gap: 3 }}>
+                <View style={{ marginTop: spacing.md, gap: 2 }}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
-                    <Text style={{ ...type.heading, color: colors.ink, fontSize: 18 }}>
+                    <Text style={{ ...type.heading, color: colors.ink }}>
                       {ownerName || userName || "Broker Partner"}
                     </Text>
                     <ShieldCheck size={16} color={colors.success} />
                   </View>
-                  <Text style={{ ...type.caption, color: colors.inkSecondary, fontWeight: "600" }}>
+                  <Text style={{ ...type.caption, color: colors.inkSecondary }}>
                     {myDirectory?.headline || `${category} Specialist`}
                   </Text>
-                  <Text style={{ ...type.caption, color: colors.accent, fontWeight: "700" }}>
+                  <Text style={{ ...type.caption, color: colors.accent, fontWeight: "600" }}>
                     {firmName || myDirectory?.firmName || "Real Estate Agency"}
                   </Text>
                 </View>
@@ -503,7 +506,7 @@ export default function ProfileScreen() {
                     flexDirection: "row",
                     alignItems: "center",
                     backgroundColor: colors.surfaceSubtle,
-                    borderRadius: radius.sm,
+                    borderRadius: radius.md,
                     paddingVertical: spacing.sm + 2,
                     paddingHorizontal: spacing.sm,
                     marginTop: spacing.md,
@@ -547,7 +550,7 @@ export default function ProfileScreen() {
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: spacing.sm }}
+              contentContainerStyle={{ gap: spacing.xs }}
             >
               {(
                 [
@@ -567,7 +570,7 @@ export default function ProfileScreen() {
                     style={{
                       paddingHorizontal: spacing.md,
                       paddingVertical: spacing.sm,
-                      borderRadius: radius.sm,
+                      borderRadius: radius.md,
                       backgroundColor: active ? colors.ink : colors.surface,
                       borderWidth: 1,
                       borderColor: active ? colors.ink : colors.border,
@@ -576,7 +579,7 @@ export default function ProfileScreen() {
                     <Text
                       style={{
                         ...type.caption,
-                        fontWeight: "700",
+                        fontWeight: "600",
                         color: active ? colors.onAccent : colors.inkSecondary,
                       }}
                     >
@@ -588,24 +591,21 @@ export default function ProfileScreen() {
             </ScrollView>
 
             {dealerTab === "personal" ? (
-              <View>
-                <Text style={{ ...type.label, color: colors.inkMuted, marginBottom: 6 }}>
-                  Display name
-                </Text>
+              <View style={{ gap: spacing.xs }}>
+                <Text style={{ ...type.label, color: colors.inkMuted }}>Display name</Text>
                 <TextInput value={displayName} onChangeText={setDisplayName} style={inputStyle} />
-                <Text style={{ ...type.label, color: colors.inkMuted, marginBottom: 6 }}>
-                  Phone
-                </Text>
+                <Text style={{ ...type.label, color: colors.inkMuted }}>Phone</Text>
                 <TextInput value={phone} onChangeText={setPhone} style={inputStyle} />
                 <Pressable
                   onPress={savePersonal}
-                  style={{
-                    height: 48,
-                    borderRadius: radius.sm,
+                  style={({ pressed }) => ({
+                    height: 46,
+                    borderRadius: radius.md,
                     backgroundColor: colors.accent,
                     alignItems: "center",
                     justifyContent: "center",
-                  }}
+                    opacity: pressed ? 0.85 : 1,
+                  })}
                 >
                   <Text style={{ ...type.emphasis, color: colors.onAccent }}>Save personal</Text>
                 </Pressable>
@@ -613,29 +613,23 @@ export default function ProfileScreen() {
             ) : null}
 
             {dealerTab === "business" ? (
-              <View>
+              <View style={{ gap: spacing.xs }}>
                 {!myDirectory ? (
                   <Text style={{ ...type.body, color: colors.inkMuted }}>
                     No directory card linked. Complete dealer registration first.
                   </Text>
                 ) : (
                   <>
-                    <Text style={{ ...type.label, color: colors.inkMuted, marginBottom: 6 }}>
-                      Firm name
-                    </Text>
+                    <Text style={{ ...type.label, color: colors.inkMuted }}>Firm name</Text>
                     <TextInput value={firmName} onChangeText={setFirmName} style={inputStyle} />
-                    <Text style={{ ...type.label, color: colors.inkMuted, marginBottom: 6 }}>
-                      Owner name
-                    </Text>
+                    <Text style={{ ...type.label, color: colors.inkMuted }}>Owner name</Text>
                     <TextInput value={ownerName} onChangeText={setOwnerName} style={inputStyle} />
-                    <Text style={{ ...type.label, color: colors.inkMuted, marginBottom: 6 }}>
-                      Category
-                    </Text>
+                    <Text style={{ ...type.label, color: colors.inkMuted }}>Category</Text>
                     <ScrollView
                       horizontal
                       showsHorizontalScrollIndicator={false}
-                      style={{ marginBottom: spacing.md }}
-                      contentContainerStyle={{ gap: spacing.sm }}
+                      style={{ marginBottom: spacing.sm }}
+                      contentContainerStyle={{ gap: spacing.xs }}
                     >
                       {PROFILE_CATEGORIES.map((c) => (
                         <Pressable
@@ -643,7 +637,7 @@ export default function ProfileScreen() {
                           onPress={() => setCategory(c)}
                           style={{
                             paddingHorizontal: spacing.md,
-                            paddingVertical: spacing.sm,
+                            paddingVertical: spacing.xs + 3,
                             borderRadius: radius.sm,
                             backgroundColor:
                               category === c ? colors.accentSoft : colors.surfaceSubtle,
@@ -655,7 +649,7 @@ export default function ProfileScreen() {
                             style={{
                               ...type.caption,
                               color: category === c ? colors.accent : colors.inkMuted,
-                              fontWeight: "700",
+                              fontWeight: "600",
                             }}
                           >
                             {c}
@@ -663,49 +657,35 @@ export default function ProfileScreen() {
                         </Pressable>
                       ))}
                     </ScrollView>
-                    <Text style={{ ...type.label, color: colors.inkMuted, marginBottom: 6 }}>
-                      Address
-                    </Text>
+                    <Text style={{ ...type.label, color: colors.inkMuted }}>Address</Text>
                     <TextInput value={address} onChangeText={setAddress} style={inputStyle} />
-                    <Text style={{ ...type.label, color: colors.inkMuted, marginBottom: 6 }}>
-                      Mobile
-                    </Text>
+                    <Text style={{ ...type.label, color: colors.inkMuted }}>Mobile</Text>
                     <TextInput value={mobile} onChangeText={setMobile} style={inputStyle} />
-                    <Text style={{ ...type.label, color: colors.inkMuted, marginBottom: 6 }}>
-                      Website
-                    </Text>
+                    <Text style={{ ...type.label, color: colors.inkMuted }}>Website</Text>
                     <TextInput value={website} onChangeText={setWebsite} style={inputStyle} />
-                    <Text style={{ ...type.label, color: colors.inkMuted, marginBottom: 6 }}>
-                      RERA ID
-                    </Text>
+                    <Text style={{ ...type.label, color: colors.inkMuted }}>RERA ID</Text>
                     <TextInput value={reraId} onChangeText={setReraId} style={inputStyle} />
-                    <Text style={{ ...type.label, color: colors.inkMuted, marginBottom: 6 }}>
-                      Experience
-                    </Text>
+                    <Text style={{ ...type.label, color: colors.inkMuted }}>Experience</Text>
                     <TextInput
                       value={experience}
                       onChangeText={setExperience}
                       style={inputStyle}
                     />
-                    <Text style={{ ...type.label, color: colors.inkMuted, marginBottom: 6 }}>
-                      Description
-                    </Text>
+                    <Text style={{ ...type.label, color: colors.inkMuted }}>Description</Text>
                     <TextInput
                       value={description}
                       onChangeText={setDescription}
                       multiline
                       style={{ ...inputStyle, minHeight: 80, textAlignVertical: "top" }}
                     />
-                    <Text
-                      style={{ ...type.label, color: colors.inkMuted, marginBottom: spacing.sm }}
-                    >
+                    <Text style={{ ...type.label, color: colors.inkMuted, marginBottom: spacing.xs }}>
                       Specialties
                     </Text>
                     <View
                       style={{
                         flexDirection: "row",
                         flexWrap: "wrap",
-                        gap: spacing.sm,
+                        gap: spacing.xs,
                         marginBottom: spacing.md,
                       }}
                     >
@@ -717,7 +697,7 @@ export default function ProfileScreen() {
                             onPress={() => toggleSpecialty(s)}
                             style={{
                               paddingHorizontal: spacing.md,
-                              paddingVertical: spacing.sm,
+                              paddingVertical: spacing.xs + 2,
                               borderRadius: radius.sm,
                               backgroundColor: on ? colors.accentSoft : colors.surfaceSubtle,
                               borderWidth: 1,
@@ -740,14 +720,14 @@ export default function ProfileScreen() {
                     <Pressable
                       disabled={saving}
                       onPress={() => void saveBusiness()}
-                      style={{
-                        height: 48,
-                        borderRadius: radius.sm,
+                      style={({ pressed }) => ({
+                        height: 46,
+                        borderRadius: radius.md,
                         backgroundColor: colors.accent,
                         alignItems: "center",
                         justifyContent: "center",
-                        opacity: saving ? 0.7 : 1,
-                      }}
+                        opacity: pressed || saving ? 0.7 : 1,
+                      })}
                     >
                       <Text style={{ ...type.emphasis, color: colors.onAccent }}>
                         Save business details
@@ -778,15 +758,17 @@ export default function ProfileScreen() {
               <View
                 style={{
                   backgroundColor: colors.surfaceSubtle,
-                  borderRadius: radius.sm,
+                  borderRadius: radius.md,
                   padding: spacing.lg,
-                  gap: spacing.sm,
+                  gap: spacing.xs,
+                  borderWidth: 1,
+                  borderColor: colors.border,
                 }}
               >
                 <CreditCard size={20} color={colors.inkMuted} />
                 <Text style={{ ...type.emphasis, color: colors.ink }}>Bank Settlement</Text>
                 <Text style={{ ...type.body, color: colors.inkMuted }}>
-                  Coming soon — bank details are not saved in this app.
+                  Coming soon — bank details are securely managed.
                 </Text>
               </View>
             ) : null}
@@ -795,15 +777,17 @@ export default function ProfileScreen() {
               <View
                 style={{
                   backgroundColor: colors.surfaceSubtle,
-                  borderRadius: radius.sm,
+                  borderRadius: radius.md,
                   padding: spacing.lg,
-                  gap: spacing.sm,
+                  gap: spacing.xs,
+                  borderWidth: 1,
+                  borderColor: colors.border,
                 }}
               >
                 <Share2 size={20} color={colors.inkMuted} />
                 <Text style={{ ...type.emphasis, color: colors.ink }}>Social Networks</Text>
                 <Text style={{ ...type.body, color: colors.inkMuted }}>
-                  Coming soon — social links are not persisted yet.
+                  Coming soon — social integrations will appear here.
                 </Text>
               </View>
             ) : null}
@@ -813,20 +797,20 @@ export default function ProfileScreen() {
                 <MenuRow
                   icon={Sparkles}
                   label="Subscription plans"
-                  sub="Marketing stub — billing not live"
+                  sub="Explore broker growth tiers"
                   onPress={() => router.push("/subscription" as Href)}
                   showDivider={false}
                 />
               </MenuGroup>
             ) : null}
 
-            <View style={{ gap: spacing.sm }}>
+            <View style={{ gap: spacing.xs }}>
               <Text style={{ ...type.label, color: colors.inkMuted }}>DEALER TOOLS</Text>
               <MenuGroup>
                 <MenuRow
                   icon={LayoutDashboard}
                   label="Dashboard"
-                  onPress={() => router.push("/(tabs)/dashboard" as Href)}
+                  onPress={() => router.push("/(dealer)/dashboard" as Href)}
                 />
                 <MenuRow
                   icon={Building2}
@@ -868,138 +852,84 @@ export default function ProfileScreen() {
           /* ELEVATED BUYER PROFILE SECTION (For Home Seekers & Buyers)                */
           /* ========================================================================= */
           <>
-            {/* Header Title & Status */}
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-                gap: spacing.md,
-              }}
-            >
-              <View style={{ flex: 1 }}>
-                <ScreenNavbar
-                  eyebrow="Account"
-                  title="Buyer Profile"
-                  subtitle="Your personal real estate hub"
-                />
-              </View>
-              <Pressable
-                onPress={() => setEditProfileModalVisible(true)}
-                style={({ pressed }) => ({
-                  marginTop: spacing.md + 14,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: spacing.xs,
-                  paddingHorizontal: spacing.md,
-                  paddingVertical: spacing.xs + 2,
-                  borderRadius: radius.sm,
-                  backgroundColor: pressed ? colors.accentSoft : colors.surface,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  boxShadow: shadow.button,
-                })}
-              >
-                <EditPencil size={14} color={colors.accent} />
-                <Text style={{ ...type.caption, color: colors.accent, fontWeight: "700" }}>
-                  Edit
-                </Text>
-              </Pressable>
-            </View>
+            {/* Header Title & Action */}
+            <ScreenNavbar
+              eyebrow="Account"
+              title="Buyer Profile"
+              subtitle="Your personal real estate hub"
+              rightAction={
+                <Pressable
+                  onPress={() => setEditProfileModalVisible(true)}
+                  style={({ pressed }) => ({
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: spacing.xs,
+                    paddingHorizontal: spacing.md,
+                    paddingVertical: spacing.xs + 2,
+                    borderRadius: radius.md,
+                    backgroundColor: pressed ? colors.accentSoft : colors.surface,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    boxShadow: shadow.button,
+                  })}
+                >
+                  <EditPencil size={14} color={colors.accent} />
+                  <Text style={{ ...type.caption, color: colors.accent, fontWeight: "600" }}>
+                    Edit
+                  </Text>
+                </Pressable>
+              }
+            />
 
-            {/* 1. Buyer Persona Hero Card (Elevated LinkedIn/Executive Seeker Style) */}
+            {/* 1. Buyer Persona Hero Card */}
             <View
               style={{
                 backgroundColor: colors.surface,
                 borderWidth: 1,
                 borderColor: colors.border,
-                borderRadius: radius.md,
+                borderRadius: radius.lg,
+                borderCurve: "continuous",
                 padding: spacing.lg,
                 boxShadow: shadow.card,
                 gap: spacing.md,
               }}
             >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.lg }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
                 {/* Avatar */}
                 <View
                   style={{
-                    width: 60,
-                    height: 60,
-                    borderRadius: radius.md,
+                    width: 56,
+                    height: 56,
+                    borderRadius: radius.lg,
+                    borderCurve: "continuous",
                     backgroundColor: colors.primary,
                     alignItems: "center",
                     justifyContent: "center",
                     boxShadow: shadow.raised,
                   }}
                 >
-                  <Text style={{ ...type.title, color: colors.onPrimary, fontSize: 22 }}>
+                  <Text style={{ ...type.title, color: colors.onPrimary, fontSize: 20 }}>
                     {initials}
                   </Text>
                 </View>
 
                 {/* Identity Info */}
-                <View style={{ flex: 1, gap: 3 }}>
+                <View style={{ flex: 1, gap: 2 }}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
-                    <Text style={{ ...type.heading, color: colors.ink, fontSize: 18 }} numberOfLines={1}>
+                    <Text style={{ ...type.heading, color: colors.ink }} numberOfLines={1}>
                       {userName || "Home Seeker"}
                     </Text>
-                    <ShieldCheck size={16} color={colors.success} strokeWidth={2.5} />
+                    <ShieldCheck size={16} color={colors.success} strokeWidth={2} />
                   </View>
                   <Text selectable style={{ ...type.caption, color: colors.inkMuted }}>
                     {userEmail}
                   </Text>
                   {profile?.phone ? (
-                    <Text style={{ ...type.caption, color: colors.inkSecondary, fontWeight: "600" }}>
+                    <Text style={{ ...type.caption, color: colors.inkSecondary }}>
                       {profile.phone}
                     </Text>
                   ) : null}
                 </View>
-              </View>
-
-              {/* Profile Strength Progress Bar */}
-              <View
-                style={{
-                  backgroundColor: colors.surfaceSubtle,
-                  borderRadius: radius.sm,
-                  padding: spacing.md,
-                  gap: 6,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                }}
-              >
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
-                    <Sparkles size={13} color={colors.accent} />
-                    <Text style={{ ...type.caption, color: colors.ink, fontWeight: "700" }}>
-                      Profile Strength: 85% (Strong Seeker)
-                    </Text>
-                  </View>
-                  <Text style={{ ...type.micro, color: colors.success, fontWeight: "700" }}>
-                    Verified Buyer
-                  </Text>
-                </View>
-
-                <View
-                  style={{
-                    width: "100%",
-                    height: 5,
-                    backgroundColor: "rgba(15, 30, 54, 0.1)",
-                    borderRadius: 3,
-                    overflow: "hidden",
-                  }}
-                >
-                  <View
-                    style={{
-                      width: "85%",
-                      height: "100%",
-                      backgroundColor: colors.accent,
-                      borderRadius: 3,
-                    }}
-                  />
-                </View>
-                <Text style={{ ...type.micro, color: colors.inkMuted }}>
-                  Your search profile is visible to top certified RERA brokers in {selectedCity}.
-                </Text>
               </View>
 
               {/* Status Badges & City Selection Pill */}
@@ -1007,9 +937,10 @@ export default function ProfileScreen() {
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
+                  justifyContent: "space-between",
                   flexWrap: "wrap",
                   gap: spacing.sm,
-                  paddingTop: spacing.xs,
+                  paddingTop: spacing.sm,
                   borderTopWidth: 1,
                   borderTopColor: colors.border,
                 }}
@@ -1021,12 +952,12 @@ export default function ProfileScreen() {
                     gap: 4,
                     backgroundColor: colors.successSoft,
                     paddingHorizontal: spacing.sm + 2,
-                    paddingVertical: 4,
+                    paddingVertical: 3,
                     borderRadius: radius.sm,
                   }}
                 >
                   <ShieldCheck size={13} color={colors.success} />
-                  <Text style={{ ...type.micro, color: colors.success, fontWeight: "700" }}>
+                  <Text style={{ ...type.micro, color: colors.success }}>
                     Identity Confirmed
                   </Text>
                 </View>
@@ -1039,14 +970,14 @@ export default function ProfileScreen() {
                     gap: 4,
                     backgroundColor: pressed ? colors.accentSoft : colors.surfaceSubtle,
                     paddingHorizontal: spacing.sm + 2,
-                    paddingVertical: 4,
+                    paddingVertical: 3,
                     borderRadius: radius.sm,
                     borderWidth: 1,
                     borderColor: colors.border,
                   })}
                 >
                   <MapPin size={12} color={colors.accent} />
-                  <Text style={{ ...type.micro, color: colors.ink, fontWeight: "700" }}>
+                  <Text style={{ ...type.micro, color: colors.ink }}>
                     City: {selectedCity}
                   </Text>
                   <ChevronRight size={10} color={colors.inkMuted} />
@@ -1061,11 +992,11 @@ export default function ProfileScreen() {
                     fontStyle: "italic",
                     backgroundColor: colors.surfaceSubtle,
                     padding: spacing.sm + 2,
-                    borderRadius: radius.sm,
+                    borderRadius: radius.md,
                     lineHeight: 18,
                   }}
                 >
-                  "{profile.bio}"
+                  &ldquo;{profile.bio}&rdquo;
                 </Text>
               ) : null}
             </View>
@@ -1076,7 +1007,7 @@ export default function ProfileScreen() {
                 onPress={() => router.push("/dealer-pending" as Href)}
                 style={{
                   backgroundColor: "rgba(255, 184, 0, 0.12)",
-                  borderRadius: radius.sm,
+                  borderRadius: radius.md,
                   padding: spacing.md,
                   gap: spacing.xs,
                   borderWidth: 1,
@@ -1094,7 +1025,7 @@ export default function ProfileScreen() {
             ) : null}
 
             {/* 3. Buyer Concierge & Advisory Suite */}
-            <View style={{ gap: spacing.sm }}>
+            <View style={{ gap: spacing.xs }}>
               <Text style={{ ...type.label, color: colors.inkMuted }}>
                 BUYER CONCIERGE & ADVISORY
               </Text>
@@ -1131,26 +1062,14 @@ export default function ProfileScreen() {
             </View>
 
             {/* 4. My Real Estate Activity Links */}
-            <View style={{ gap: spacing.sm }}>
+            <View style={{ gap: spacing.xs }}>
               <Text style={{ ...type.label, color: colors.inkMuted }}>MY ACTIVITY</Text>
               <MenuGroup>
-                <MenuRow
-                  icon={Building2}
-                  label="My listings"
-                  sub="Your properties, verification, and buyer inquiries"
-                  value={String(
-                    properties.filter((p) =>
-                      p.ownerEmail?.toLowerCase() === userEmail.toLowerCase() ||
-                      p.ownerId === profile?.id,
-                    ).length,
-                  )}
-                  onPress={() => router.push("/my-listings" as Href)}
-                />
                 <MenuRow
                   icon={Heart}
                   label="Saved properties"
                   value={String(savedProperties.length)}
-                  onPress={() => router.push("/(tabs)/favorites")}
+                  onPress={() => router.push("/saved" as Href)}
                 />
                 <MenuRow
                   icon={MessageSquare}
@@ -1190,7 +1109,7 @@ export default function ProfileScreen() {
             </View>
 
             {/* 5. Help, FAQs & Support */}
-            <View style={{ gap: spacing.sm }}>
+            <View style={{ gap: spacing.xs }}>
               <Text style={{ ...type.label, color: colors.inkMuted }}>HELP & LEGAL</Text>
               <MenuGroup>
                 <MenuRow
@@ -1227,6 +1146,7 @@ export default function ProfileScreen() {
           </>
         )}
       </ScrollView>
+
 
       {/* ========================================================================= */}
       {/* MODAL 1: EDIT PROFILE SHEET                                               */}
@@ -1663,13 +1583,13 @@ export default function ProfileScreen() {
         />
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ padding: spacing.xl, gap: spacing.lg }}
+          contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}
         >
           <View
             style={{
               backgroundColor: colors.surfaceSubtle,
               padding: spacing.md,
-              borderRadius: radius.sm,
+              borderRadius: radius.md,
               gap: spacing.xs,
             }}
           >
@@ -1677,7 +1597,7 @@ export default function ProfileScreen() {
               How do I book a free site visit?
             </Text>
             <Text style={{ ...type.body, color: colors.inkSecondary }}>
-              Open any Active listing on Explore, tap "Schedule Site Visit", choose your preferred
+              Open any Active listing on Explore, tap &ldquo;Schedule Site Visit&rdquo;, choose your preferred
               date and time slot. The listing dealer will confirm the appointment.
             </Text>
           </View>
@@ -1686,7 +1606,7 @@ export default function ProfileScreen() {
             style={{
               backgroundColor: colors.surfaceSubtle,
               padding: spacing.md,
-              borderRadius: radius.sm,
+              borderRadius: radius.md,
               gap: spacing.xs,
             }}
           >
@@ -1694,7 +1614,7 @@ export default function ProfileScreen() {
               Are all properties RERA compliant?
             </Text>
             <Text style={{ ...type.body, color: colors.inkSecondary }}>
-              Listings marked with the "RERA Approved" badge have verified registration numbers. You
+              Listings marked with the &ldquo;RERA Approved&rdquo; badge have verified registration numbers. You
               can also verify title deeds with our certified property consultants in Directory.
             </Text>
           </View>
@@ -1703,7 +1623,7 @@ export default function ProfileScreen() {
             style={{
               backgroundColor: colors.surfaceSubtle,
               padding: spacing.md,
-              borderRadius: radius.sm,
+              borderRadius: radius.md,
               gap: spacing.xs,
             }}
           >
@@ -1726,7 +1646,7 @@ export default function ProfileScreen() {
             }}
             style={({ pressed }) => ({
               height: 48,
-              borderRadius: radius.sm,
+              borderRadius: radius.md,
               backgroundColor: colors.primary,
               alignItems: "center",
               justifyContent: "center",

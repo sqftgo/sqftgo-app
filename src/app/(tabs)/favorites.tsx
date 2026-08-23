@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { FlatList, Text, View } from "react-native";
+import { FlatList } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Heart } from "@/components/ui/icons";
@@ -35,11 +35,12 @@ export default function FavoritesScreen() {
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{
-          paddingHorizontal: spacing.xl,
-          paddingBottom: spacing.xxl,
+          paddingHorizontal: spacing.lg,
+          paddingBottom: spacing["3xl"],
           gap: spacing.lg,
           flexGrow: 1,
         }}
+
         ListHeaderComponent={
           <ScreenNavbar eyebrow="Shortlist" title="Saved" subtitle={subtitle} />
         }

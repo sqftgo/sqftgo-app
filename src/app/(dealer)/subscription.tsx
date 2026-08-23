@@ -1,8 +1,8 @@
 import React from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
-import { useRouter, type Href } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Sparkles } from "@/components/ui/icons";
+
 
 import { ScreenNavbar } from "@/components/ui/screen-navbar";
 import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
@@ -31,7 +31,7 @@ const PLANS = [
 export default function DealerSubscriptionScreen() {
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.bg }}>
-      <View style={{ paddingHorizontal: spacing.xl }}>
+      <View style={{ paddingHorizontal: spacing.lg }}>
         <ScreenNavbar
           eyebrow="Dealer portal"
           title="Subscription"
@@ -39,11 +39,12 @@ export default function DealerSubscriptionScreen() {
         />
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, gap: spacing.md }}>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing["3xl"], gap: spacing.md }}>
         <View
           style={{
             backgroundColor: colors.accentSoft,
             borderRadius: radius.lg,
+            borderCurve: "continuous",
             padding: spacing.lg,
             gap: spacing.sm,
           }}
@@ -64,6 +65,7 @@ export default function DealerSubscriptionScreen() {
               borderWidth: 1,
               borderColor: colors.border,
               borderRadius: radius.lg,
+              borderCurve: "continuous",
               padding: spacing.lg,
               gap: spacing.sm,
               boxShadow: shadow.card,
@@ -99,3 +101,4 @@ export default function DealerSubscriptionScreen() {
     </SafeAreaView>
   );
 }
+

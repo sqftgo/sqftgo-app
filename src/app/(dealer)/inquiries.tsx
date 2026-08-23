@@ -8,7 +8,7 @@ import {
   View,
 } from "react-native";
 import { appAlert } from "@/components/ui/app-alert";
-import { useLocalSearchParams, useRouter, type Href } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Inbox, MessageSquare, Plus, X } from "@/components/ui/icons";
 
@@ -31,8 +31,8 @@ const STATUS_STYLE: Record<InquiryStatus, { bg: string; color: string }> = {
 };
 
 export default function DealerInquiriesScreen() {
-  const router = useRouter();
   const params = useLocalSearchParams<{ tab?: string }>();
+
   const {
     inquiries,
     userEmail,
@@ -128,8 +128,8 @@ export default function DealerInquiriesScreen() {
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{
-            paddingHorizontal: spacing.xl,
-            paddingBottom: spacing.xxl,
+            paddingHorizontal: spacing.lg,
+            paddingBottom: spacing["3xl"],
             gap: spacing.md,
             flexGrow: 1,
           }}
@@ -174,7 +174,7 @@ export default function DealerInquiriesScreen() {
                   );
                 })}
               </View>
-              <View style={{ flexDirection: "row", gap: spacing.sm }}>
+              <View style={{ flexDirection: "row", gap: spacing.xs }}>
                 {(
                   [
                     { id: "inbox", label: "Inbox" },
@@ -190,16 +190,16 @@ export default function DealerInquiriesScreen() {
                         paddingHorizontal: spacing.md,
                         paddingVertical: spacing.sm,
                         borderRadius: radius.md,
-                        backgroundColor: active ? colors.ink : colors.surface,
+                        backgroundColor: active ? colors.primary : colors.surface,
                         borderWidth: 1,
-                        borderColor: active ? colors.ink : colors.border,
+                        borderColor: active ? colors.primary : colors.border,
                       }}
                     >
                       <Text
                         style={{
                           ...type.caption,
-                          fontWeight: "700",
-                          color: active ? colors.onAccent : colors.inkSecondary,
+                          fontWeight: "600",
+                          color: active ? colors.onPrimary : colors.inkSecondary,
                         }}
                       >
                         {tab.label}
@@ -229,6 +229,7 @@ export default function DealerInquiriesScreen() {
                   borderWidth: 1,
                   borderColor: colors.border,
                   borderRadius: radius.lg,
+                  borderCurve: "continuous",
                   padding: spacing.md,
                   gap: spacing.sm,
                   boxShadow: shadow.card,
@@ -250,14 +251,15 @@ export default function DealerInquiriesScreen() {
                       backgroundColor: tone.bg,
                       paddingHorizontal: spacing.sm,
                       paddingVertical: 2,
-                      borderRadius: radius.md,
+                      borderRadius: radius.sm,
                     }}
                   >
-                    <Text style={{ ...type.micro, color: tone.color, fontWeight: "700" }}>
+                    <Text style={{ ...type.micro, color: tone.color }}>
                       {INQUIRY_STATUS_LABEL[item.status]}
                     </Text>
                   </View>
                 </View>
+
                 <Text style={{ ...type.caption, color: colors.inkMuted }}>
                   {item.buyerName} · {item.buyerEmail}
                 </Text>

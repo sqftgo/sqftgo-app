@@ -106,6 +106,8 @@ function RootLayoutNav() {
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="(dealer)" />
           <Stack.Screen name="services" />
+          <Stack.Screen name="services/[category]" />
+          <Stack.Screen name="saved" />
           <Stack.Screen name="property/[id]" />
           <Stack.Screen name="broker/[id]" />
           <Stack.Screen name="post-property" options={{ presentation: "modal" }} />

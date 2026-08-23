@@ -8,7 +8,8 @@ import { Pressable, Text, View } from "react-native";
 import { useApp } from "@/context/AppContext";
 import type { Property } from "@/data/types";
 import { formatIndianPrice, formatSize, purposeLabel } from "@/lib/format";
-import { colors, radius, shadow } from "@/theme/tokens";
+import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
+
 
 interface PropertyCardProps {
   property: Property;
@@ -124,13 +125,13 @@ function PropertyCardBase({ property, variant = "full" }: PropertyCardProps) {
                 backgroundColor: "rgba(255, 255, 255, 0.95)",
                 paddingHorizontal: 10,
                 paddingVertical: 4,
-                borderRadius: radius.md,
+                borderRadius: radius.sm,
                 borderWidth: 1,
                 borderColor: "rgba(0, 0, 0, 0.05)",
                 boxShadow: shadow.card,
               }}
             >
-              <Text style={{ fontSize: 11, fontWeight: "600", color: colors.ink }}>
+              <Text style={{ ...type.micro, color: colors.ink }}>
                 {purposeText}
               </Text>
             </View>
@@ -141,10 +142,10 @@ function PropertyCardBase({ property, variant = "full" }: PropertyCardProps) {
                   backgroundColor: colors.accent,
                   paddingHorizontal: 10,
                   paddingVertical: 4,
-                  borderRadius: radius.md,
+                  borderRadius: radius.sm,
                 }}
               >
-                <Text style={{ fontSize: 11, fontWeight: "700", color: colors.onAccent }}>
+                <Text style={{ ...type.micro, color: colors.onAccent }}>
                   Featured
                 </Text>
               </View>
@@ -156,22 +157,22 @@ function PropertyCardBase({ property, variant = "full" }: PropertyCardProps) {
       </View>
 
       {/* Card Body */}
-      <View style={{ padding: compact ? 12 : 16, gap: 6 }}>
+      <View style={{ padding: compact ? spacing.md : spacing.lg, gap: 5 }}>
         {/* Price & RERA Verification Tag */}
         <View
           style={{
             flexDirection: "row",
             alignItems: "baseline",
             justifyContent: "space-between",
-            gap: 8,
+            gap: spacing.sm,
           }}
         >
           <View style={{ flexDirection: "row", alignItems: "baseline", gap: 2 }}>
-            <Text style={{ fontSize: 18, fontWeight: "700", color: colors.accent }}>
+            <Text style={{ ...type.title, fontSize: 18, color: colors.accent }}>
               {priceLabel}
             </Text>
             {showPerMonth && (
-              <Text style={{ fontSize: 12, fontWeight: "500", color: colors.inkMuted }}> /mo</Text>
+              <Text style={{ ...type.caption, color: colors.inkMuted }}> /mo</Text>
             )}
           </View>
 
@@ -182,13 +183,13 @@ function PropertyCardBase({ property, variant = "full" }: PropertyCardProps) {
                 alignItems: "center",
                 gap: 4,
                 backgroundColor: colors.successSoft,
-                paddingHorizontal: 8,
+                paddingHorizontal: spacing.sm,
                 paddingVertical: 2,
                 borderRadius: radius.sm,
               }}
             >
               <ShieldCheck size={12} color={colors.success} strokeWidth={2.5} />
-              <Text style={{ fontSize: 10, fontWeight: "700", color: colors.success }}>RERA</Text>
+              <Text style={{ ...type.micro, color: colors.success }}>RERA</Text>
             </View>
           )}
         </View>
@@ -196,7 +197,7 @@ function PropertyCardBase({ property, variant = "full" }: PropertyCardProps) {
         {/* Title */}
         <Text
           numberOfLines={1}
-          style={{ fontSize: 15, fontWeight: "600", color: colors.ink }}
+          style={{ ...type.emphasis, color: colors.ink }}
         >
           {property.title}
         </Text>
@@ -206,7 +207,7 @@ function PropertyCardBase({ property, variant = "full" }: PropertyCardProps) {
           <MapPin size={13} color={colors.inkMuted} />
           <Text
             numberOfLines={1}
-            style={{ fontSize: 12, color: colors.inkMuted, flex: 1 }}
+            style={{ ...type.caption, color: colors.inkMuted, flex: 1 }}
           >
             {property.locality}, {property.city}
           </Text>
@@ -217,9 +218,9 @@ function PropertyCardBase({ property, variant = "full" }: PropertyCardProps) {
           style={{
             flexDirection: "row",
             alignItems: "center",
-            gap: 14,
-            marginTop: 4,
-            paddingTop: 10,
+            gap: 12,
+            marginTop: 2,
+            paddingTop: spacing.sm + 2,
             borderTopWidth: 1,
             borderTopColor: colors.border,
           }}
@@ -227,7 +228,7 @@ function PropertyCardBase({ property, variant = "full" }: PropertyCardProps) {
           {property.bhk != null && (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
               <Bed size={13} color={colors.inkSecondary} />
-              <Text style={{ fontSize: 12, fontWeight: "500", color: colors.inkSecondary }}>
+              <Text style={{ ...type.caption, fontWeight: "500", color: colors.inkSecondary }}>
                 {property.bhk} BHK
               </Text>
             </View>
@@ -235,7 +236,7 @@ function PropertyCardBase({ property, variant = "full" }: PropertyCardProps) {
 
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
             <Maximize2 size={12} color={colors.inkSecondary} />
-            <Text style={{ fontSize: 12, fontWeight: "500", color: colors.inkSecondary }}>
+            <Text style={{ ...type.caption, fontWeight: "500", color: colors.inkSecondary }}>
               {sizeLabel}
             </Text>
           </View>
@@ -243,8 +244,7 @@ function PropertyCardBase({ property, variant = "full" }: PropertyCardProps) {
           {!compact && property.furnished && (
             <Text
               style={{
-                fontSize: 12,
-                fontWeight: "500",
+                ...type.caption,
                 color: colors.inkMuted,
                 marginLeft: "auto",
               }}
@@ -258,4 +258,5 @@ function PropertyCardBase({ property, variant = "full" }: PropertyCardProps) {
   );
 }
 
-export const PropertyCard = memo(PropertyCardBase);
+export const PropertyCard = memo(PropertyCardBase);
+

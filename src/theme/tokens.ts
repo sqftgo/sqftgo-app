@@ -52,31 +52,35 @@ export const colors = {
 } as const;
 
 export const spacing = {
+  xxs: 2,
   xs: 4,
   sm: 8,
   md: 12,
   lg: 16,
-  xl: 10,
-  xxl: 32,
+  xl: 20,
+  xxl: 24,
+  "3xl": 32,
+  "4xl": 40,
 } as const;
 
 export const radius = {
+  xs: 4,
   sm: 8,
-  md: 10,
-  lg: 14,
-  xl: 18,
+  md: 12,
+  lg: 16,
+  xl: 20,
   full: 999,
 } as const;
 
 export const shadow = {
   /** Flat card border shadow */
-  card: "0 1px 2px rgba(0, 0, 0, 0.05)",
+  card: "0 1px 3px rgba(15, 30, 54, 0.05)",
   /** Floating sheets, modal popovers */
-  raised: "0 4px 12px rgba(0, 0, 0, 0.08)",
-  /** Flat button minimal neutral shadow (no soft colored glow) */
-  button: "0 2px 4px rgba(0, 0, 0, 0.08)",
-  /** Backward compatible alias pointing to flat neutral shadow */
-  accent: "0 2px 4px rgba(0, 0, 0, 0.08)",
+  raised: "0 4px 16px rgba(15, 30, 54, 0.08)",
+  /** Flat button minimal neutral shadow */
+  button: "0 2px 4px rgba(15, 30, 54, 0.08)",
+  /** Backward compatible alias */
+  accent: "0 2px 4px rgba(15, 30, 54, 0.08)",
 } as const;
 
 type TextStyleToken = {
@@ -90,21 +94,24 @@ type TextStyleToken = {
 export const type = {
   /** Brand wordmark logo font */
   logo: { fontFamily: fonts.logo, fontSize: 24, fontWeight: "600" },
+  /** Hero titles */
+  hero: { fontFamily: fonts.sansBold, fontSize: 24, fontWeight: "700", letterSpacing: -0.4, lineHeight: 30 },
   /** Main screen titles */
-  title: { fontFamily: fonts.sansBold, fontSize: 22, fontWeight: "700", letterSpacing: -0.3, lineHeight: 28 },
+  title: { fontFamily: fonts.sansBold, fontSize: 20, fontWeight: "700", letterSpacing: -0.3, lineHeight: 26 },
   /** Section headings */
-  heading: { fontFamily: fonts.sansSemiBold, fontSize: 17, fontWeight: "600", letterSpacing: -0.2, lineHeight: 23 },
+  heading: { fontFamily: fonts.sansSemiBold, fontSize: 16, fontWeight: "600", letterSpacing: -0.2, lineHeight: 22 },
   /** Card titles, bold labels */
-  emphasis: { fontFamily: fonts.sansSemiBold, fontSize: 15, fontWeight: "600" },
+  emphasis: { fontFamily: fonts.sansSemiBold, fontSize: 14, fontWeight: "600", lineHeight: 20 },
   /** Regular body text */
-  body: { fontFamily: fonts.sansRegular, fontSize: 15, fontWeight: "400", lineHeight: 22 },
+  body: { fontFamily: fonts.sansRegular, fontSize: 14, fontWeight: "400", lineHeight: 20 },
   /** Secondary text, form labels, buttons */
-  label: { fontFamily: fonts.sansMedium, fontSize: 14, fontWeight: "500" },
+  label: { fontFamily: fonts.sansMedium, fontSize: 13, fontWeight: "500", lineHeight: 18 },
   /** Captions, timestamps */
   caption: { fontFamily: fonts.sansRegular, fontSize: 12, fontWeight: "400", lineHeight: 16 },
-  /** Badges, micro labels (Sentence / Title case) */
-  micro: { fontFamily: fonts.sansMedium, fontSize: 11, fontWeight: "500", letterSpacing: 0.1 },
+  /** Badges, micro labels */
+  micro: { fontFamily: fonts.sansMedium, fontSize: 11, fontWeight: "600", letterSpacing: 0.15, lineHeight: 14 },
 } satisfies Record<string, TextStyleToken>;
 
 export const hitSlop = { top: 8, bottom: 8, left: 8, right: 8 } as const;
+
 

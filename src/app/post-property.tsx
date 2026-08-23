@@ -17,7 +17,8 @@ import { CITIES as CITIES_LIST } from "@/constants/cities";
 import { pickAndUploadPropertyImage } from "@/lib/media-upload";
 import { ChevronLeft, ChevronDown, ChevronUp, Check } from "@/components/ui/icons";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
-import { colors, type, radius, spacing } from "@/theme/tokens";
+import { colors } from "@/theme/tokens";
+
 
 const CITIES = CITIES_LIST.map((c) => c.name);
 const PROPERTY_TYPES: Property["type"][] = [

@@ -105,6 +105,7 @@ export default function DealerPropertiesScreen() {
         style={{
           backgroundColor: colors.surface,
           borderRadius: radius.lg,
+          borderCurve: "continuous",
           padding: spacing.lg,
           marginBottom: spacing.md,
           borderWidth: 1,
@@ -126,11 +127,11 @@ export default function DealerPropertiesScreen() {
               alignSelf: "flex-start",
               backgroundColor: tone.bg,
               paddingHorizontal: spacing.sm,
-              paddingVertical: 4,
-              borderRadius: radius.md,
+              paddingVertical: 3,
+              borderRadius: radius.sm,
             }}
           >
-            <Text style={{ ...type.micro, color: tone.color, fontWeight: "700" }}>
+            <Text style={{ ...type.micro, color: tone.color }}>
               {PROPERTY_STATUS_LABEL[item.status] ?? item.status}
             </Text>
           </View>
@@ -151,7 +152,7 @@ export default function DealerPropertiesScreen() {
             }}
           >
             <Pencil size={14} color={colors.ink} />
-            <Text style={{ ...type.caption, color: colors.ink, fontWeight: "700" }}>Edit</Text>
+            <Text style={{ ...type.caption, color: colors.ink, fontWeight: "600" }}>Edit</Text>
           </Pressable>
           {item.status === "Draft" ? (
             <Pressable
@@ -168,7 +169,7 @@ export default function DealerPropertiesScreen() {
               }}
             >
               <Send size={14} color={colors.accent} />
-              <Text style={{ ...type.caption, color: colors.accent, fontWeight: "700" }}>
+              <Text style={{ ...type.caption, color: colors.accent, fontWeight: "600" }}>
                 Submit
               </Text>
             </Pressable>
@@ -196,8 +197,8 @@ export default function DealerPropertiesScreen() {
         data={filtered}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{
-          paddingHorizontal: spacing.xl,
-          paddingBottom: spacing.xxl,
+          paddingHorizontal: spacing.lg,
+          paddingBottom: spacing["3xl"],
           flexGrow: 1,
         }}
         renderItem={renderItem}
@@ -218,11 +219,11 @@ export default function DealerPropertiesScreen() {
                     paddingHorizontal: spacing.md,
                     paddingVertical: spacing.sm,
                     borderRadius: radius.md,
-                    boxShadow: shadow.accent,
+                    boxShadow: shadow.button,
                   }}
                 >
                   <Plus size={16} color={colors.onAccent} />
-                  <Text style={{ ...type.caption, color: colors.onAccent, fontWeight: "700" }}>
+                  <Text style={{ ...type.caption, color: colors.onAccent, fontWeight: "600" }}>
                     Add
                   </Text>
                 </Pressable>
@@ -233,7 +234,7 @@ export default function DealerPropertiesScreen() {
               data={FILTERS}
               keyExtractor={(item) => item}
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: spacing.sm }}
+              contentContainerStyle={{ gap: spacing.xs }}
               renderItem={({ item }) => {
                 const active = filter === item;
                 return (
@@ -243,16 +244,16 @@ export default function DealerPropertiesScreen() {
                       paddingHorizontal: spacing.md,
                       paddingVertical: spacing.sm,
                       borderRadius: radius.md,
-                      backgroundColor: active ? colors.ink : colors.surface,
+                      backgroundColor: active ? colors.primary : colors.surface,
                       borderWidth: 1,
-                      borderColor: active ? colors.ink : colors.border,
+                      borderColor: active ? colors.primary : colors.border,
                     }}
                   >
                     <Text
                       style={{
                         ...type.caption,
-                        fontWeight: "700",
-                        color: active ? colors.onAccent : colors.inkSecondary,
+                        fontWeight: "600",
+                        color: active ? colors.onPrimary : colors.inkSecondary,
                       }}
                     >
                       {item}
@@ -280,3 +281,4 @@ export default function DealerPropertiesScreen() {
     </SafeAreaView>
   );
 }
+

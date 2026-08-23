@@ -239,9 +239,9 @@ export default function ExploreScreen() {
         keyboardShouldPersistTaps="handled"
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{
-          paddingHorizontal: spacing.xl,
-          paddingBottom: spacing.xxl,
-          gap: spacing.lg,
+          paddingHorizontal: spacing.lg,
+          paddingBottom: spacing["3xl"],
+          gap: spacing.md,
           flexGrow: 1,
         }}
         ListHeaderComponent={
@@ -261,6 +261,7 @@ export default function ExploreScreen() {
             ) : null}
           </View>
         }
+
         ListEmptyComponent={
           <EmptyState
             icon={SearchX}

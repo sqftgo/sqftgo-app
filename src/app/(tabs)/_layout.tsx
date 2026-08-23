@@ -13,15 +13,15 @@ import {
   ParamListBase,
   TabNavigationState,
 } from "@react-navigation/native";
-import type { MaterialTopTabBarProps } from "@react-navigation/material-top-tabs";
 import {
   createMaterialTopTabNavigator,
+  type MaterialTopTabBarProps,
   type MaterialTopTabNavigationEventMap,
   type MaterialTopTabNavigationOptions,
 } from "@react-navigation/material-top-tabs";
 import { withLayoutContext } from "expo-router";
 import {
-  Bookmark,
+  Briefcase,
   Grid,
   Home,
   User,
@@ -30,6 +30,8 @@ import {
 
 import { useApp } from "@/context/AppContext";
 import { colors, type } from "@/theme/tokens";
+
+
 
 interface TabDef {
   name: string;
@@ -45,7 +47,7 @@ interface TabDef {
 const USER_TABS: TabDef[] = [
   { name: "index", label: "Home", Icon: Home },
   { name: "explore", label: "Explore", Icon: Grid },
-  { name: "favorites", label: "Saved", Icon: Bookmark },
+  { name: "services", label: "Services", Icon: Briefcase },
   { name: "my-inquiries", label: "Brokers", Icon: Users },
   { name: "profile", label: "Profile", Icon: User },
 ];

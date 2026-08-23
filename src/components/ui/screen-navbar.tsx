@@ -26,15 +26,44 @@ export function ScreenNavbar({
   onPressTitle,
 }: ScreenNavbarProps) {
   const titleBlock = (
-    <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
+    <View style={{ flex: 1, gap: 1, minWidth: 0, justifyContent: "center" }}>
       {eyebrow ? (
-        <Text style={{ ...type.micro, color: colors.inkMuted }}>{eyebrow}</Text>
+        <Text
+          style={{
+            ...type.micro,
+            color: colors.inkMuted,
+            textTransform: "uppercase",
+            letterSpacing: 0.6,
+            fontSize: 11,
+            fontWeight: "600",
+          }}
+          numberOfLines={1}
+        >
+          {eyebrow}
+        </Text>
       ) : null}
-      <Text style={{ ...type.heading, color: colors.ink }} numberOfLines={1}>
+      <Text
+        style={{
+          ...type.title,
+          color: colors.ink,
+          fontSize: 22,
+          fontWeight: "700",
+          letterSpacing: -0.4,
+        }}
+        numberOfLines={1}
+      >
         {title}
       </Text>
       {subtitle ? (
-        <Text style={{ ...type.caption, color: colors.inkMuted }} numberOfLines={2}>
+        <Text
+          style={{
+            ...type.caption,
+            color: colors.inkMuted,
+            fontSize: 12,
+            marginTop: 1,
+          }}
+          numberOfLines={1}
+        >
           {subtitle}
         </Text>
       ) : null}
@@ -45,11 +74,11 @@ export function ScreenNavbar({
     <View
       style={{
         flexDirection: "row",
-        alignItems: "flex-start",
+        alignItems: "center",
         justifyContent: "space-between",
         gap: spacing.md,
-        paddingTop: spacing.md,
-        paddingBottom: spacing.sm,
+        paddingTop: spacing.xs,
+        paddingBottom: spacing.xs,
       }}
     >
       {onPressTitle ? (
@@ -67,7 +96,11 @@ export function ScreenNavbar({
       ) : (
         titleBlock
       )}
-      {rightAction ? <View style={{ flexShrink: 0, paddingTop: eyebrow ? 14 : 0 }}>{rightAction}</View> : null}
+      {rightAction ? (
+        <View style={{ flexShrink: 0, flexDirection: "row", alignItems: "center" }}>
+          {rightAction}
+        </View>
+      ) : null}
     </View>
   );
 }

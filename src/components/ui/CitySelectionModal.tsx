@@ -14,7 +14,8 @@ import Svg, { Defs, LinearGradient as SvgLinearGradient, Rect, Stop } from "reac
 import { CITIES, City } from "@/constants/cities";
 import { useApp } from "@/context/AppContext";
 import { ModalSheet, ModalSheetHeader } from "@/components/ui/modal-sheet";
-import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
+import { colors, radius, spacing, type } from "@/theme/tokens";
+
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
