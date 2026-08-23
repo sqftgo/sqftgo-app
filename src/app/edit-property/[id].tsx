@@ -34,13 +34,16 @@ export default function EditPropertyScreen() {
   );
 
   const canEdit =
-    canAccessDealerDashboard &&
-    existing &&
-    ownsProperty(existing, { userId: profile?.id, email: userEmail });
+    Boolean(existing) &&
+    ownsProperty(existing!, { userId: profile?.id, email: userEmail }) &&
+    (canAccessDealerDashboard || profile?.role === "user");
 
   const [title, setTitle] = useState(existing?.title ?? "");
   const [price, setPrice] = useState(existing ? String(existing.price) : "");
   const [locality, setLocality] = useState(existing?.locality ?? "");
+  const [nearbyHospital, setNearbyHospital] = useState(existing?.nearbyHospital ?? "");
+  const [nearbySchool, setNearbySchool] = useState(existing?.nearbySchool ?? "");
+  const [nearbyTransportation, setNearbyTransportation] = useState(existing?.nearbyTransportation ?? "");
   const [size, setSize] = useState(existing ? String(existing.size) : "");
   const [description, setDescription] = useState(existing?.description ?? "");
   const [imageUrl, setImageUrl] = useState(existing?.images?.[0] ?? "");
@@ -62,8 +65,20 @@ export default function EditPropertyScreen() {
   }
 
   const handleSave = async (submitForReview: boolean) => {
-    if (!title.trim() || !price || !locality.trim() || !size || !description.trim()) {
-      appAlert("Missing fields", "Title, price, locality, size, and description are required.");
+    if (
+      !title.trim() ||
+      !price ||
+      !locality.trim() ||
+      !size ||
+      !description.trim() ||
+      !nearbyHospital.trim() ||
+      !nearbySchool.trim() ||
+      !nearbyTransportation.trim()
+    ) {
+      appAlert(
+        "Missing fields",
+        "Title, price, locality, size, description, hospital, school, and transportation are required.",
+      );
       return;
     }
     setSaving(true);
@@ -71,6 +86,9 @@ export default function EditPropertyScreen() {
       title: title.trim(),
       price: parseFloat(price),
       locality: locality.trim(),
+      nearbyHospital: nearbyHospital.trim(),
+      nearbySchool: nearbySchool.trim(),
+      nearbyTransportation: nearbyTransportation.trim(),
       size: parseFloat(size),
       description: description.trim(),
       images: imageUrl.trim() ? [imageUrl.trim()] : existing.images,
@@ -143,6 +161,32 @@ export default function EditPropertyScreen() {
 
         <Text style={{ ...type.label, color: colors.inkMuted, marginBottom: 6 }}>Locality</Text>
         <TextInput value={locality} onChangeText={setLocality} style={inputStyle} />
+
+        <Text style={{ ...type.label, color: colors.inkMuted, marginBottom: 6 }}>Nearby hospital</Text>
+        <TextInput
+          value={nearbyHospital}
+          onChangeText={setNearbyHospital}
+          placeholder="e.g. GBH American Hospital, 2 km"
+          style={inputStyle}
+        />
+
+        <Text style={{ ...type.label, color: colors.inkMuted, marginBottom: 6 }}>Nearby school</Text>
+        <TextInput
+          value={nearbySchool}
+          onChangeText={setNearbySchool}
+          placeholder="e.g. Seedling Public School, 1 km"
+          style={inputStyle}
+        />
+
+        <Text style={{ ...type.label, color: colors.inkMuted, marginBottom: 6 }}>
+          Nearby transportation
+        </Text>
+        <TextInput
+          value={nearbyTransportation}
+          onChangeText={setNearbyTransportation}
+          placeholder="e.g. City Bus Stand, 3 km"
+          style={inputStyle}
+        />
 
         <Text style={{ ...type.label, color: colors.inkMuted, marginBottom: 6 }}>Size (sq.ft)</Text>
         <TextInput

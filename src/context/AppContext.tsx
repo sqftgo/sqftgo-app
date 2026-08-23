@@ -20,6 +20,7 @@ import type {
   DirectoryProfile,
   Inquiry,
   InquiryStatus,
+  ListerStatus,
   Message,
   MessageThread,
   Property,
@@ -54,6 +55,7 @@ import { apiGetKyc, apiPutKyc } from "@/lib/api/services/kyc";
 import {
   apiCreateInquiry,
   apiListInquiries,
+  apiListReceivedInquiries,
   apiPatchInquiry,
 } from "@/lib/api/services/inquiries";
 import {
@@ -113,6 +115,7 @@ interface Session {
   role: UserRole | null;
   status: AccountStatus;
   dealerAccess: DealerAccessStatus;
+  listingStatus: ListerStatus;
   directoryProfileId?: string;
   kyc?: DealerKyc;
   joinedDate: string;
@@ -127,6 +130,7 @@ const GUEST_SESSION: Session = {
   role: null,
   status: "active",
   dealerAccess: "none",
+  listingStatus: "none",
   joinedDate: "",
 };
 
@@ -375,6 +379,7 @@ function sessionFromAccount(account: StoredAccount): Session {
     role: account.role,
     status: account.status,
     dealerAccess: dealerAccessFromRole(account.role, account.dealerAccess),
+    listingStatus: "none",
     directoryProfileId: account.directoryProfileId,
     kyc: account.kyc,
     joinedDate: account.joinedDate,
@@ -390,6 +395,8 @@ function sessionFromApiUser(
     role: UserRole | "admin";
     status: AccountStatus;
     dealerAccess?: DealerAccessStatus;
+    listingStatus?: ListerStatus;
+    listingVerifiedAt?: string | null;
     directoryProfileId?: string;
     kyc?: DealerKyc;
     joinedDate?: string;
@@ -407,6 +414,7 @@ function sessionFromApiUser(
     role: user.role,
     status: user.status,
     dealerAccess: dealerAccessFromRole(user.role, user.dealerAccess),
+    listingStatus: user.listingStatus ?? "none",
     directoryProfileId: user.directoryProfileId,
     kyc: user.kyc,
     joinedDate: user.joinedDate ?? new Date().toISOString(),
@@ -425,6 +433,7 @@ function profileFromSession(session: Session): UserProfile | null {
     status: session.status,
     joinedDate: session.joinedDate,
     dealerAccess: session.dealerAccess,
+    listingStatus: session.listingStatus,
     directoryProfileId: session.directoryProfileId,
     kyc: session.kyc,
   };
@@ -511,10 +520,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const hydrateFromApi = useCallback(async (role?: UserRole | null) => {
     if (!isApiMode) return;
     try {
-      const [publicList, mine, dirsPublic, dirsMine, inqs, vs, threads, favIds] =
+      const [publicList, mine, dirsPublic, dirsMine, inqs, receivedInqs, vs, threads, favIds] =
         await Promise.all([
           apiListProperties({ status: "Active", limit: 100 }).catch(() => [] as Property[]),
-          role === "broker"
+          role === "broker" || role === "user"
             ? apiListMyProperties().catch(() => [] as Property[])
             : Promise.resolve([] as Property[]),
           apiListDealers(false).catch(() => [] as DirectoryProfile[]),
@@ -522,6 +531,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ? apiListDealers(true).catch(() => [] as DirectoryProfile[])
             : Promise.resolve([] as DirectoryProfile[]),
           apiListInquiries().catch(() => [] as Inquiry[]),
+          role === "user"
+            ? apiListReceivedInquiries().catch(() => [] as Inquiry[])
+            : Promise.resolve([] as Inquiry[]),
           apiListVisits().catch(() => [] as SiteVisit[]),
           apiListThreads().catch(() => [] as MessageThread[]),
           apiListFavorites().catch(() => [] as string[]),
@@ -542,15 +554,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       const titleById = new Map(merged.map((p) => [p.id, p.title]));
-      setInquiries(
-        inqs.map((inq) => ({
+      const inquiryById = new Map<string, Inquiry>();
+      for (const inq of [...inqs, ...receivedInqs]) {
+        inquiryById.set(inq.id, {
           ...inq,
           propertyTitle: inq.propertyTitle || titleById.get(inq.propertyId) || "Property",
           status: normalizeInquiryStatus(inq.status as string),
-        })),
-      );
+        });
+      }
+      setInquiries([...inquiryById.values()]);
       setVisits(
-        vs.map((v) => ({
+        vs.map((v: SiteVisit) => ({
           ...v,
           propertyTitle: v.propertyTitle || titleById.get(v.propertyId) || "Property",
         })),
@@ -657,6 +671,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           status?: AccountStatus;
           directoryProfileId?: string;
           kyc?: DealerKyc;
+          listingStatus?: ListerStatus;
           joinedDate?: string;
           accessToken?: string;
         };
@@ -675,6 +690,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             status: parsed.status ?? "active",
             dealerAccess:
               parsed.role === "broker" ? "approved" : (parsed.dealerAccess ?? "none"),
+            listingStatus: parsed.listingStatus ?? "none",
             directoryProfileId: parsed.directoryProfileId,
             kyc: parsed.kyc,
             joinedDate: parsed.joinedDate ?? "",
@@ -1168,7 +1184,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addProperty = useCallback(
     async (prop: PropertyInput) => {
-      if (session.role !== "broker" || session.status !== "active") return null;
+      if (session.role !== "broker" && session.role !== "user") return null;
+      if (session.status !== "active") return null;
+      if (session.role === "user" && session.listingStatus === "rejected") return null;
       const status =
         prop.status === "Draft" || prop.status === "Pending Review"
           ? prop.status
@@ -1213,7 +1231,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateProperty = useCallback(
     async (id: string, patch: Partial<Property>) => {
-      if (session.role !== "broker" || session.status !== "active") return null;
+      if (session.role !== "broker" && session.role !== "user") return null;
+      if (session.status !== "active") return null;
       const existing = properties.find((p) => p.id === id);
       if (
         !existing ||
@@ -1256,7 +1275,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteProperty = useCallback(
     async (id: string) => {
-      if (session.role !== "broker" || session.status !== "active") return false;
+      if (session.role !== "broker" && session.role !== "user") return false;
+      if (session.status !== "active") return false;
       const existing = properties.find((p) => p.id === id);
       if (
         !existing ||

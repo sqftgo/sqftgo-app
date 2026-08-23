@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics";
 import React, { useEffect, useState } from "react";
-import { Pressable, ScrollView, Switch, Text, View } from "react-native";
+import { Pressable, ScrollView, Switch, Text, TextInput, View } from "react-native";
 
 import { FilterOptionRow, MultiSelectChipRow } from "@/components/ui/chip";
 import { ModalSheet, ModalSheetHeader } from "@/components/ui/modal-sheet";
@@ -25,6 +25,8 @@ import {
   type SortOption,
 } from "@/lib/filters";
 import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
+import type { ListingFilter } from "@/data/listing-filters";
+import { isFilterOn } from "@/hooks/useListingFilters";
 
 const PURPOSE_OPTIONS: { value: PurposeFilter; label: string }[] = [
   { value: "all", label: "Any" },
@@ -89,10 +91,18 @@ interface FilterSheetProps {
   countResults: (filters: PropertyFilters) => number;
   onApply: (filters: PropertyFilters) => void;
   onClose: () => void;
+  listingFilters?: ListingFilter[];
 }
 
 /** Filter Properties panel — fields aligned with web `/listings` FilterPanel. */
-export function FilterSheet({ visible, filters, countResults, onApply, onClose }: FilterSheetProps) {
+export function FilterSheet({
+  visible,
+  filters,
+  countResults,
+  onApply,
+  onClose,
+  listingFilters = [],
+}: FilterSheetProps) {
   const [draft, setDraft] = useState<PropertyFilters>(filters);
 
   useEffect(() => {
@@ -146,6 +156,26 @@ export function FilterSheet({ visible, filters, countResults, onApply, onClose }
   };
 
   const showResidentialSpecs = !NON_RESIDENTIAL_TYPES.has(draft.type);
+  const on = (key: string) => (listingFilters.length === 0 ? true : isFilterOn(listingFilters, key));
+  const customFilters = listingFilters.filter(
+    (f) => f.active && (f.kind === "text" || f.kind === "toggle" || f.kind === "multi"),
+  );
+  const bhkOptions =
+    listingFilters.find((f) => f.key === "bhk")?.options?.length
+      ? listingFilters.find((f) => f.key === "bhk")!.options
+      : BHK_CHIP_OPTIONS;
+  const furnishingOptions =
+    listingFilters.find((f) => f.key === "furnishing")?.options?.length
+      ? listingFilters.find((f) => f.key === "furnishing")!.options.map((o) => ({
+          value: o.value as FurnishingFilter,
+          label: o.label,
+        }))
+      : FURNISHING_CHIP_OPTIONS;
+
+  const setExtra = (key: string, value: string | string[] | boolean) => {
+    triggerHaptic();
+    setDraft((prev) => ({ ...prev, extra: { ...(prev.extra ?? {}), [key]: value } }));
+  };
 
   const minPriceOptions = isRentLikePurpose(draft.purpose)
     ? BUDGET_RENT_MIN_OPTIONS
@@ -187,19 +217,22 @@ export function FilterSheet({ visible, filters, countResults, onApply, onClose }
             onChange={handlePurposeChange}
           />
         </FilterGroup>
+        ) : null}
 
-        <FilterGroup label="Property type">
+        {on("type") ? (
+        <FilterGroup label={listingFilters.find((f) => f.key === "type")?.label || "Property type"}>
           <FilterOptionRow
             options={TYPE_OPTIONS}
             value={draft.type === "commercial" ? "any" : draft.type}
             onChange={(v) => patch("type", v)}
           />
         </FilterGroup>
+        ) : null}
 
-        {showResidentialSpecs ? (
-          <FilterGroup label="Bedrooms (BHK)" subtitle="Select one or more">
+        {showResidentialSpecs && on("bhk") ? (
+          <FilterGroup label={listingFilters.find((f) => f.key === "bhk")?.label || "Bedrooms (BHK)"} subtitle="Select one or more">
             <MultiSelectChipRow
-              options={BHK_CHIP_OPTIONS}
+              options={bhkOptions}
               values={draft.bhk}
               onToggle={(v) => toggleArrayItem("bhk", v)}
               showCheck
@@ -207,8 +240,9 @@ export function FilterSheet({ visible, filters, countResults, onApply, onClose }
           </FilterGroup>
         ) : null}
 
+        {on("price") ? (
         <FilterGroup
-          label="Budget"
+          label={listingFilters.find((f) => f.key === "price")?.label || "Budget"}
           subtitle={
             isRentLikePurpose(draft.purpose) ? "Monthly rent range" : "Purchase price range"
           }
@@ -234,8 +268,10 @@ export function FilterSheet({ visible, filters, countResults, onApply, onClose }
             onChange={(v) => patch("maxPrice", v === "__none__" ? "" : v)}
           />
         </FilterGroup>
+        ) : null}
 
-        <FilterGroup label="Size (sq.ft.)">
+        {on("size") ? (
+        <FilterGroup label={listingFilters.find((f) => f.key === "size")?.label || "Size (sq.ft.)"}>
           <Text style={{ ...type.caption, color: colors.inkMuted }}>Minimum</Text>
           <FilterOptionRow
             options={SIZE_MIN_OPTIONS.map((o) => ({
@@ -257,11 +293,12 @@ export function FilterSheet({ visible, filters, countResults, onApply, onClose }
             onChange={(v) => patch("maxSize", v === "__none__" ? "" : v)}
           />
         </FilterGroup>
+        ) : null}
 
-        {showResidentialSpecs ? (
-          <FilterGroup label="Furnishing">
+        {showResidentialSpecs && on("furnishing") ? (
+          <FilterGroup label={listingFilters.find((f) => f.key === "furnishing")?.label || "Furnishing"}>
             <MultiSelectChipRow
-              options={FURNISHING_CHIP_OPTIONS}
+              options={furnishingOptions}
               values={draft.furnishing}
               onToggle={(v) => toggleArrayItem("furnishing", v)}
               showCheck
@@ -269,7 +306,8 @@ export function FilterSheet({ visible, filters, countResults, onApply, onClose }
           </FilterGroup>
         ) : null}
 
-        <FilterGroup label="Amenities" subtitle="Must include all selected">
+        {on("amenities") ? (
+        <FilterGroup label={listingFilters.find((f) => f.key === "amenities")?.label || "Amenities"} subtitle="Must include all selected">
           <MultiSelectChipRow
             options={AMENITY_OPTIONS.map((a) => ({ value: a, label: a }))}
             values={draft.selectedAmenities}
@@ -277,7 +315,9 @@ export function FilterSheet({ visible, filters, countResults, onApply, onClose }
             showCheck
           />
         </FilterGroup>
+        ) : null}
 
+        {(on("rera") || on("featured")) ? (
         <View
           style={{
             gap: spacing.lg,
@@ -287,6 +327,7 @@ export function FilterSheet({ visible, filters, countResults, onApply, onClose }
             borderColor: colors.border,
           }}
         >
+          {on("rera") ? (
           <View
             style={{
               flexDirection: "row",
@@ -295,7 +336,9 @@ export function FilterSheet({ visible, filters, countResults, onApply, onClose }
             }}
           >
             <View style={{ flex: 1, paddingRight: spacing.md }}>
-              <Text style={{ ...type.emphasis, color: colors.ink }}>RERA Approved Only</Text>
+              <Text style={{ ...type.emphasis, color: colors.ink }}>
+                {listingFilters.find((f) => f.key === "rera")?.label || "RERA Approved Only"}
+              </Text>
               <Text style={{ ...type.caption, color: colors.inkMuted, marginTop: 2 }}>
                 Show properties with valid RERA registration
               </Text>
@@ -306,7 +349,9 @@ export function FilterSheet({ visible, filters, countResults, onApply, onClose }
               trackColor={{ false: colors.borderStrong, true: colors.accent }}
             />
           </View>
+          ) : null}
 
+          {on("featured") ? (
           <View
             style={{
               flexDirection: "row",
@@ -315,7 +360,9 @@ export function FilterSheet({ visible, filters, countResults, onApply, onClose }
             }}
           >
             <View style={{ flex: 1, paddingRight: spacing.md }}>
-              <Text style={{ ...type.emphasis, color: colors.ink }}>Featured Only</Text>
+              <Text style={{ ...type.emphasis, color: colors.ink }}>
+                {listingFilters.find((f) => f.key === "featured")?.label || "Featured Only"}
+              </Text>
               <Text style={{ ...type.caption, color: colors.inkMuted, marginTop: 2 }}>
                 Show handpicked featured listings
               </Text>
@@ -326,7 +373,69 @@ export function FilterSheet({ visible, filters, countResults, onApply, onClose }
               trackColor={{ false: colors.borderStrong, true: colors.accent }}
             />
           </View>
+          ) : null}
         </View>
+        ) : null}
+
+        {customFilters.map((def) => {
+          const extraVal = draft.extra?.[def.key];
+          if (def.kind === "toggle") {
+            return (
+              <View
+                key={def.id}
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ ...type.emphasis, color: colors.ink, flex: 1 }}>{def.label}</Text>
+                <Switch
+                  value={Boolean(extraVal)}
+                  onValueChange={(val) => setExtra(def.key, val)}
+                  trackColor={{ false: colors.borderStrong, true: colors.accent }}
+                />
+              </View>
+            );
+          }
+          if (def.kind === "multi") {
+            const selected = Array.isArray(extraVal) ? extraVal.map(String) : [];
+            return (
+              <FilterGroup key={def.id} label={def.label}>
+                <MultiSelectChipRow
+                  options={def.options}
+                  values={selected}
+                  onToggle={(v) => {
+                    const next = selected.includes(v)
+                      ? selected.filter((x) => x !== v)
+                      : [...selected, v];
+                    setExtra(def.key, next);
+                  }}
+                  showCheck
+                />
+              </FilterGroup>
+            );
+          }
+          return (
+            <FilterGroup key={def.id} label={def.label}>
+              <TextInput
+                value={typeof extraVal === "string" ? extraVal : ""}
+                onChangeText={(t) => setExtra(def.key, t)}
+                placeholder={def.label}
+                placeholderTextColor={colors.inkMuted}
+                style={{
+                  ...type.body,
+                  color: colors.ink,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  borderRadius: radius.md,
+                  paddingHorizontal: spacing.md,
+                  paddingVertical: spacing.sm,
+                }}
+              />
+            </FilterGroup>
+          );
+        })}
 
         <FilterGroup label="Sort by">
           <FilterOptionRow

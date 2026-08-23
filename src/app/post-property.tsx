@@ -103,8 +103,11 @@ const DropdownSelect: React.FC<DropdownSelectProps> = ({
 
 export default function PostPropertyScreen() {
   const router = useRouter();
-  const { addProperty, selectedCity, canAccessDealerDashboard } = useApp();
-  const isBroker = canAccessDealerDashboard;
+  const { addProperty, selectedCity, canAccessDealerDashboard, profile, userRole } = useApp();
+  const canList =
+    (canAccessDealerDashboard || userRole === "user") &&
+    profile?.status === "active" &&
+    profile?.listingStatus !== "rejected";
 
   // Dropdown states
   const [activeDropdown, setActiveDropdown] = useState<"city" | "type" | "furnished" | null>(null);
@@ -117,6 +120,9 @@ export default function PostPropertyScreen() {
   const [bhk, setBhk] = useState("");
   const [city, setCity] = useState(selectedCity);
   const [locality, setLocality] = useState("");
+  const [nearbyHospital, setNearbyHospital] = useState("");
+  const [nearbySchool, setNearbySchool] = useState("");
+  const [nearbyTransportation, setNearbyTransportation] = useState("");
   const [size, setSize] = useState("");
   const [furnished, setFurnished] = useState<Property["furnished"]>("Semi-Furnished");
   const [description, setDescription] = useState("");
@@ -167,6 +173,9 @@ export default function PostPropertyScreen() {
       bhk: bhk ? parseInt(bhk) : undefined,
       city,
       locality,
+      nearbyHospital: nearbyHospital.trim(),
+      nearbySchool: nearbySchool.trim(),
+      nearbyTransportation: nearbyTransportation.trim(),
       size: sizeNum,
       furnished,
       description,
@@ -179,8 +188,8 @@ export default function PostPropertyScreen() {
   };
 
   const validate = () => {
-    if (!title || !price || !locality || !size || !description) {
-      appAlert("Error", "Please fill in all mandatory fields.");
+    if (!title || !price || !locality || !size || !description || !nearbyHospital.trim() || !nearbySchool.trim() || !nearbyTransportation.trim()) {
+      appAlert("Error", "Please fill in all mandatory fields, including hospital, school, and transportation.");
       return false;
     }
     if (isNaN(parseFloat(price)) || isNaN(parseFloat(size))) {
@@ -199,13 +208,18 @@ export default function PostPropertyScreen() {
 
   const handleSaveDraft = async () => {
     if (!validate()) return;
-    if (!isBroker) {
-      appAlert("Dealer access required", "Only approved brokers can create listings.");
+    if (!canList) {
+      appAlert(
+        "Cannot list",
+        profile?.listingStatus === "rejected"
+          ? "Admin declined listing access for this account."
+          : "Sign in as a client or approved dealer to save a listing.",
+      );
       return;
     }
     const created = await addProperty({ ...buildPayload(), status: "Draft" });
     if (!created) {
-      appAlert("Could not save", "Dealer dashboard access is required.");
+      appAlert("Could not save", "You may have reached the 2-listing limit, or listing access is off.");
       return;
     }
     appAlert("Draft saved", "Open this draft later from your dashboard and submit when ready.", [
@@ -215,13 +229,18 @@ export default function PostPropertyScreen() {
 
   const handleSubmitForReview = async () => {
     if (!validate()) return;
-    if (!isBroker) {
-      appAlert("Dealer access required", "Only approved brokers can create listings.");
+    if (!canList) {
+      appAlert(
+        "Cannot list",
+        profile?.listingStatus === "rejected"
+          ? "Admin declined listing access for this account."
+          : "Sign in as a client or approved dealer to submit a listing.",
+      );
       return;
     }
     const created = await addProperty({ ...buildPayload(), status: "Pending Review" });
     if (!created) {
-      appAlert("Could not submit", "Dealer dashboard access is required.");
+      appAlert("Could not submit", "You may have reached the 2-listing limit, or listing access is off.");
       return;
     }
     appAlert(
@@ -238,7 +257,7 @@ export default function PostPropertyScreen() {
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
           <ChevronLeft size={22} color={colors.ink} />
         </Pressable>
-        <Text style={styles.headerTitle}>{isBroker ? "Add Property" : "Post Property"}</Text>
+        <Text style={styles.headerTitle}>{canAccessDealerDashboard ? "Add Property" : "Post Property"}</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -311,6 +330,33 @@ export default function PostPropertyScreen() {
             value={locality}
             onChangeText={setLocality}
             placeholder="e.g. C-Scheme or Panchwati"
+            placeholderTextColor="#9CA3AF"
+            style={styles.input}
+          />
+
+          <Text style={styles.label}>Nearby hospital *</Text>
+          <TextInput
+            value={nearbyHospital}
+            onChangeText={setNearbyHospital}
+            placeholder="e.g. GBH American Hospital, 2 km"
+            placeholderTextColor="#9CA3AF"
+            style={styles.input}
+          />
+
+          <Text style={styles.label}>Nearby school *</Text>
+          <TextInput
+            value={nearbySchool}
+            onChangeText={setNearbySchool}
+            placeholder="e.g. Seedling Public School, 1 km"
+            placeholderTextColor="#9CA3AF"
+            style={styles.input}
+          />
+
+          <Text style={styles.label}>Nearby transportation *</Text>
+          <TextInput
+            value={nearbyTransportation}
+            onChangeText={setNearbyTransportation}
+            placeholder="e.g. City Bus Stand, 3 km"
             placeholderTextColor="#9CA3AF"
             style={styles.input}
           />
@@ -487,7 +533,7 @@ export default function PostPropertyScreen() {
         </View>
 
         <View style={styles.submitRow}>
-          {isBroker ? (
+          {canList ? (
             <>
               <Pressable onPress={handleSaveDraft} style={styles.draftBtn}>
                 <Text style={styles.draftBtnText}>Save draft</Text>

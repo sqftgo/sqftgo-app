@@ -12,6 +12,12 @@ export async function apiListInquiries(): Promise<Inquiry[]> {
   return items.map((row) => mapInquiryFromApi(row as Parameters<typeof mapInquiryFromApi>[0]));
 }
 
+export async function apiListReceivedInquiries(): Promise<Inquiry[]> {
+  const res = await apiFetch<ListResponse<unknown> | unknown[]>("/api/inquiries?received=1");
+  const items = Array.isArray(res) ? res : res.items ?? [];
+  return items.map((row) => mapInquiryFromApi(row as Parameters<typeof mapInquiryFromApi>[0]));
+}
+
 export async function apiCreateInquiry(
   propertyId: string,
   body: { name: string; email: string; phone: string; message: string },

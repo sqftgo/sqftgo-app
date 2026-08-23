@@ -1665,4 +1665,4 @@ export default function ProfileScreen() {
       />
     </SafeAreaView>
   );
-}
+}
