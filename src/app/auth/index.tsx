@@ -209,6 +209,7 @@ export default function AuthScreen() {
           email: email.trim(),
           password,
           name: name.trim(),
+          intent: isDealer ? "dealer" : "user",
         });
         if (!result.ok) {
           appAlert("Sign up failed", result.message);
@@ -216,6 +217,7 @@ export default function AuthScreen() {
         }
         setPreferredRole(loginTypeToPreferred(loginType));
         if (isDealer) {
+          // Directory card still collected on web-style register screen
           router.replace("/dealer-register" as Href);
         }
         return;

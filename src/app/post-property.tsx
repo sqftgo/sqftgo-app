@@ -103,11 +103,21 @@ const DropdownSelect: React.FC<DropdownSelectProps> = ({
 
 export default function PostPropertyScreen() {
   const router = useRouter();
-  const { addProperty, selectedCity, canAccessDealerDashboard, profile, userRole } = useApp();
+  const {
+    addProperty,
+    selectedCity,
+    canAccessDealerDashboard,
+    profile,
+    userRole,
+    canPostListing,
+    platformSettings,
+    myListingsCount,
+  } = useApp();
   const canList =
     (canAccessDealerDashboard || userRole === "user") &&
     profile?.status === "active" &&
-    profile?.listingStatus !== "rejected";
+    profile?.listingStatus !== "rejected" &&
+    (canAccessDealerDashboard || canPostListing);
 
   // Dropdown states
   const [activeDropdown, setActiveDropdown] = useState<"city" | "type" | "furnished" | null>(null);
@@ -213,13 +223,20 @@ export default function PostPropertyScreen() {
         "Cannot list",
         profile?.listingStatus === "rejected"
           ? "Admin declined listing access for this account."
-          : "Sign in as a client or approved dealer to save a listing.",
+          : !platformSettings.allowUserListings && userRole === "user"
+            ? "User listings are currently disabled by the platform."
+            : userRole === "user" && myListingsCount >= platformSettings.maxListingsPerUser
+              ? `You already have ${myListingsCount} listing(s). Cap is ${platformSettings.maxListingsPerUser}.`
+              : "Sign in as a client or approved dealer to save a listing.",
       );
       return;
     }
     const created = await addProperty({ ...buildPayload(), status: "Draft" });
     if (!created) {
-      appAlert("Could not save", "You may have reached the 2-listing limit, or listing access is off.");
+      appAlert(
+        "Could not save",
+        `Listing limit is ${platformSettings.maxListingsPerUser}, or listing access is off.`,
+      );
       return;
     }
     appAlert("Draft saved", "Open this draft later from your dashboard and submit when ready.", [
@@ -234,13 +251,20 @@ export default function PostPropertyScreen() {
         "Cannot list",
         profile?.listingStatus === "rejected"
           ? "Admin declined listing access for this account."
-          : "Sign in as a client or approved dealer to submit a listing.",
+          : !platformSettings.allowUserListings && userRole === "user"
+            ? "User listings are currently disabled by the platform."
+            : userRole === "user" && myListingsCount >= platformSettings.maxListingsPerUser
+              ? `You already have ${myListingsCount} listing(s). Cap is ${platformSettings.maxListingsPerUser}.`
+              : "Sign in as a client or approved dealer to submit a listing.",
       );
       return;
     }
     const created = await addProperty({ ...buildPayload(), status: "Pending Review" });
     if (!created) {
-      appAlert("Could not submit", "You may have reached the 2-listing limit, or listing access is off.");
+      appAlert(
+        "Could not submit",
+        `Listing limit is ${platformSettings.maxListingsPerUser}, or listing access is off.`,
+      );
       return;
     }
     appAlert(

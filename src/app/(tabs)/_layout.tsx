@@ -48,7 +48,7 @@ const USER_TABS: TabDef[] = [
   { name: "index", label: "Home", Icon: Home },
   { name: "explore", label: "Explore", Icon: Grid },
   { name: "services", label: "Services", Icon: Briefcase },
-  { name: "my-inquiries", label: "Brokers", Icon: Users },
+  { name: "brokers", label: "Brokers", Icon: Users },
   { name: "profile", label: "Profile", Icon: User },
 ];
 

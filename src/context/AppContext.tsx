@@ -1,10 +1,10 @@
 /**
- * Local workflow mirror of SqftGo BFF auth + role gates.
- * Signup always creates role `user`. Dealer dashboard requires `broker`.
- * Never PATCH role from the client — promotion is a web-admin side effect.
+ * SqftGo mobile client for the Next.js BFF (Supabase-backed).
+ * Set EXPO_PUBLIC_API_URL for live auth + data. Unset = AsyncStorage mock demo.
  *
- * When EXPO_PUBLIC_API_URL is set, auth + mutations use Next /api/* with Bearer.
- * Otherwise AsyncStorage mock stays online for offline demos.
+ * Dealer signup: pass intent `"dealer"` → BFF promotes `profiles.role` to `broker`
+ * (same as web `/dealer/register`). Existing users still use `registerAsDealer`
+ * for a directory card; dashboard unlock still needs broker role.
  */
 
 import React, { createContext, useCallback, useEffect, useMemo, useState } from "react";
@@ -71,10 +71,16 @@ import {
   apiListProperties,
   apiUpdateProperty,
 } from "@/lib/api/services/properties";
+import {
+  apiGetPlatformSettings,
+  DEFAULT_PLATFORM_SETTINGS,
+  type PublicPlatformSettings,
+} from "@/lib/api/services/platform";
 import { apiCreateVisit, apiListVisits, apiPatchVisit } from "@/lib/api/services/visits";
 import { ownsProperty } from "@/lib/ownership";
 
 export type { Property, DirectoryProfile, Inquiry, SiteVisit, UserProfile } from "@/data/types";
+export type { PublicPlatformSettings } from "@/lib/api/services/platform";
 
 const STORAGE_KEYS = {
   onboarding: "hasCompletedOnboarding",
@@ -310,11 +316,17 @@ interface AppContextType {
   /** True when role is broker and account is active */
   canAccessDealerDashboard: boolean;
   isApiMode: boolean;
+  platformSettings: PublicPlatformSettings;
+  /** Owned listings count (user or broker). */
+  myListingsCount: number;
+  /** Whether the current user may create another listing under platform caps. */
+  canPostListing: boolean;
   signIn: (email: string, password: string) => Promise<AuthResult> | AuthResult;
   signUp: (input: {
     email: string;
     password: string;
     name: string;
+    intent?: "user" | "dealer";
   }) => Promise<AuthResult> | AuthResult;
   signOut: () => void;
   refreshSessionFromApi: () => Promise<void>;
@@ -466,6 +478,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   >("checking");
   const [authError, setAuthError] = useState<string | null>(null);
   const [notifPrefs, setNotifPrefsState] = useState<NotifPrefs>(DEFAULT_NOTIF_PREFS);
+  const [platformSettings, setPlatformSettings] = useState<PublicPlatformSettings>(
+    DEFAULT_PLATFORM_SETTINGS,
+  );
 
   const persistProperties = useCallback((next: Property[]) => {
     AsyncStorage.setItem(STORAGE_KEYS.properties, JSON.stringify(next)).catch(() => {});
@@ -520,8 +535,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const hydrateFromApi = useCallback(async (role?: UserRole | null) => {
     if (!isApiMode) return;
     try {
-      const [publicList, mine, dirsPublic, dirsMine, inqs, receivedInqs, vs, threads, favIds] =
-        await Promise.all([
+      const [
+        publicList,
+        mine,
+        dirsPublic,
+        dirsMine,
+        inqs,
+        receivedInqs,
+        vs,
+        threads,
+        favIds,
+        settings,
+      ] = await Promise.all([
           apiListProperties({ status: "Active", limit: 100 }).catch(() => [] as Property[]),
           role === "broker" || role === "user"
             ? apiListMyProperties().catch(() => [] as Property[])
@@ -537,8 +562,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           apiListVisits().catch(() => [] as SiteVisit[]),
           apiListThreads().catch(() => [] as MessageThread[]),
           apiListFavorites().catch(() => [] as string[]),
+          apiGetPlatformSettings().catch(() => DEFAULT_PLATFORM_SETTINGS),
         ]);
 
+      setPlatformSettings(settings);
       const byId = new Map<string, Property>();
       for (const p of publicList) byId.set(p.id, p);
       for (const p of mine) byId.set(p.id, p);
@@ -905,6 +932,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       email: string;
       password: string;
       name: string;
+      intent?: "user" | "dealer";
     }): Promise<AuthResult> => {
       if (isApiMode) {
         try {
@@ -912,7 +940,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             email: input.email.trim().toLowerCase(),
             password: input.password,
             name: input.name.trim(),
+            intent: input.intent === "dealer" ? "dealer" : "user",
           });
+          if ("status" in res && res.status === "confirm_email") {
+            return {
+              ok: false,
+              code: "network",
+              message: res.message || "Check your email to confirm your account before signing in.",
+            };
+          }
           if (res.role === "admin") {
             await setAccessToken(null);
             return {
@@ -943,21 +979,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (accounts.some((a) => a.email.toLowerCase() === email)) {
         return { ok: false, code: "exists", message: "An account with this email already exists." };
       }
+      const asDealer = input.intent === "dealer";
       const account: StoredAccount = {
         id: `acc-${Date.now()}`,
         email,
         password: input.password,
         name: input.name.trim() || email.split("@")[0],
-        role: "user",
+        role: asDealer ? "broker" : "user",
         status: "active",
-        dealerAccess: "none",
+        dealerAccess: asDealer ? "approved" : "none",
         joinedDate: new Date().toISOString(),
       };
       const nextAccounts = [...accounts, account];
       setAccounts(nextAccounts);
       persistAccounts(nextAccounts);
       persistSession(sessionFromAccount(account));
-      return { ok: true, role: "user", dealerAccess: "none" };
+      return {
+        ok: true,
+        role: asDealer ? "broker" : "user",
+        dealerAccess: asDealer ? "approved" : "none",
+      };
     },
     [accounts, persistAccounts, persistSession, hydrateFromApi],
   );
@@ -1187,6 +1228,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (session.role !== "broker" && session.role !== "user") return null;
       if (session.status !== "active") return null;
       if (session.role === "user" && session.listingStatus === "rejected") return null;
+      if (session.role === "user" && !platformSettings.allowUserListings) return null;
+
+      const ownedCount = properties.filter((p) =>
+        ownsProperty(p, { userId: session.accountId, email: session.email }),
+      ).length;
+      if (
+        session.role === "user" &&
+        ownedCount >= platformSettings.maxListingsPerUser
+      ) {
+        return null;
+      }
+
       const status =
         prop.status === "Draft" || prop.status === "Pending Review"
           ? prop.status
@@ -1226,7 +1279,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       return newProperty;
     },
-    [session, persistProperties],
+    [session, persistProperties, platformSettings, properties],
   );
 
   const updateProperty = useCallback(
@@ -1708,6 +1761,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const canAccessDealerDashboard =
     session.isLoggedIn && session.role === "broker" && session.status === "active";
 
+  const myListingsCount = useMemo(
+    () =>
+      properties.filter((p) =>
+        ownsProperty(p, { userId: session.accountId, email: session.email }),
+      ).length,
+    [properties, session.accountId, session.email],
+  );
+
+  const canPostListing = useMemo(() => {
+    if (!session.isLoggedIn || session.status !== "active") return false;
+    if (session.role === "broker") return true;
+    if (session.role !== "user") return false;
+    if (session.listingStatus === "rejected") return false;
+    if (!platformSettings.allowUserListings) return false;
+    return myListingsCount < platformSettings.maxListingsPerUser;
+  }, [session, platformSettings, myListingsCount]);
+
   // Soft-refresh KYC from API when broker opens app
   useEffect(() => {
     if (!isApiMode || !canAccessDealerDashboard) return;
@@ -1717,6 +1787,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })
       .catch(() => {});
   }, [canAccessDealerDashboard]);
+
+  // Public platform settings (listing caps) — refresh even before login
+  useEffect(() => {
+    if (!isApiMode) return;
+    apiGetPlatformSettings()
+      .then(setPlatformSettings)
+      .catch(() => {});
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -1755,6 +1833,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       dealerAccess: session.dealerAccess,
       canAccessDealerDashboard,
       isApiMode,
+      platformSettings,
+      myListingsCount,
+      canPostListing,
       signIn,
       signUp,
       signOut,
@@ -1805,6 +1886,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setNotifPrefs,
       session,
       canAccessDealerDashboard,
+      platformSettings,
+      myListingsCount,
+      canPostListing,
       signIn,
       signUp,
       signOut,

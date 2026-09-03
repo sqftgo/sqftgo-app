@@ -795,9 +795,15 @@ export default function ProfileScreen() {
             {dealerTab === "subscription" ? (
               <MenuGroup>
                 <MenuRow
+                  icon={Building2}
+                  label="My projects"
+                  sub="Builder launches you manage"
+                  onPress={() => router.push("/dealer-projects" as Href)}
+                />
+                <MenuRow
                   icon={Sparkles}
-                  label="Subscription plans"
-                  sub="Explore broker growth tiers"
+                  label="Partner subscription"
+                  sub="Razorpay plans · Starter to Enterprise"
                   onPress={() => router.push("/subscription" as Href)}
                   showDivider={false}
                 />
@@ -810,23 +816,28 @@ export default function ProfileScreen() {
                 <MenuRow
                   icon={LayoutDashboard}
                   label="Dashboard"
-                  onPress={() => router.push("/(dealer)/dashboard" as Href)}
+                  onPress={() => router.push("/(dealer)" as Href)}
                 />
                 <MenuRow
                   icon={Building2}
                   label="My properties"
-                  onPress={() => router.push("/(tabs)/properties" as Href)}
+                  onPress={() => router.push("/(dealer)/properties" as Href)}
+                />
+                <MenuRow
+                  icon={Building2}
+                  label="My projects"
+                  onPress={() => router.push("/dealer-projects" as Href)}
                 />
                 <MenuRow
                   icon={Inbox}
                   label="Communications"
                   value={String(openLeads)}
-                  onPress={() => router.push("/(tabs)/inquiries" as Href)}
+                  onPress={() => router.push("/(dealer)/inquiries" as Href)}
                 />
                 <MenuRow
                   icon={BarChart3}
                   label="Analytics"
-                  onPress={() => router.push("/analytics" as Href)}
+                  onPress={() => router.push("/(dealer)/analytics" as Href)}
                 />
                 <MenuRow
                   icon={Calendar}
@@ -1075,13 +1086,25 @@ export default function ProfileScreen() {
                   icon={MessageSquare}
                   label="My inquiries"
                   value={String(myInquiriesList.length)}
-                  onPress={() => router.push("/(tabs)/my-inquiries" as Href)}
+                  onPress={() => router.push("/my-inquiries" as Href)}
                 />
                 <MenuRow
                   icon={Calendar}
                   label="My site visits"
                   value={String(myVisitsList.length)}
                   onPress={() => router.push("/my-visits" as Href)}
+                />
+                <MenuRow
+                  icon={Briefcase}
+                  label="My service bookings"
+                  sub="Requests sent to partners"
+                  onPress={() => router.push("/my-service-bookings" as Href)}
+                />
+                <MenuRow
+                  icon={Building2}
+                  label="Projects & destinations"
+                  sub="Browse launches and city hubs"
+                  onPress={() => router.push("/projects" as Href)}
                 />
                 {dealerAccess === "none" ? (
                   <MenuRow

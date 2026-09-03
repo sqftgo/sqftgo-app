@@ -209,24 +209,41 @@ export default function DealerPropertiesScreen() {
               title="My Properties"
               subtitle={`${mine.length} listing${mine.length === 1 ? "" : "s"}`}
               rightAction={
-                <Pressable
-                  onPress={() => router.push("/post-property" as Href)}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 6,
-                    backgroundColor: colors.accent,
-                    paddingHorizontal: spacing.md,
-                    paddingVertical: spacing.sm,
-                    borderRadius: radius.md,
-                    boxShadow: shadow.button,
-                  }}
-                >
-                  <Plus size={16} color={colors.onAccent} />
-                  <Text style={{ ...type.caption, color: colors.onAccent, fontWeight: "600" }}>
-                    Add
-                  </Text>
-                </Pressable>
+                <View style={{ flexDirection: "row", gap: spacing.sm }}>
+                  <Pressable
+                    onPress={() => router.push("/dealer-projects" as Href)}
+                    style={{
+                      paddingHorizontal: spacing.md,
+                      paddingVertical: spacing.sm,
+                      borderRadius: radius.md,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      backgroundColor: colors.surface,
+                    }}
+                  >
+                    <Text style={{ ...type.caption, color: colors.ink, fontWeight: "600" }}>
+                      Projects
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => router.push("/post-property" as Href)}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 6,
+                      backgroundColor: colors.accent,
+                      paddingHorizontal: spacing.md,
+                      paddingVertical: spacing.sm,
+                      borderRadius: radius.md,
+                      boxShadow: shadow.button,
+                    }}
+                  >
+                    <Plus size={16} color={colors.onAccent} />
+                    <Text style={{ ...type.caption, color: colors.onAccent, fontWeight: "600" }}>
+                      Add
+                    </Text>
+                  </Pressable>
+                </View>
               }
             />
             <FlatList

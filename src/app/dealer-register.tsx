@@ -49,7 +49,7 @@ export default function DealerRegisterScreen() {
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg, padding: spacing.xl }}>
         <Text style={{ ...type.heading, color: colors.ink }}>You’re already a dealer</Text>
         <Pressable
-          onPress={() => router.replace("/(tabs)/dashboard" as Href)}
+          onPress={() => router.replace("/(dealer)" as Href)}
           style={{
             marginTop: spacing.lg,
             height: 48,
@@ -162,10 +162,11 @@ export default function DealerRegisterScreen() {
           }}
         >
           <Text style={{ ...type.body, color: colors.inkMuted }}>
-            Create your public directory card. Signup stays as role{" "}
-            <Text style={{ fontWeight: "700", color: colors.ink }}>user</Text> until web admin
-            promotes you to <Text style={{ fontWeight: "700", color: colors.ink }}>broker</Text>.
-            You cannot change role from the app.
+            Create your public directory card. Dealer signup with intent{" "}
+            <Text style={{ fontWeight: "700", color: colors.ink }}>dealer</Text> already grants{" "}
+            <Text style={{ fontWeight: "700", color: colors.ink }}>broker</Text> (same as web).
+            Existing buyers use this form to apply; dashboard unlock still needs broker role from
+            the BFF / admin.
           </Text>
 
           <Text style={{ ...type.label, color: colors.inkMuted }}>FIRM NAME *</Text>

@@ -235,7 +235,7 @@ export default function PropertyDetailsScreen() {
     setShowInquiry(false);
     setInquiryMessage("");
     appAlert("Inquiry sent", "The dealer will see this in their leads inbox.", [
-      { text: "View my inquiries", onPress: () => router.push("/(tabs)/my-inquiries" as Href) },
+      { text: "View my inquiries", onPress: () => router.push("/my-inquiries" as Href) },
       { text: "OK" },
     ]);
   };
