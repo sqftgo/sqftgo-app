@@ -1,10 +1,12 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Linking,
+  Modal,
   Pressable,
   ScrollView,
   Share,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -27,13 +29,19 @@ import { appAlert } from "@/components/ui/app-alert";
 import { PropertyCard } from "@/components/ui/property-card";
 import { useApp } from "@/context/AppContext";
 import { initialsFromName } from "@/lib/format";
+import { isApiMode } from "@/lib/api/config";
+import { apiCreateServiceBooking } from "@/lib/api/services/services";
 import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
 
 export default function BrokerDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { directoryProfiles, properties } = useApp();
+  const { directoryProfiles, properties, profile } = useApp();
+  const [bookOpen, setBookOpen] = useState(false);
+  const [bookPhone, setBookPhone] = useState(profile?.phone ?? "");
+  const [bookMessage, setBookMessage] = useState("");
+  const [bookBusy, setBookBusy] = useState(false);
 
   // Find the target broker / expert profile
   const broker = useMemo(() => {
@@ -55,6 +63,35 @@ export default function BrokerDetailScreen() {
       return false;
     });
   }, [properties, broker]);
+
+  const handleBookService = async () => {
+    if (!broker || !isApiMode) {
+      appAlert("API required", "Service booking needs live API mode.");
+      return;
+    }
+    if (!bookPhone.trim()) {
+      appAlert("Phone required", "Add a contact number for the partner.");
+      return;
+    }
+    setBookBusy(true);
+    try {
+      const preferredAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      await apiCreateServiceBooking(broker.id, {
+        preferredAt,
+        contactPhone: bookPhone.trim(),
+        message: bookMessage.trim() || undefined,
+      });
+      setBookOpen(false);
+      appAlert("Booking sent", "Track it under My service bookings.", [
+        { text: "View bookings", onPress: () => router.push("/my-service-bookings") },
+        { text: "OK" },
+      ]);
+    } catch (e) {
+      appAlert("Could not book", e instanceof Error ? e.message : "Try again.");
+    } finally {
+      setBookBusy(false);
+    }
+  };
 
   const handleCall = () => {
     if (!broker?.mobile) return;
@@ -478,6 +515,99 @@ export default function BrokerDetailScreen() {
           </Text>
         </Pressable>
       </View>
+
+      {isApiMode ? (
+        <Pressable
+          onPress={() => setBookOpen(true)}
+          style={{
+            position: "absolute",
+            right: spacing.lg,
+            bottom: (insets.bottom || spacing.md) + 64,
+            backgroundColor: colors.primary,
+            paddingHorizontal: spacing.md,
+            paddingVertical: spacing.sm,
+            borderRadius: radius.md,
+            boxShadow: shadow.raised,
+          }}
+        >
+          <Text style={{ ...type.micro, fontWeight: "800", color: colors.onAccent }}>
+            Book service
+          </Text>
+        </Pressable>
+      ) : null}
+
+      <Modal visible={bookOpen} animationType="slide" transparent onRequestClose={() => setBookOpen(false)}>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" }}>
+          <View
+            style={{
+              backgroundColor: colors.surface,
+              borderTopLeftRadius: radius.xl,
+              borderTopRightRadius: radius.xl,
+              padding: spacing.xl,
+              gap: spacing.md,
+              paddingBottom: insets.bottom + spacing.lg,
+            }}
+          >
+            <Text style={{ ...type.heading, color: colors.ink }}>Book this partner</Text>
+            <Text style={{ ...type.caption, color: colors.inkMuted }}>
+              Preferred slot defaults to tomorrow — the partner will confirm.
+            </Text>
+            <TextInput
+              value={bookPhone}
+              onChangeText={setBookPhone}
+              placeholder="Your phone"
+              placeholderTextColor={colors.inkMuted}
+              keyboardType="phone-pad"
+              style={{
+                borderWidth: 1,
+                borderColor: colors.border,
+                borderRadius: radius.md,
+                paddingHorizontal: spacing.md,
+                paddingVertical: spacing.sm,
+                ...type.body,
+                color: colors.ink,
+              }}
+            />
+            <TextInput
+              value={bookMessage}
+              onChangeText={setBookMessage}
+              placeholder="Message (optional)"
+              placeholderTextColor={colors.inkMuted}
+              multiline
+              style={{
+                borderWidth: 1,
+                borderColor: colors.border,
+                borderRadius: radius.md,
+                paddingHorizontal: spacing.md,
+                paddingVertical: spacing.sm,
+                minHeight: 80,
+                textAlignVertical: "top",
+                ...type.body,
+                color: colors.ink,
+              }}
+            />
+            <Pressable
+              disabled={bookBusy}
+              onPress={handleBookService}
+              style={{
+                height: 48,
+                borderRadius: radius.md,
+                backgroundColor: colors.accent,
+                alignItems: "center",
+                justifyContent: "center",
+                opacity: bookBusy ? 0.6 : 1,
+              }}
+            >
+              <Text style={{ ...type.emphasis, color: colors.onAccent }}>
+                {bookBusy ? "Sending…" : "Send booking request"}
+              </Text>
+            </Pressable>
+            <Pressable onPress={() => setBookOpen(false)}>
+              <Text style={{ ...type.label, color: colors.inkMuted, textAlign: "center" }}>Cancel</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

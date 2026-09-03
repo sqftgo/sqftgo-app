@@ -119,7 +119,16 @@ function RootLayoutNav() {
           <Stack.Screen name="dealer-pending" />
           <Stack.Screen name="dealer-kyc" />
           <Stack.Screen name="my-visits" />
+          <Stack.Screen name="my-inquiries" />
           <Stack.Screen name="my-listings" />
+          <Stack.Screen name="my-service-bookings" />
+          <Stack.Screen name="projects" />
+          <Stack.Screen name="project/[id]" />
+          <Stack.Screen name="dealer-projects" />
+          <Stack.Screen name="post-project" options={{ presentation: "modal" }} />
+          <Stack.Screen name="edit-project/[id]" />
+          <Stack.Screen name="destinations" />
+          <Stack.Screen name="destinations/[slug]" />
           <Stack.Screen name="manage-visits" />
           <Stack.Screen
             name="modal"

@@ -467,7 +467,39 @@ export default function HomeScreen() {
         )}
 
         {/* Post Property Banner CTA */}
-        <View style={{ paddingHorizontal: spacing.lg }}>
+        <View style={{ paddingHorizontal: spacing.lg, gap: spacing.md }}>
+          <View style={{ flexDirection: "row", gap: spacing.sm }}>
+            <Pressable
+              onPress={() => router.push("/projects" as Href)}
+              style={({ pressed }) => ({
+                flex: 1,
+                backgroundColor: colors.surface,
+                borderRadius: radius.lg,
+                borderWidth: 1,
+                borderColor: colors.border,
+                padding: spacing.md,
+                opacity: pressed ? 0.9 : 1,
+              })}
+            >
+              <Text style={{ ...type.emphasis, color: colors.ink }}>Projects</Text>
+              <Text style={{ ...type.caption, color: colors.inkMuted }}>Builder launches</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push("/destinations" as Href)}
+              style={({ pressed }) => ({
+                flex: 1,
+                backgroundColor: colors.surface,
+                borderRadius: radius.lg,
+                borderWidth: 1,
+                borderColor: colors.border,
+                padding: spacing.md,
+                opacity: pressed ? 0.9 : 1,
+              })}
+            >
+              <Text style={{ ...type.emphasis, color: colors.ink }}>Destinations</Text>
+              <Text style={{ ...type.caption, color: colors.inkMuted }}>City hubs</Text>
+            </Pressable>
+          </View>
           <Pressable
             onPress={() => router.push("/post-property")}
             accessibilityRole="button"
