@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { FlatList, Pressable, ScrollView, Text, TextInput, View } from "react-native";
-import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+
 import {
   Briefcase,
   ChevronDown,
@@ -23,10 +23,10 @@ import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
 type CategoryFilter = DirectoryCategory | "all";
 
 export default function BrokersDirectoryScreen() {
-  const router = useRouter();
   const { directoryProfiles, selectedCity } = useApp();
 
   const [query, setQuery] = useState("");
+
   const [category, setCategory] = useState<CategoryFilter>("all");
   const [cityModalVisible, setCityModalVisible] = useState(false);
 
@@ -58,11 +58,9 @@ export default function BrokersDirectoryScreen() {
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.bg }}>
       {/* Header with Title and City Switcher */}
-      <View style={{ paddingHorizontal: spacing.lg, gap: spacing.md, paddingBottom: spacing.sm }}>
+      <View style={{ paddingHorizontal: spacing.lg, gap: spacing.md, paddingBottom: spacing.sm, paddingTop: spacing.xs }}>
         <ScreenNavbar
-          eyebrow="Verified Network"
-          title="Brokers & Experts"
-          subtitle={`${filteredBrokers.length} verified partner${filteredBrokers.length === 1 ? "" : "s"} in ${selectedCity}`}
+          title="Brokers"
           rightAction={
             <Pressable
               onPress={() => setCityModalVisible(true)}
@@ -78,7 +76,7 @@ export default function BrokersDirectoryScreen() {
                 paddingVertical: spacing.xs + 3,
                 borderRadius: radius.md,
                 borderWidth: 1,
-                borderColor: colors.border,
+                borderColor: colors.borderStrong,
                 boxShadow: shadow.card,
                 opacity: pressed ? 0.85 : 1,
               })}
@@ -103,7 +101,7 @@ export default function BrokersDirectoryScreen() {
               borderRadius: radius.md,
               borderCurve: "continuous",
               borderWidth: 1,
-              borderColor: colors.border,
+              borderColor: colors.borderStrong,
               paddingHorizontal: spacing.md,
               height: 46,
               gap: spacing.sm,

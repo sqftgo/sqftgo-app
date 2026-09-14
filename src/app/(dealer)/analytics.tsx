@@ -32,7 +32,7 @@ export default function DealerAnalyticsScreen() {
 
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.bg }}>
-      <View style={{ paddingHorizontal: spacing.xl }}>
+      <View style={{ paddingHorizontal: spacing.lg }}>
         <ScreenNavbar
           eyebrow="Dealer portal"
           title="Analytics"
@@ -45,7 +45,7 @@ export default function DealerAnalyticsScreen() {
           <ActivityIndicator color={colors.accent} />
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ padding: spacing.xl, gap: spacing.md }}>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing["3xl"], gap: spacing.md }}>
           {/* KPI Grid */}
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
             {[
@@ -66,7 +66,8 @@ export default function DealerAnalyticsScreen() {
                   backgroundColor: colors.surface,
                   borderWidth: 1,
                   borderColor: colors.border,
-                  borderRadius: radius.lg,
+                  borderRadius: radius.md,
+                  borderCurve: "continuous",
                   padding: spacing.md,
                   boxShadow: shadow.card,
                 }}
@@ -84,7 +85,9 @@ export default function DealerAnalyticsScreen() {
               borderWidth: 1,
               borderColor: colors.border,
               borderRadius: radius.lg,
+              borderCurve: "continuous",
               padding: spacing.lg,
+              boxShadow: shadow.card,
             }}
           >
             <Text style={{ ...type.label, color: colors.inkMuted }}>INVENTORY VALUE</Text>
@@ -101,8 +104,10 @@ export default function DealerAnalyticsScreen() {
                 borderWidth: 1,
                 borderColor: colors.border,
                 borderRadius: radius.lg,
+                borderCurve: "continuous",
                 padding: spacing.lg,
                 gap: spacing.sm,
+                boxShadow: shadow.card,
               }}
             >
               <Text style={{ ...type.label, color: colors.inkMuted }}>BY CITY</Text>
@@ -126,8 +131,10 @@ export default function DealerAnalyticsScreen() {
                 borderWidth: 1,
                 borderColor: colors.border,
                 borderRadius: radius.lg,
+                borderCurve: "continuous",
                 padding: spacing.lg,
                 gap: spacing.sm,
+                boxShadow: shadow.card,
               }}
             >
               <Text style={{ ...type.label, color: colors.inkMuted }}>MONTHLY INQUIRIES</Text>
@@ -151,8 +158,10 @@ export default function DealerAnalyticsScreen() {
                 borderWidth: 1,
                 borderColor: colors.border,
                 borderRadius: radius.lg,
+                borderCurve: "continuous",
                 padding: spacing.lg,
                 gap: spacing.sm,
+                boxShadow: shadow.card,
               }}
             >
               <Text style={{ ...type.label, color: colors.inkMuted }}>TOP LISTINGS</Text>
@@ -177,3 +186,4 @@ export default function DealerAnalyticsScreen() {
     </SafeAreaView>
   );
 }
+

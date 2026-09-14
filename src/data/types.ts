@@ -157,6 +157,10 @@ export interface DirectoryProfile {
   coverUrl?: string;
   /** Links card to profiles when claimed */
   userId?: string;
+  /** When profile is a service partner */
+  serviceTypeId?: string;
+  verificationStatus?: string;
+  listingActive?: boolean;
 }
 
 export type KycStatus = "draft" | "pending" | "approved" | "rejected";

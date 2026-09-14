@@ -57,6 +57,7 @@ export const EditPencil = wrapIcon(Iconoir.EditPencil);
 export const Eye = wrapIcon(Iconoir.Eye);
 export const EyeClosed = wrapIcon(Iconoir.EyeClosed);
 export const Flash = wrapIcon(Iconoir.Flash);
+export const Globe = wrapIcon(Iconoir.Globe);
 export const GraphUp = wrapIcon(Iconoir.GraphUp);
 export const Group = wrapIcon(Iconoir.Group);
 export const Heart = wrapIcon(Iconoir.Heart);

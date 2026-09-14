@@ -8,7 +8,6 @@ import {
   Dimensions,
   Share,
   Linking,
-  Modal,
   TextInput,
 } from "react-native";
 import { appAlert } from "@/components/ui/app-alert";
@@ -35,10 +34,10 @@ import {
   ShieldCheck,
   CheckCircle2,
   Info,
-  X,
 } from "@/components/ui/icons";
 import { ModalSheet, ModalSheetHeader } from "@/components/ui/modal-sheet";
-import { colors, type, radius, spacing } from "@/theme/tokens";
+import { colors } from "@/theme/tokens";
+
 
 const { width } = Dimensions.get("window");
 const CAROUSEL_WIDTH = width - 32;
@@ -236,7 +235,7 @@ export default function PropertyDetailsScreen() {
     setShowInquiry(false);
     setInquiryMessage("");
     appAlert("Inquiry sent", "The dealer will see this in their leads inbox.", [
-      { text: "View my inquiries", onPress: () => router.push("/(tabs)/my-inquiries" as Href) },
+      { text: "View my inquiries", onPress: () => router.push("/my-inquiries" as Href) },
       { text: "OK" },
     ]);
   };

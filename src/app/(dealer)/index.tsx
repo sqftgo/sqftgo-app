@@ -44,9 +44,9 @@ function SectionHeader({
   return (
     <View
       style={{
-        paddingHorizontal: spacing.xl,
-        marginTop: spacing.xl,
-        marginBottom: spacing.md,
+        paddingHorizontal: spacing.lg,
+        marginTop: spacing.lg,
+        marginBottom: spacing.xs,
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
@@ -54,7 +54,7 @@ function SectionHeader({
     >
       <Text style={{ ...type.label, color: colors.inkMuted }}>{title.toUpperCase()}</Text>
       <Pressable onPress={onAction}>
-        <Text style={{ ...type.caption, color: colors.accent, fontWeight: "700" }}>{action}</Text>
+        <Text style={{ ...type.caption, color: colors.accent, fontWeight: "600" }}>{action}</Text>
       </Pressable>
     </View>
   );
@@ -121,10 +121,10 @@ export default function DealerDashboardScreen() {
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.bg }}>
       <ScrollView
-        contentContainerStyle={{ paddingBottom: spacing.xxl }}
+        contentContainerStyle={{ paddingBottom: spacing["3xl"] }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={{ paddingHorizontal: spacing.xl }}>
+        <View style={{ paddingHorizontal: spacing.lg }}>
           <ScreenNavbar
             eyebrow="Dealer portal"
             title={userName ? `Welcome, ${userName.split(" ")[0]}` : "Welcome"}
@@ -138,8 +138,8 @@ export default function DealerDashboardScreen() {
             flexDirection: "row",
             flexWrap: "wrap",
             gap: spacing.sm,
-            paddingHorizontal: spacing.xl,
-            paddingTop: spacing.lg,
+            paddingHorizontal: spacing.lg,
+            paddingTop: spacing.sm,
           }}
         >
           {[
@@ -155,7 +155,8 @@ export default function DealerDashboardScreen() {
                 backgroundColor: colors.surface,
                 borderWidth: 1,
                 borderColor: colors.border,
-                borderRadius: radius.lg,
+                borderRadius: radius.md,
+                borderCurve: "continuous",
                 padding: spacing.md,
                 gap: spacing.xs,
                 boxShadow: shadow.card,
@@ -173,15 +174,15 @@ export default function DealerDashboardScreen() {
           style={{
             flexDirection: "row",
             gap: spacing.sm,
-            paddingHorizontal: spacing.xl,
-            marginTop: spacing.lg,
+            paddingHorizontal: spacing.lg,
+            marginTop: spacing.md,
           }}
         >
           <Pressable
             onPress={() => router.push("/post-property")}
             style={({ pressed }) => ({
               flex: 1,
-              height: 48,
+              height: 46,
               borderRadius: radius.md,
               backgroundColor: colors.accent,
               flexDirection: "row",
@@ -189,7 +190,7 @@ export default function DealerDashboardScreen() {
               justifyContent: "center",
               gap: spacing.sm,
               opacity: pressed ? 0.85 : 1,
-              boxShadow: shadow.accent,
+              boxShadow: shadow.button,
             })}
           >
             <Plus size={18} color={colors.onAccent} />
@@ -198,7 +199,7 @@ export default function DealerDashboardScreen() {
           <Pressable
             onPress={() => router.push("/(dealer)/analytics" as Href)}
             style={({ pressed }) => ({
-              height: 48,
+              height: 46,
               paddingHorizontal: spacing.lg,
               borderRadius: radius.md,
               borderWidth: 1,
@@ -215,6 +216,7 @@ export default function DealerDashboardScreen() {
           </Pressable>
         </View>
 
+
         {/* Recent Listings */}
         <SectionHeader
           title="Recent listings"
@@ -222,14 +224,14 @@ export default function DealerDashboardScreen() {
           onAction={() => router.push("/(dealer)/properties" as Href)}
         />
         {recentListings.length === 0 ? (
-          <View style={{ paddingHorizontal: spacing.xl }}>
+          <View style={{ paddingHorizontal: spacing.lg }}>
             <Text style={{ ...type.caption, color: colors.inkMuted }}>No listings yet.</Text>
           </View>
         ) : (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: spacing.xl, gap: spacing.md }}
+            contentContainerStyle={{ paddingHorizontal: spacing.lg, gap: spacing.md }}
           >
             {recentListings.map((item) => {
               const tone = STATUS_TONE[item.status];
@@ -243,6 +245,7 @@ export default function DealerDashboardScreen() {
                     borderWidth: 1,
                     borderColor: colors.border,
                     borderRadius: radius.lg,
+                    borderCurve: "continuous",
                     padding: spacing.md,
                     gap: spacing.xs,
                     boxShadow: shadow.card,
@@ -254,7 +257,7 @@ export default function DealerDashboardScreen() {
                   <Text style={{ ...type.caption, color: colors.inkMuted }} numberOfLines={1}>
                     {item.locality}, {item.city}
                   </Text>
-                  <Text style={{ ...type.caption, color: colors.ink }}>
+                  <Text style={{ ...type.caption, color: colors.ink, fontWeight: "600" }}>
                     {formatPriceWithPeriod(item.price, item.purpose)}
                   </Text>
                   <View
@@ -263,11 +266,11 @@ export default function DealerDashboardScreen() {
                       backgroundColor: tone.bg,
                       paddingHorizontal: spacing.sm,
                       paddingVertical: 2,
-                      borderRadius: radius.md,
+                      borderRadius: radius.sm,
                       marginTop: 4,
                     }}
                   >
-                    <Text style={{ ...type.micro, color: tone.color, fontWeight: "700" }}>
+                    <Text style={{ ...type.micro, color: tone.color }}>
                       {PROPERTY_STATUS_LABEL[item.status]}
                     </Text>
                   </View>
@@ -283,7 +286,7 @@ export default function DealerDashboardScreen() {
           action="Manage"
           onAction={() => router.push("/manage-visits" as Href)}
         />
-        <View style={{ paddingHorizontal: spacing.xl, gap: spacing.sm }}>
+        <View style={{ paddingHorizontal: spacing.lg, gap: spacing.sm }}>
           {upcomingVisits.length === 0 ? (
             <Text style={{ ...type.caption, color: colors.inkMuted }}>No upcoming visits.</Text>
           ) : (
@@ -295,6 +298,7 @@ export default function DealerDashboardScreen() {
                   borderWidth: 1,
                   borderColor: colors.border,
                   borderRadius: radius.lg,
+                  borderCurve: "continuous",
                   padding: spacing.md,
                   gap: spacing.xs,
                 }}
@@ -314,11 +318,11 @@ export default function DealerDashboardScreen() {
                       marginTop: spacing.xs,
                       backgroundColor: colors.successSoft,
                       paddingHorizontal: spacing.md,
-                      paddingVertical: spacing.sm,
-                      borderRadius: radius.md,
+                      paddingVertical: spacing.xs + 2,
+                      borderRadius: radius.sm,
                     }}
                   >
-                    <Text style={{ ...type.caption, color: colors.success, fontWeight: "700" }}>
+                    <Text style={{ ...type.caption, color: colors.success, fontWeight: "600" }}>
                       Confirm
                     </Text>
                   </Pressable>
@@ -334,7 +338,7 @@ export default function DealerDashboardScreen() {
           action="Inbox"
           onAction={() => router.push("/(dealer)/inquiries" as Href)}
         />
-        <View style={{ paddingHorizontal: spacing.xl, gap: spacing.sm }}>
+        <View style={{ paddingHorizontal: spacing.lg, gap: spacing.sm }}>
           {latestInquiries.length === 0 ? (
             <Text style={{ ...type.caption, color: colors.inkMuted }}>No inquiries yet.</Text>
           ) : (
@@ -347,6 +351,7 @@ export default function DealerDashboardScreen() {
                   borderWidth: 1,
                   borderColor: colors.border,
                   borderRadius: radius.lg,
+                  borderCurve: "continuous",
                   padding: spacing.md,
                   gap: 4,
                 }}
@@ -365,3 +370,4 @@ export default function DealerDashboardScreen() {
     </SafeAreaView>
   );
 }
+

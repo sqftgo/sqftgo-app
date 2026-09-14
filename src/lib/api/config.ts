@@ -1,6 +1,7 @@
 /**
- * When EXPO_PUBLIC_API_URL is set, the app talks to Next /api/* with Bearer auth.
- * When unset, AppContext stays on AsyncStorage mock (offline demo).
+ * When EXPO_PUBLIC_API_URL is set (see .env / .env.example), the app talks to
+ * the Next.js BFF at that origin with Bearer auth — same Supabase data as web.
+ * When unset, AppContext stays on AsyncStorage mock (offline demo only).
  */
 const raw = process.env.EXPO_PUBLIC_API_URL?.trim() ?? "";
 

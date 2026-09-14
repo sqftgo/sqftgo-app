@@ -36,14 +36,26 @@ export async function apiSignup(input: {
   email: string;
   password: string;
   name: string;
-}): Promise<AuthLoginResponse> {
-  const res = await apiFetch<AuthLoginResponse>("/api/auth/signup", {
+  /** Matches web: dealer signup promotes profile.role to broker via BFF. */
+  intent?: "user" | "dealer";
+}): Promise<AuthLoginResponse | { status: "confirm_email"; email: string; message: string }> {
+  const res = await apiFetch<
+    AuthLoginResponse | { status: "confirm_email"; email: string; message: string }
+  >("/api/auth/signup", {
     method: "POST",
-    body: input,
+    body: {
+      email: input.email,
+      password: input.password,
+      name: input.name,
+      intent: input.intent === "dealer" ? "dealer" : "user",
+    },
     public: true,
   });
-  if (res.accessToken) await setAccessToken(res.accessToken);
-  return res;
+  if ("status" in res && res.status === "confirm_email") {
+    return res;
+  }
+  if ("accessToken" in res && res.accessToken) await setAccessToken(res.accessToken);
+  return res as AuthLoginResponse;
 }
 
 export async function apiMe(): Promise<AuthMeResponse> {

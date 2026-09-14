@@ -122,16 +122,12 @@ export const seedDirectoryProfiles: DirectoryProfile[] = [
   },
 ];
 
-/** Directory categories shown in the Services screen filter. */
+/** Directory categories shown in the Broker tab filter. */
 export const directoryCategories: { id: DirectoryCategory | "all"; label: string }[] = [
   { id: "all", label: "All" },
   { id: "Agent & Broker", label: "Brokers" },
   { id: "Property Consultant", label: "Consultants" },
   { id: "Builder & Developer", label: "Builders" },
-  { id: "Architect", label: "Architects" },
-  { id: "Interior Decorator", label: "Decorators" },
   { id: "Building Contractor", label: "Contractors" },
-  { id: "Vastu Consultant", label: "Vastu" },
-  { id: "Home Valuation/Inspection", label: "Valuation" },
-  { id: "Home Shifting/Deep Cleaning", label: "Shifting" },
 ];
+

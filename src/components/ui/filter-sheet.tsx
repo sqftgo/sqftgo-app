@@ -203,14 +203,14 @@ export function FilterSheet({
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
-          paddingHorizontal: spacing.xl,
-          paddingBottom: spacing.xxl,
-          gap: spacing.xl,
+          paddingHorizontal: spacing.lg,
+          paddingBottom: spacing["3xl"],
+          gap: spacing.lg,
         }}
       >
 
-        {on("purpose") ? (
-        <FilterGroup label={listingFilters.find((f) => f.key === "purpose")?.label || "Looking to"}>
+
+        <FilterGroup label="Looking to">
           <FilterOptionRow
             options={PURPOSE_OPTIONS}
             value={draft.purpose}
@@ -448,7 +448,7 @@ export function FilterSheet({
 
       <View
         style={{
-          paddingHorizontal: spacing.xl,
+          paddingHorizontal: spacing.lg,
           paddingTop: spacing.md,
           paddingBottom: spacing.md,
           borderTopWidth: 1,
@@ -460,14 +460,14 @@ export function FilterSheet({
           onPress={handleApply}
           accessibilityRole="button"
           style={({ pressed }) => ({
-            height: 50,
+            height: 48,
             borderRadius: radius.md,
             borderCurve: "continuous",
             backgroundColor: colors.accent,
             alignItems: "center",
             justifyContent: "center",
             opacity: pressed ? 0.85 : 1,
-            boxShadow: shadow.accent,
+            boxShadow: shadow.button,
           })}
         >
           <Text style={{ ...type.emphasis, color: colors.onAccent }}>
@@ -478,3 +478,4 @@ export function FilterSheet({
     </ModalSheet>
   );
 }
+

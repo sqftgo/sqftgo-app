@@ -1,7 +1,5 @@
 import { apiFetch } from "@/lib/api/client";
 
-/** PENDING: in-app Razorpay checkout. Dealers pay on the website until this lands. */
-
 export type ListingPlan = {
   id: string;
   slug: string;
@@ -21,7 +19,18 @@ export type DealerListingQuota = {
   quota: number;
   remaining: number;
   atCap: boolean;
+  unlimited?: boolean;
   checkoutPath: string;
+};
+
+export type ListingPackOrder = {
+  orderId: string;
+  razorpayOrderId: string;
+  amountPaise: number;
+  currency: string;
+  keyId: string | null;
+  planName: string;
+  slots: number;
 };
 
 export function apiListListingPlans() {
@@ -30,4 +39,22 @@ export function apiListListingPlans() {
 
 export function apiGetListingQuota() {
   return apiFetch<DealerListingQuota>("/api/dealer/listing-quota");
+}
+
+export function apiCreateListingPackOrder(planId: string) {
+  return apiFetch<ListingPackOrder>("/api/payments/razorpay/order", {
+    method: "POST",
+    body: { planId },
+  });
+}
+
+export function apiVerifyListingPackPayment(input: {
+  razorpayOrderId: string;
+  razorpayPaymentId: string;
+  razorpaySignature: string;
+}) {
+  return apiFetch("/api/payments/razorpay/verify", {
+    method: "POST",
+    body: input,
+  });
 }

@@ -13,3 +13,7 @@ export * from "@/lib/api/services/kyc";
 export * from "@/lib/api/services/uploads";
 export * from "@/lib/api/services/analytics";
 export * from "@/lib/api/services/listing-plans";
+export * from "@/lib/api/services/platform";
+export * from "@/lib/api/services/projects";
+export * from "@/lib/api/services/billing";
+export * from "@/lib/api/services/services";

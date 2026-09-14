@@ -34,13 +34,13 @@ export function ExploreNavbar({
   return (
     <View
       style={{
-        paddingTop: spacing.md,
-        paddingBottom: spacing.sm,
+        paddingTop: spacing.xs,
+        paddingBottom: spacing.xs,
         gap: spacing.md,
         backgroundColor: colors.bg,
       }}
     >
-      {/* Location — primary context, not a page title */}
+      {/* Location Bar — primary context */}
       <Pressable
         onPress={onPressCity}
         hitSlop={6}
@@ -50,31 +50,50 @@ export function ExploreNavbar({
           alignSelf: "flex-start",
           flexDirection: "row",
           alignItems: "center",
-          gap: spacing.xs,
-          paddingVertical: spacing.xs,
-          paddingHorizontal: spacing.sm,
-          marginLeft: -spacing.sm,
+          gap: spacing.sm,
+          paddingVertical: 2,
+          paddingHorizontal: 2,
           borderRadius: radius.md,
-          backgroundColor: pressed ? colors.surfaceSubtle : "transparent",
+          opacity: pressed ? 0.75 : 1,
         })}
       >
         <View
           style={{
-            width: 28,
-            height: 28,
+            width: 32,
+            height: 32,
             borderRadius: radius.full,
             backgroundColor: colors.accentSoft,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <MapPin size={14} color={colors.accent} strokeWidth={2.2} />
+          <MapPin size={16} color={colors.accent} strokeWidth={2.2} />
         </View>
         <View style={{ gap: 1 }}>
-          <Text style={{ ...type.micro, color: colors.inkMuted }}>Searching in</Text>
+          <Text
+            style={{
+              ...type.micro,
+              color: colors.inkMuted,
+              textTransform: "uppercase",
+              letterSpacing: 0.8,
+              fontWeight: "600",
+            }}
+          >
+            Searching in
+          </Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-            <Text style={{ ...type.heading, color: colors.ink }}>{city}</Text>
-            <ChevronDown size={16} color={colors.inkMuted} />
+            <Text
+              style={{
+                ...type.title,
+                color: colors.ink,
+                fontSize: 22,
+                fontWeight: "700",
+                letterSpacing: -0.4,
+              }}
+            >
+              {city}
+            </Text>
+            <ChevronDown size={15} color={colors.inkMuted} style={{ marginTop: 2 }} />
           </View>
         </View>
       </Pressable>
