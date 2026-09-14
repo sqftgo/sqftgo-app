@@ -12,3 +12,4 @@ export * from "@/lib/api/services/dealers";
 export * from "@/lib/api/services/kyc";
 export * from "@/lib/api/services/uploads";
 export * from "@/lib/api/services/analytics";
+export * from "@/lib/api/services/listing-plans";

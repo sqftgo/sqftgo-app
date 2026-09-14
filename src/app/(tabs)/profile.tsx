@@ -556,7 +556,7 @@ export default function ProfileScreen() {
                   { id: "kyc", label: "KYC & Licenses" },
                   { id: "bank", label: "Bank Settlement" },
                   { id: "social", label: "Social Networks" },
-                  { id: "subscription", label: "Growth Plan" },
+                  { id: "subscription", label: "Listing packs" },
                 ] as const
               ).map((tab) => {
                 const active = dealerTab === tab.id;
@@ -812,8 +812,8 @@ export default function ProfileScreen() {
               <MenuGroup>
                 <MenuRow
                   icon={Sparkles}
-                  label="Subscription plans"
-                  sub="Marketing stub — billing not live"
+                  label="Listing packs"
+                  sub="Buy extra property slots"
                   onPress={() => router.push("/subscription" as Href)}
                   showDivider={false}
                 />

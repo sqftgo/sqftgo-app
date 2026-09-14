@@ -1193,17 +1193,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : "Pending Review";
 
       if (isApiMode) {
-        try {
-          const created = await apiCreateProperty({
-            ...prop,
-            status,
-            featured: false,
-          });
-          setProperties((prev) => [created, ...prev.filter((p) => p.id !== created.id)]);
-          return created;
-        } catch {
-          return null;
-        }
+        const created = await apiCreateProperty({
+          ...prop,
+          status,
+          featured: false,
+        });
+        setProperties((prev) => [created, ...prev.filter((p) => p.id !== created.id)]);
+        return created;
       }
 
       const newProperty: Property = {
