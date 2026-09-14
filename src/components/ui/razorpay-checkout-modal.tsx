@@ -156,7 +156,7 @@ export function RazorpayCheckoutModal({
         <View style={{ flex: 1, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, overflow: "hidden" }}>
           {visible ? (
             <WebView
-              originWhitelist={["*"]}
+              originWhitelist={["about:blank", "https://*", "http://localhost*"]}
               source={{ html }}
               onMessage={onMessage}
               startInLoadingState
@@ -167,7 +167,6 @@ export function RazorpayCheckoutModal({
               )}
               javaScriptEnabled
               domStorageEnabled
-              mixedContentMode="always"
             />
           ) : null}
         </View>

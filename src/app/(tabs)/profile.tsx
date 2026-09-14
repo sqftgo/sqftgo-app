@@ -559,7 +559,7 @@ export default function ProfileScreen() {
                   { id: "kyc", label: "KYC & Licenses" },
                   { id: "bank", label: "Bank Settlement" },
                   { id: "social", label: "Social Networks" },
-                  { id: "subscription", label: "Growth Plan" },
+                  { id: "subscription", label: "Plans & billing" },
                 ] as const
               ).map((tab) => {
                 const active = dealerTab === tab.id;
@@ -802,8 +802,8 @@ export default function ProfileScreen() {
                 />
                 <MenuRow
                   icon={Sparkles}
-                  label="Partner subscription"
-                  sub="Razorpay plans · Starter to Enterprise"
+                  label="Plans & billing"
+                  sub="Listing packs and partner plans"
                   onPress={() => router.push("/subscription" as Href)}
                   showDivider={false}
                 />

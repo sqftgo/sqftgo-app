@@ -25,6 +25,7 @@ import {
   type SubscriptionOrder,
   type SubscriptionOverview,
 } from "@/lib/api/services/billing";
+import { ListingPacksPanel } from "@/features/listing-packs/ListingPacksPanel";
 import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
 
 function formatDate(iso: string | null): string {
@@ -115,7 +116,7 @@ export default function DealerSubscriptionScreen() {
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.bg }}>
       <View style={{ paddingHorizontal: spacing.lg }}>
-        <ScreenNavbar eyebrow="Dealer portal" title="Subscription" subtitle="Partner plans & billing" />
+        <ScreenNavbar eyebrow="Dealer portal" title="Plans & billing" subtitle="Listing packs and partner plans" />
       </View>
 
       {loading ? (
@@ -152,6 +153,8 @@ export default function DealerSubscriptionScreen() {
                   : "Billing is disabled until Razorpay is configured on the BFF."}
             </Text>
           </View>
+
+          <ListingPacksPanel canBuy={canAccessDealerDashboard} />
 
           {PARTNER_PLANS.map((plan) => {
             const isActive = activePlanId === plan.id;

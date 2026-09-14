@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   StyleSheet,
   View,
@@ -12,6 +12,11 @@ import { appAlert } from "@/components/ui/app-alert";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useApp } from "@/context/AppContext";
+import { ApiError, isApiMode } from "@/lib/api";
+import {
+  apiGetListingQuota,
+  type DealerListingQuota,
+} from "@/lib/api/services/listing-plans";
 import type { Property } from "@/data/types";
 import { CITIES as CITIES_LIST } from "@/constants/cities";
 import { pickAndUploadPropertyImage } from "@/lib/media-upload";
@@ -118,6 +123,26 @@ export default function PostPropertyScreen() {
     profile?.status === "active" &&
     profile?.listingStatus !== "rejected" &&
     (canAccessDealerDashboard || canPostListing);
+  const [quota, setQuota] = useState<DealerListingQuota | null>(null);
+
+  useEffect(() => {
+    if (!isApiMode || !canAccessDealerDashboard) return;
+    let cancelled = false;
+    apiGetListingQuota()
+      .then((next) => {
+        if (!cancelled) setQuota(next);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [canAccessDealerDashboard]);
+
+  const listingSaveError = (err: unknown, fallback: string) => {
+    if (err instanceof ApiError) return err.message;
+    if (err instanceof Error && err.message) return err.message;
+    return fallback;
+  };
 
   // Dropdown states
   const [activeDropdown, setActiveDropdown] = useState<"city" | "type" | "furnished" | null>(null);
@@ -218,6 +243,13 @@ export default function PostPropertyScreen() {
 
   const handleSaveDraft = async () => {
     if (!validate()) return;
+    if (quota?.atCap) {
+      appAlert("Listing slots used", "Buy a listing pack to add more properties.", [
+        { text: "View packs", onPress: () => router.push("/subscription" as never) },
+        { text: "Cancel" },
+      ]);
+      return;
+    }
     if (!canList) {
       appAlert(
         "Cannot list",
@@ -231,12 +263,17 @@ export default function PostPropertyScreen() {
       );
       return;
     }
-    const created = await addProperty({ ...buildPayload(), status: "Draft" });
-    if (!created) {
-      appAlert(
-        "Could not save",
-        `Listing limit is ${platformSettings.maxListingsPerUser}, or listing access is off.`,
-      );
+    try {
+      const created = await addProperty({ ...buildPayload(), status: "Draft" });
+      if (!created) {
+        appAlert(
+          "Could not save",
+          `Listing limit is ${platformSettings.maxListingsPerUser}, or listing access is off.`,
+        );
+        return;
+      }
+    } catch (err) {
+      appAlert("Could not save", listingSaveError(err, "You may have reached the listing limit."));
       return;
     }
     appAlert("Draft saved", "Open this draft later from your dashboard and submit when ready.", [
@@ -246,6 +283,13 @@ export default function PostPropertyScreen() {
 
   const handleSubmitForReview = async () => {
     if (!validate()) return;
+    if (quota?.atCap) {
+      appAlert("Listing slots used", "Buy a listing pack to add more properties.", [
+        { text: "View packs", onPress: () => router.push("/subscription" as never) },
+        { text: "Cancel" },
+      ]);
+      return;
+    }
     if (!canList) {
       appAlert(
         "Cannot list",
@@ -259,12 +303,17 @@ export default function PostPropertyScreen() {
       );
       return;
     }
-    const created = await addProperty({ ...buildPayload(), status: "Pending Review" });
-    if (!created) {
-      appAlert(
-        "Could not submit",
-        `Listing limit is ${platformSettings.maxListingsPerUser}, or listing access is off.`,
-      );
+    try {
+      const created = await addProperty({ ...buildPayload(), status: "Pending Review" });
+      if (!created) {
+        appAlert(
+          "Could not submit",
+          `Listing limit is ${platformSettings.maxListingsPerUser}, or listing access is off.`,
+        );
+        return;
+      }
+    } catch (err) {
+      appAlert("Could not submit", listingSaveError(err, "You may have reached the listing limit."));
       return;
     }
     appAlert(
@@ -290,6 +339,28 @@ export default function PostPropertyScreen() {
         contentContainerStyle={styles.scrollContainer}
         keyboardShouldPersistTaps="handled"
       >
+        {quota ? (
+          <View style={{ marginBottom: spacing.md, gap: 8 }}>
+            <Text style={styles.label}>
+              Slots left: {quota.remaining} of {quota.quota}
+            </Text>
+            {quota.atCap ? (
+              <Pressable
+                onPress={() => router.push("/subscription" as never)}
+                style={{
+                  height: 44,
+                  borderRadius: radius.md,
+                  backgroundColor: colors.accent,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ ...type.label, color: colors.onAccent }}>Buy listing packs</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
+
         {/* Section 1: Basic Info */}
         <View style={styles.formSection}>
           <Text style={styles.sectionTitle}>Basic Info</Text>
