@@ -1,5 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { FlatList, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, type Href } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -21,6 +29,7 @@ import { useApp } from "@/context/AppContext";
 import { REAL_ESTATE_SERVICES } from "@/data/services";
 import type { DirectoryProfile } from "@/data/types";
 import { isApiMode } from "@/lib/api/config";
+import { isServiceDirectoryCategory } from "@/lib/is-dealer-category";
 import {
   apiListServicePartners,
   apiListServiceTypes,
@@ -30,13 +39,14 @@ import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
 
 export default function ServicesTabScreen() {
   const router = useRouter();
-  const { selectedCity } = useApp();
+  const { selectedCity, directoryProfiles } = useApp();
 
   const [query, setQuery] = useState("");
   const [cityModalVisible, setCityModalVisible] = useState(false);
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
   const [partners, setPartners] = useState<DirectoryProfile[]>([]);
   const [activeTypeId, setActiveTypeId] = useState<string | "all">("all");
+  const [activeCategoryName, setActiveCategoryName] = useState<string | "all">("all");
   const [loadingPartners, setLoadingPartners] = useState(false);
 
   useEffect(() => {
@@ -72,7 +82,7 @@ export default function ServicesTabScreen() {
     void loadPartners();
   }, [loadPartners]);
 
-  const filteredServices = useMemo(() => {
+  const mockCategories = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return REAL_ESTATE_SERVICES;
     return REAL_ESTATE_SERVICES.filter(
@@ -82,6 +92,32 @@ export default function ServicesTabScreen() {
         srv.popularServices.some((p) => p.toLowerCase().includes(q)),
     );
   }, [query]);
+
+  const mockPartners = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return directoryProfiles.filter((p) => {
+      if (!isServiceDirectoryCategory(p.category)) return false;
+      if (
+        selectedCity &&
+        selectedCity.toLowerCase() !== "all india" &&
+        p.city.trim().toLowerCase() !== selectedCity.trim().toLowerCase()
+      ) {
+        return false;
+      }
+      if (activeCategoryName !== "all" && p.category !== activeCategoryName) {
+        return false;
+      }
+      if (
+        q &&
+        !p.firmName.toLowerCase().includes(q) &&
+        !p.ownerName.toLowerCase().includes(q) &&
+        !p.category.toLowerCase().includes(q)
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [directoryProfiles, selectedCity, activeCategoryName, query]);
 
   const filteredPartners = useMemo(() => {
     if (activeTypeId === "all") return partners;
@@ -95,6 +131,33 @@ export default function ServicesTabScreen() {
     router.push(`/services/${slug}` as never);
   };
 
+  const listBusinessCta = (
+    <Pressable
+      onPress={() => router.push("/dealer-register" as Href)}
+      style={({ pressed }) => ({
+        backgroundColor: colors.accent,
+        borderRadius: radius.md,
+        padding: spacing.md,
+        marginBottom: spacing.sm,
+        opacity: pressed ? 0.9 : 1,
+      })}
+    >
+      <Text
+        style={{
+          ...type.caption,
+          fontWeight: "700",
+          color: colors.onAccent,
+          marginBottom: 4,
+        }}
+      >
+        Are you a local service professional?
+      </Text>
+      <Text style={{ ...type.body, fontSize: 13, color: "rgba(255,255,255,0.9)" }}>
+        List your business with SqftGo — reach relocators in your city.
+      </Text>
+    </Pressable>
+  );
+
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.bg }}>
       <View
@@ -106,7 +169,9 @@ export default function ServicesTabScreen() {
         }}
       >
         <ScreenNavbar
-          title="Services"
+          eyebrow="Real estate services for every need"
+          title="Everything you need in your city"
+          subtitle={`Architects, contractors, interiors & more in ${selectedCity}`}
           rightAction={
             <View style={{ flexDirection: "row", gap: spacing.sm, alignItems: "center" }}>
               <Pressable onPress={() => router.push("/my-service-bookings" as Href)}>
@@ -159,7 +224,7 @@ export default function ServicesTabScreen() {
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder={isApiMode ? "Search partners or categories" : "Search service categories"}
+            placeholder="Search partners or categories"
             placeholderTextColor={colors.inkMuted}
             style={{ flex: 1, ...type.body, fontSize: 14, color: colors.ink, padding: 0 }}
           />
@@ -179,7 +244,12 @@ export default function ServicesTabScreen() {
           onRefresh={loadPartners}
           ListHeaderComponent={
             <View style={{ gap: spacing.sm, marginBottom: spacing.sm }}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.xs }}>
+              {listBusinessCta}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: spacing.xs }}
+              >
                 <Chip
                   label="All"
                   selected={activeTypeId === "all"}
@@ -194,7 +264,80 @@ export default function ServicesTabScreen() {
                   />
                 ))}
               </ScrollView>
-              <Text style={{ ...type.label, color: colors.inkMuted }}>SERVICE PARTNERS</Text>
+              <Text style={{ ...type.label, color: colors.inkMuted }}>
+                SERVICE PARTNERS IN {selectedCity.toUpperCase()}
+              </Text>
+              {loadingPartners && partners.length === 0 ? (
+                <ActivityIndicator color={colors.accent} style={{ marginVertical: spacing.md }} />
+              ) : null}
+            </View>
+          }
+          contentContainerStyle={{
+            paddingHorizontal: spacing.lg,
+            paddingBottom: spacing.xxl,
+            gap: spacing.md,
+            flexGrow: 1,
+          }}
+          ListEmptyComponent={
+            loadingPartners ? null : (
+              <EmptyState
+                icon={Compass}
+                title="No partners found"
+                message={`No service partners in ${selectedCity} match your search. Try another city or clear filters.`}
+                actionLabel="Change city"
+                onAction={() => setCityModalVisible(true)}
+              />
+            )
+          }
+          renderItem={({ item }) => <ExpertCard profile={item} />}
+        />
+      ) : (
+        <FlatList
+          data={mockCategories}
+          keyExtractor={(item) => item.id}
+          ListHeaderComponent={
+            <View style={{ gap: spacing.sm, marginBottom: spacing.md }}>
+              {listBusinessCta}
+              {mockPartners.length > 0 ? (
+                <>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ gap: spacing.xs }}
+                  >
+                    <Chip
+                      label="All"
+                      selected={activeCategoryName === "all"}
+                      onPress={() => setActiveCategoryName("all")}
+                    />
+                    {REAL_ESTATE_SERVICES.map((item) => (
+                      <Chip
+                        key={item.id}
+                        label={item.title}
+                        selected={activeCategoryName === item.title}
+                        onPress={() => setActiveCategoryName(item.title)}
+                      />
+                    ))}
+                  </ScrollView>
+                  <Text style={{ ...type.label, color: colors.inkMuted }}>
+                    PARTNERS NEARBY
+                  </Text>
+                  {mockPartners.slice(0, 4).map((p) => (
+                    <ExpertCard key={p.id} profile={p} />
+                  ))}
+                  <Text
+                    style={{
+                      ...type.label,
+                      color: colors.inkMuted,
+                      marginTop: spacing.sm,
+                    }}
+                  >
+                    CATEGORIES
+                  </Text>
+                </>
+              ) : (
+                <Text style={{ ...type.label, color: colors.inkMuted }}>CATEGORIES</Text>
+              )}
             </View>
           }
           contentContainerStyle={{
@@ -206,28 +349,20 @@ export default function ServicesTabScreen() {
           ListEmptyComponent={
             <EmptyState
               icon={Compass}
-              title="No partners found"
-              message="Try another city or clear search."
+              title="No categories found"
+              message="Try a different search term."
             />
           }
-          renderItem={({ item }) => <ExpertCard profile={item} />}
-        />
-      ) : (
-        <FlatList
-          data={filteredServices}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={{
-            paddingHorizontal: spacing.lg,
-            paddingBottom: spacing.xxl,
-            gap: spacing.md,
-          }}
           renderItem={({ item }) => (
             <ServiceCard service={item} onPress={() => handleOpenCategory(item.slug)} />
           )}
         />
       )}
 
-      <CitySelectionModal visible={cityModalVisible} onClose={() => setCityModalVisible(false)} />
+      <CitySelectionModal
+        visible={cityModalVisible}
+        onClose={() => setCityModalVisible(false)}
+      />
     </SafeAreaView>
   );
 }

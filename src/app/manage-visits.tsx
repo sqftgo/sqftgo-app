@@ -129,7 +129,7 @@ export default function ManageVisitsScreen() {
             title="No visits"
             message="Buyers book visits from Active listings."
             actionLabel="Dashboard"
-            onAction={() => router.push("/(tabs)/dashboard" as Href)}
+            onAction={() => router.push("/(dealer)" as Href)}
           />
         }
         renderItem={({ item }) => {

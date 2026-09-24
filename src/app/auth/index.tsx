@@ -190,7 +190,7 @@ export default function AuthScreen() {
       signOut();
       appAlert(
         "Not a dealer account",
-        "This email is a User account. Switch to User login, or sign up as Dealer to register your directory.",
+        "This email is a Customer account. Switch to Customer login, or sign up as Dealer to register your directory.",
       );
       return;
     }
@@ -361,7 +361,7 @@ export default function AuthScreen() {
             >
               {(
                 [
-                  { id: "user" as const, label: "Buyer" },
+                  { id: "user" as const, label: "Customer" },
                   { id: "dealer" as const, label: "Dealer" },
                 ] as const
               ).map((opt) => {

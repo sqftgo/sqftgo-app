@@ -140,12 +140,12 @@ const GUEST_SESSION: Session = {
   joinedDate: "",
 };
 
-/** Demo accounts — password SunValley26 for walkthroughs. */
+/** Demo accounts — password sqftgo26 for walkthroughs. */
 export const DEMO_ACCOUNTS: StoredAccount[] = [
   {
     id: "acc-buyer",
     email: "buyer@sqftgo.com",
-    password: "SunValley26",
+    password: "sqftgo26",
     name: "Riya Sharma",
     phone: "+91 98765 43210",
     role: "user",
@@ -156,7 +156,7 @@ export const DEMO_ACCOUNTS: StoredAccount[] = [
   {
     id: "acc-broker",
     email: "broker@sqftgo.com",
-    password: "SunValley26",
+    password: "sqftgo26",
     name: "Aman Verma",
     phone: "+91 98111 22334",
     role: "broker",
@@ -175,7 +175,7 @@ export const DEMO_ACCOUNTS: StoredAccount[] = [
   {
     id: "acc-pending",
     email: "pending@sqftgo.com",
-    password: "SunValley26",
+    password: "sqftgo26",
     name: "Neha Patel",
     phone: "+91 99000 11122",
     role: "user",
@@ -193,7 +193,7 @@ export const DEMO_ACCOUNTS: StoredAccount[] = [
   {
     id: "acc-admin",
     email: "admin@sqftgo.com",
-    password: "SunValley26",
+    password: "sqftgo26",
     name: "Admin",
     role: "admin",
     status: "active",

@@ -210,6 +210,7 @@ export function FilterSheet({
       >
 
 
+        {on("purpose") ? (
         <FilterGroup label="Looking to">
           <FilterOptionRow
             options={PURPOSE_OPTIONS}

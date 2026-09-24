@@ -7,7 +7,6 @@ import {
   Community,
   Home as HomeIcon,
   KeyRound,
-  MapPin,
   Plus,
   Search,
   Shop,
@@ -28,14 +27,17 @@ import { SectionHeader } from "@/components/ui/section-header";
 import { useApp } from "@/context/AppContext";
 import type { PurposeFilter } from "@/lib/filters";
 import { displayNameFromEmail, greetingForHour } from "@/lib/format";
+import { isDealerCategory } from "@/lib/is-dealer-category";
 import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
 
 /** Home shortcuts into Explore */
-type ExploreIntent = PurposeFilter | "commercial";
+type ExploreIntent = PurposeFilter | "commercial" | "plot";
 
 const INTENTS: { id: ExploreIntent; label: string; icon: typeof HomeIcon }[] = [
   { id: "buy", label: "Buy", icon: HomeIcon },
   { id: "rent", label: "Rent", icon: KeyRound },
+  { id: "plot", label: "Plots", icon: Community },
+  { id: "commercial", label: "Commercial", icon: Shop },
 ];
 
 /** Category quick access buttons */
@@ -117,20 +119,31 @@ export default function HomeScreen() {
 
   const cityExperts = useMemo(
     () => {
+      const dealers = directoryProfiles.filter((d) => isDealerCategory(d.category));
       if (!selectedCity || selectedCity.toLowerCase() === "all india") {
-        return directoryProfiles.slice(0, 2);
+        return dealers.slice(0, 2);
       }
-      const matched = directoryProfiles.filter(
+      const matched = dealers.filter(
         (d) => d.city.trim().toLowerCase() === selectedCity.trim().toLowerCase(),
       );
-      return (matched.length > 0 ? matched : directoryProfiles).slice(0, 2);
+      return (matched.length > 0 ? matched : dealers).slice(0, 2);
     },
     [directoryProfiles, selectedCity],
   );
 
+  const newlyAdded = useMemo(() => {
+    return cityProperties.slice(0, 4);
+  }, [cityProperties]);
+
   const goToExplore = (purpose?: ExploreIntent, type?: string) => {
     const params: Record<string, string> = {};
-    if (purpose) params.purpose = purpose;
+    if (purpose === "commercial") {
+      params.type = "commercial";
+    } else if (purpose === "plot") {
+      params.type = "Industrial Plot";
+    } else if (purpose) {
+      params.purpose = purpose;
+    }
     if (type) params.type = type;
 
     router.push({
@@ -450,7 +463,7 @@ export default function HomeScreen() {
           <View style={{ gap: spacing.md }}>
             <View style={{ paddingHorizontal: spacing.lg }}>
               <SectionHeader
-                title="Featured Properties"
+                title="SQFTGO's Top Picks"
                 actionLabel="See all"
                 onAction={() => goToExplore()}
               />
@@ -544,7 +557,7 @@ export default function HomeScreen() {
                 </View>
               </View>
               <Text style={{ ...type.caption, color: "rgba(255,255,255,0.75)" }}>
-                Zero brokerage & connect with verified genuine buyers
+                Connect with genuine buyers, agents, and brokers in your city
               </Text>
             </View>
             <Building2 size={24} color="rgba(255,255,255,0.35)" />
@@ -554,13 +567,13 @@ export default function HomeScreen() {
         {/* In-City Properties Rail / Feed */}
         <View style={{ paddingHorizontal: spacing.lg, gap: spacing.md }}>
           <SectionHeader
-            title={selectedCity === "All India" ? "Recent Listings" : `Homes in ${selectedCity}`}
-            actionLabel={cityProperties.length > 3 ? "See all" : undefined}
-            onAction={cityProperties.length > 3 ? () => goToExplore() : undefined}
+            title={selectedCity === "All India" ? "Newly-Added Properties" : `Homes in ${selectedCity}`}
+            actionLabel={newlyAdded.length > 3 ? "See all" : undefined}
+            onAction={newlyAdded.length > 3 ? () => goToExplore() : undefined}
           />
-          {cityProperties.length > 0 ? (
+          {newlyAdded.length > 0 ? (
             <View style={{ gap: spacing.lg }}>
-              {cityProperties.slice(0, 4).map((property) => (
+              {newlyAdded.map((property) => (
                 <PropertyCard key={property.id} property={property} />
               ))}
             </View>
@@ -605,9 +618,9 @@ export default function HomeScreen() {
         {cityExperts.length > 0 && (
           <View style={{ paddingHorizontal: spacing.lg, gap: spacing.md }}>
             <SectionHeader
-              title="Verified Local Experts"
+              title="Trusted Dealers"
               actionLabel="View all"
-              onAction={() => router.push("/services")}
+              onAction={() => router.push("/(tabs)/brokers" as Href)}
             />
             <View style={{ gap: spacing.md }}>
               {cityExperts.map((expert) => (

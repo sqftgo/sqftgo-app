@@ -199,6 +199,8 @@ export default function ExploreScreen() {
       setFilters((prev) => ({ ...prev, purpose, type: "any" }));
     } else if (purpose === "commercial") {
       setFilters((prev) => ({ ...prev, purpose: "all", type: "commercial" }));
+    } else if (purpose === "plot") {
+      setFilters((prev) => ({ ...prev, purpose: "all", type: "Industrial Plot" }));
     }
   }, [params.purpose, params.type]);
 

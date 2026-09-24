@@ -25,11 +25,11 @@ const ROLES: ProjectOwnershipRole[] = ["Owner", "Builder", "Marketing Partner"];
 
 export default function PostProjectScreen() {
   const router = useRouter();
-  const { userName, profile, canAccessDealerDashboard } = useApp();
+  const { userName, profile, canAccessDealerDashboard, selectedCity } = useApp();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [city, setCity] = useState("Udaipur");
+  const [city, setCity] = useState(selectedCity || "Udaipur");
   const [locality, setLocality] = useState("");
   const [lifecycle, setLifecycle] = useState<ProjectLifecycle>("Under Construction");
   const [ownershipRole, setOwnershipRole] = useState<ProjectOwnershipRole>("Builder");

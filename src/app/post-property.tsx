@@ -22,7 +22,7 @@ import { CITIES as CITIES_LIST } from "@/constants/cities";
 import { pickAndUploadPropertyImage } from "@/lib/media-upload";
 import { ChevronLeft, ChevronDown, ChevronUp, Check } from "@/components/ui/icons";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
-import { colors } from "@/theme/tokens";
+import { colors, radius, spacing, type as typography } from "@/theme/tokens";
 
 
 const CITIES = CITIES_LIST.map((c) => c.name);
@@ -355,7 +355,7 @@ export default function PostPropertyScreen() {
                   justifyContent: "center",
                 }}
               >
-                <Text style={{ ...type.label, color: colors.onAccent }}>Buy listing packs</Text>
+                <Text style={{ ...typography.label, color: colors.onAccent }}>Buy listing packs</Text>
               </Pressable>
             ) : null}
           </View>
