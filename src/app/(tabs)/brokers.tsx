@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { FlatList, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter, type Href } from "expo-router";
 
 import {
   Briefcase,
@@ -18,22 +19,23 @@ import { ScreenNavbar } from "@/components/ui/screen-navbar";
 import { useApp } from "@/context/AppContext";
 import { directoryCategories } from "@/data/directory";
 import type { DirectoryCategory } from "@/data/types";
+import { isDealerCategory } from "@/lib/is-dealer-category";
 import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
 
 type CategoryFilter = DirectoryCategory | "all";
 
-export default function BrokersDirectoryScreen() {
-  const { directoryProfiles, selectedCity } = useApp();
+export default function DealersDirectoryScreen() {
+  const router = useRouter();
+  const { directoryProfiles, selectedCity, userRole } = useApp();
 
   const [query, setQuery] = useState("");
-
   const [category, setCategory] = useState<CategoryFilter>("all");
   const [cityModalVisible, setCityModalVisible] = useState(false);
 
-  // Filtered Brokers
-  const filteredBrokers = useMemo(() => {
+  const filteredDealers = useMemo(() => {
     const q = query.trim().toLowerCase();
     return directoryProfiles.filter((p) => {
+      if (!isDealerCategory(p.category)) return false;
       if (
         selectedCity &&
         selectedCity.toLowerCase() !== "all india" &&
@@ -57,10 +59,18 @@ export default function BrokersDirectoryScreen() {
 
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.bg }}>
-      {/* Header with Title and City Switcher */}
-      <View style={{ paddingHorizontal: spacing.lg, gap: spacing.md, paddingBottom: spacing.sm, paddingTop: spacing.xs }}>
+      <View
+        style={{
+          paddingHorizontal: spacing.lg,
+          gap: spacing.md,
+          paddingBottom: spacing.sm,
+          paddingTop: spacing.xs,
+        }}
+      >
         <ScreenNavbar
-          title="Brokers"
+          eyebrow="Professional network in your city"
+          title="Dealers"
+          subtitle={`Top real estate dealers in ${selectedCity}`}
           rightAction={
             <Pressable
               onPress={() => setCityModalVisible(true)}
@@ -90,9 +100,7 @@ export default function BrokersDirectoryScreen() {
           }
         />
 
-        {/* Search & Category Filter Section */}
         <View style={{ gap: spacing.sm }}>
-          {/* Quick Search Input */}
           <View
             style={{
               flexDirection: "row",
@@ -112,7 +120,7 @@ export default function BrokersDirectoryScreen() {
             <TextInput
               value={query}
               onChangeText={setQuery}
-              placeholder="Search by advisor name, agency, or locality"
+              placeholder="Search by name, firm, or specialty"
               placeholderTextColor={colors.inkMuted}
               style={{
                 flex: 1,
@@ -129,14 +137,13 @@ export default function BrokersDirectoryScreen() {
             ) : null}
           </View>
 
-          {/* Category Filter Chips */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ gap: spacing.xs, paddingVertical: 2 }}
           >
             <Chip
-              label="All Specialists"
+              label="All dealers"
               selected={category === "all"}
               onPress={() => setCategory("all")}
             />
@@ -152,9 +159,8 @@ export default function BrokersDirectoryScreen() {
         </View>
       </View>
 
-      {/* Main List */}
       <FlatList
-        data={filteredBrokers}
+        data={filteredDealers}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => <ExpertCard profile={item} />}
         showsVerticalScrollIndicator={false}
@@ -166,12 +172,33 @@ export default function BrokersDirectoryScreen() {
           gap: spacing.md,
           flexGrow: 1,
         }}
+        ListHeaderComponent={
+          userRole !== "broker" ? (
+            <Pressable
+              onPress={() => router.push("/dealer-register" as Href)}
+              style={({ pressed }) => ({
+                backgroundColor: colors.accent,
+                borderRadius: radius.md,
+                padding: spacing.md,
+                marginBottom: spacing.sm,
+                opacity: pressed ? 0.9 : 1,
+              })}
+            >
+              <Text style={{ ...type.caption, fontWeight: "700", color: colors.onAccent, marginBottom: 4 }}>
+                Are you a Real Estate Professional?
+              </Text>
+              <Text style={{ ...type.body, fontSize: 13, color: "rgba(255,255,255,0.85)" }}>
+                Grow your business with SqftGo — list properties and get verified.
+              </Text>
+            </Pressable>
+          ) : null
+        }
         ListEmptyComponent={
           <EmptyState
             icon={Briefcase}
-            title="No verified experts found"
-            message={`No listed brokers or consultants in ${selectedCity} match your criteria.`}
-            actionLabel="Show all cities"
+            title="No dealers found"
+            message={`No verified dealers in ${selectedCity} match your criteria.`}
+            actionLabel="Change city"
             onAction={() => setCityModalVisible(true)}
           />
         }

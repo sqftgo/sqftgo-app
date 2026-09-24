@@ -58,10 +58,19 @@ import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
 const PROFILE_CATEGORIES: DirectoryCategory[] = [
   "Agent & Broker",
   "Builder & Developer",
+  "Property Consultant",
   "Interior Decorator",
   "Architect",
   "Building Contractor",
-  "Property Consultant",
+  "Vastu Consultant",
+  "Home Valuation/Inspection",
+  "Home Shifting/Deep Cleaning",
+  "Architect & Interior Designer",
+  "House Services",
+  "Movers & Packers",
+  "Contractors",
+  "Event Managers",
+  "Wedding Planners",
 ];
 
 const SPECIALTY_OPTIONS = [
@@ -866,7 +875,7 @@ export default function ProfileScreen() {
             {/* Header Title & Action */}
             <ScreenNavbar
               eyebrow="Account"
-              title="Buyer Profile"
+              title="Customer Profile"
               subtitle="Your personal real estate hub"
               rightAction={
                 <Pressable
@@ -1030,7 +1039,7 @@ export default function ProfileScreen() {
                   <Text style={{ ...type.emphasis, color: "#B45309" }}>Pending dealer access</Text>
                 </View>
                 <Text style={{ ...type.caption, color: colors.inkMuted }}>
-                  Your directory profile is under review. You can still use all buyer features.
+                  Your directory profile is under review. You can still use all customer features.
                 </Text>
               </Pressable>
             ) : null}
@@ -1137,7 +1146,7 @@ export default function ProfileScreen() {
               <MenuGroup>
                 <MenuRow
                   icon={HelpCircle}
-                  label="Buyer FAQs & Support"
+                  label="Customer FAQs & Support"
                   sub="Common questions about visits, RERA & booking"
                   onPress={() => setFaqModalVisible(true)}
                 />
@@ -1180,7 +1189,7 @@ export default function ProfileScreen() {
         avoidKeyboard
       >
         <ModalSheetHeader
-          title="Edit Buyer Profile"
+          title="Edit Customer Profile"
           subtitle="Keep your contact info up to date"
           onClose={() => setEditProfileModalVisible(false)}
         />
@@ -1663,7 +1672,7 @@ export default function ProfileScreen() {
             onPress={() => {
               setFaqModalVisible(false);
               appAlert(
-                "Contact Buyer Support",
+                "Contact Customer Support",
                 "Email: support@sqftgo.com\nHelpline: +91 80000 12345 (Mon-Sat, 9am-7pm IST)",
               );
             }}

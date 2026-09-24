@@ -28,16 +28,22 @@ const CATEGORIES: DirectoryCategory[] = [
   "Vastu Consultant",
   "Home Valuation/Inspection",
   "Home Shifting/Deep Cleaning",
+  "Architect & Interior Designer",
+  "House Services",
+  "Movers & Packers",
+  "Contractors",
+  "Event Managers",
+  "Wedding Planners",
 ];
 
 export default function DealerRegisterScreen() {
   const router = useRouter();
-  const { registerAsDealer, userEmail, userName, dealerAccess, userRole } = useApp();
+  const { registerAsDealer, userEmail, userName, dealerAccess, userRole, selectedCity } = useApp();
 
   const [firmName, setFirmName] = useState("");
   const [ownerName, setOwnerName] = useState(userName);
   const [category, setCategory] = useState<DirectoryCategory>("Agent & Broker");
-  const [city, setCity] = useState("Udaipur");
+  const [city, setCity] = useState(selectedCity || "Udaipur");
   const [address, setAddress] = useState("");
   const [mobile, setMobile] = useState("");
   const [website, setWebsite] = useState("");

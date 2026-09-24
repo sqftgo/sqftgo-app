@@ -28,7 +28,7 @@ export default function DealerPendingScreen() {
           Your role is broker. Open the dashboard to manage listings and leads.
         </Text>
         <Pressable
-          onPress={() => router.replace("/(tabs)/dashboard" as Href)}
+          onPress={() => router.replace("/(dealer)" as Href)}
           style={{
             marginTop: spacing.xl,
             height: 48,
@@ -164,7 +164,7 @@ export default function DealerPendingScreen() {
             boxShadow: shadow.accent,
           })}
         >
-          <Text style={{ ...type.emphasis, color: colors.onAccent }}>Continue as buyer</Text>
+          <Text style={{ ...type.emphasis, color: colors.onAccent }}>Continue as customer</Text>
         </Pressable>
 
         {/* Local demo only — stands in for web admin role promotion */}
@@ -172,7 +172,7 @@ export default function DealerPendingScreen() {
           <Pressable
             onPress={() => {
               simulateDealerApproval();
-              router.replace("/(tabs)/dashboard" as Href);
+              router.replace("/(dealer)" as Href);
             }}
             style={{ alignItems: "center", paddingVertical: spacing.sm }}
           >

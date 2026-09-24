@@ -308,7 +308,7 @@ export default function OnboardingScreen() {
 
             {/* Role Cards Row */}
             <View style={styles.roleCardsRow}>
-              {/* Property Buyer */}
+              {/* Customer */}
               <Pressable
                 onPress={() => handleSelectRole("user")}
                 style={[
@@ -339,7 +339,7 @@ export default function OnboardingScreen() {
                 </View>
 
                 <Text style={[styles.roleCardTitle, selectedRole === "user" && styles.roleCardTitleActive]}>
-                  Property Buyer
+                  Customer
                 </Text>
                 <Text style={styles.roleCardDesc}>
                   Browse verified listings, schedule tours, & save homes.
@@ -362,7 +362,7 @@ export default function OnboardingScreen() {
                 </View>
               </Pressable>
 
-              {/* Property Dealer */}
+              {/* Dealer */}
               <Pressable
                 onPress={() => handleSelectRole("broker")}
                 style={[
@@ -393,10 +393,10 @@ export default function OnboardingScreen() {
                 </View>
 
                 <Text style={[styles.roleCardTitle, selectedRole === "broker" && styles.roleCardTitleActive]}>
-                  Property Dealer
+                  Dealer
                 </Text>
                 <Text style={styles.roleCardDesc}>
-                  Publish listings, capture buyer leads, & close deals.
+                  Publish listings, capture customer leads, & close deals.
                 </Text>
 
                 <View
@@ -519,7 +519,7 @@ export default function OnboardingScreen() {
                   <View style={styles.summaryItemText}>
                     <Text style={styles.summaryItemTitle}>Verified Workspace</Text>
                     <Text style={styles.summaryItemDesc}>
-                      Configured for {selectedRole === "broker" ? "Dealer & Broker Directory" : "Property Buyer & Tenant Search"}
+                      Configured for {selectedRole === "broker" ? "Dealer directory & leads" : "Customer property search"}
                     </Text>
                   </View>
                 </View>

@@ -119,13 +119,19 @@ export interface SiteVisit {
 export type DirectoryCategory =
   | "Agent & Broker"
   | "Builder & Developer"
+  | "Property Consultant"
   | "Interior Decorator"
   | "Architect"
   | "Building Contractor"
-  | "Property Consultant"
   | "Vastu Consultant"
   | "Home Valuation/Inspection"
-  | "Home Shifting/Deep Cleaning";
+  | "Home Shifting/Deep Cleaning"
+  | "Architect & Interior Designer"
+  | "House Services"
+  | "Movers & Packers"
+  | "Contractors"
+  | "Event Managers"
+  | "Wedding Planners";
 
 export interface DirectoryProfile {
   id: string;
