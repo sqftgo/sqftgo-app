@@ -17,7 +17,8 @@ import { ModalSheet, ModalSheetHeader } from "@/components/ui/modal-sheet";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const CITY_LIST_HEIGHT = Math.round(SCREEN_HEIGHT * 0.46);
 
 interface CitySelectionModalProps {
   visible: boolean;
@@ -123,9 +124,13 @@ export default function CitySelectionModal({ visible, onClose }: CitySelectionMo
             renderItem={renderCityCard}
             keyExtractor={(item) => item.name}
             numColumns={2}
+            style={styles.cityList}
             contentContainerStyle={styles.gridContainer}
             columnWrapperStyle={styles.columnWrapper}
-            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            nestedScrollEnabled
+            showsVerticalScrollIndicator
           />
         ) : (
           <View style={styles.emptyContainer}>
@@ -141,8 +146,10 @@ export default function CitySelectionModal({ visible, onClose }: CitySelectionMo
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     paddingHorizontal: spacing.xl,
+  },
+  cityList: {
+    height: CITY_LIST_HEIGHT,
   },
   searchBar: {
     flexDirection: "row",
