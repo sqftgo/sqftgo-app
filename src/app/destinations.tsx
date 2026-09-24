@@ -27,10 +27,11 @@ export default function DestinationsHubScreen() {
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.bg }}>
       <View style={{ paddingHorizontal: spacing.lg, gap: spacing.sm }}>
-        <Pressable onPress={() => router.back()}>
-          <Text style={{ ...type.label, color: colors.accent }}>← Back</Text>
-        </Pressable>
-        <ScreenNavbar title="Destinations" subtitle="Explore cities across SqftGo markets" />
+        <ScreenNavbar
+          title="Destinations"
+          subtitle="Explore cities across SqftGo markets"
+          onBack={() => router.back()}
+        />
         <FlatList
           horizontal
           data={["all", ...DESTINATION_TAGS]}

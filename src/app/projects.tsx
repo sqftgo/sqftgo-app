@@ -54,11 +54,12 @@ export default function ProjectsBrowseScreen() {
 
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.bg }}>
-      <View style={{ paddingHorizontal: spacing.lg, gap: spacing.xs }}>
-        <Pressable onPress={() => router.back()}>
-          <Text style={{ ...type.label, color: colors.accent }}>← Back</Text>
-        </Pressable>
-        <ScreenNavbar title="Projects" subtitle="Builder & developer launches" />
+      <View style={{ paddingHorizontal: spacing.lg }}>
+        <ScreenNavbar
+          title="Projects"
+          subtitle="Builder & developer launches"
+          onBack={() => router.back()}
+        />
       </View>
 
       {loading ? (

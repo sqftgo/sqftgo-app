@@ -61,11 +61,7 @@ export default function DealerSettingsScreen() {
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.bg }}>
       <View style={{ paddingHorizontal: spacing.lg }}>
-        <ScreenNavbar
-          eyebrow="Dealer portal"
-          title="Settings"
-          subtitle="Account and notification preferences"
-        />
+        <ScreenNavbar title="Settings" subtitle="Account and notification preferences" />
       </View>
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing["3xl"], gap: spacing.lg }}>

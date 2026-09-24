@@ -5,7 +5,6 @@ import { useRouter, type Href } from "expo-router";
 
 import {
   Briefcase,
-  ChevronDown,
   MapPin,
   Search,
   X,
@@ -15,7 +14,7 @@ import CitySelectionModal from "@/components/ui/CitySelectionModal";
 import { Chip } from "@/components/ui/chip";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ExpertCard } from "@/components/ui/expert-card";
-import { ScreenNavbar } from "@/components/ui/screen-navbar";
+import { HeaderPillButton, ScreenNavbar } from "@/components/ui/screen-navbar";
 import { useApp } from "@/context/AppContext";
 import { directoryCategories } from "@/data/directory";
 import type { DirectoryCategory } from "@/data/types";
@@ -68,35 +67,16 @@ export default function DealersDirectoryScreen() {
         }}
       >
         <ScreenNavbar
-          eyebrow="Professional network in your city"
           title="Dealers"
-          subtitle={`Top real estate dealers in ${selectedCity}`}
+          subtitle={`Verified real estate dealers in ${selectedCity}`}
           rightAction={
-            <Pressable
-              onPress={() => setCityModalVisible(true)}
-              hitSlop={8}
-              accessibilityRole="button"
+            <HeaderPillButton
+              icon={MapPin}
+              label={selectedCity}
+              dropdown
               accessibilityLabel={`Change city, currently ${selectedCity}`}
-              style={({ pressed }) => ({
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 5,
-                backgroundColor: colors.surface,
-                paddingHorizontal: spacing.md,
-                paddingVertical: spacing.xs + 3,
-                borderRadius: radius.md,
-                borderWidth: 1,
-                borderColor: colors.borderStrong,
-                boxShadow: shadow.card,
-                opacity: pressed ? 0.85 : 1,
-              })}
-            >
-              <MapPin size={13} color={colors.accent} />
-              <Text style={{ ...type.caption, fontWeight: "700", color: colors.ink }}>
-                {selectedCity}
-              </Text>
-              <ChevronDown size={13} color={colors.inkMuted} />
-            </Pressable>
+              onPress={() => setCityModalVisible(true)}
+            />
           }
         />
 

@@ -94,23 +94,15 @@ export default function DealerProjectsScreen() {
         <ScreenNavbar
           title="My projects"
           subtitle="Builder launches you manage"
-          rightAction={
-            <Pressable
-              onPress={() => router.push("/post-project" as Href)}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 4,
-                backgroundColor: colors.accent,
-                paddingHorizontal: spacing.md,
-                paddingVertical: spacing.xs + 2,
-                borderRadius: radius.md,
-              }}
-            >
-              <Plus size={16} color={colors.onAccent} />
-              <Text style={{ ...type.micro, fontWeight: "800", color: colors.onAccent }}>Add</Text>
-            </Pressable>
-          }
+          onBack={() => router.back()}
+          actions={[
+            {
+              icon: Plus,
+              label: "Add project",
+              tone: "accent",
+              onPress: () => router.push("/post-project" as Href),
+            },
+          ]}
         />
       </View>
 

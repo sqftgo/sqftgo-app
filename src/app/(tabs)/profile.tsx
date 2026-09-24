@@ -1,5 +1,6 @@
 import { appAlert } from "@/components/ui/app-alert";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import Constants from "expo-constants";
 import * as Haptics from "expo-haptics";
 import { useRouter, type Href } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
@@ -363,7 +364,7 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingHorizontal: spacing.lg,
-          paddingTop: spacing.md,
+          paddingTop: spacing.xs,
           paddingBottom: spacing["3xl"] * 2,
           gap: spacing.lg,
         }}
@@ -374,9 +375,15 @@ export default function ProfileScreen() {
         {canAccessDealerDashboard ? (
           <>
             <ScreenNavbar
-              eyebrow="Dealer Portal"
-              title="Broker Profile"
-              subtitle="Manage your brand presence, RERA credentials, and live portfolio"
+              title="Profile"
+              subtitle="Your public broker card"
+              actions={[
+                {
+                  icon: Settings,
+                  label: "Settings",
+                  onPress: () => router.push("/dealer-settings" as Href),
+                },
+              ]}
             />
 
             {/* LinkedIn-Style Broker Hero Card */}
@@ -872,97 +879,86 @@ export default function ProfileScreen() {
           /* ELEVATED BUYER PROFILE SECTION (For Home Seekers & Buyers)                */
           /* ========================================================================= */
           <>
-            {/* Header Title & Action */}
             <ScreenNavbar
-              eyebrow="Account"
-              title="Customer Profile"
-              subtitle="Your personal real estate hub"
-              rightAction={
-                <Pressable
-                  onPress={() => setEditProfileModalVisible(true)}
-                  style={({ pressed }) => ({
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: spacing.xs,
-                    paddingHorizontal: spacing.md,
-                    paddingVertical: spacing.xs + 2,
-                    borderRadius: radius.md,
-                    backgroundColor: pressed ? colors.accentSoft : colors.surface,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                    boxShadow: shadow.button,
-                  })}
-                >
-                  <EditPencil size={14} color={colors.accent} />
-                  <Text style={{ ...type.caption, color: colors.accent, fontWeight: "600" }}>
-                    Edit
-                  </Text>
-                </Pressable>
-              }
+              title="Profile"
+              actions={[
+                {
+                  icon: Bell,
+                  label: "Notification alerts",
+                  onPress: () => setNotifModalVisible(true),
+                },
+                {
+                  icon: EditPencil,
+                  label: "Edit profile",
+                  onPress: () => setEditProfileModalVisible(true),
+                },
+              ]}
             />
 
-            {/* 1. Buyer Persona Hero Card */}
-            <View
-              style={{
-                backgroundColor: colors.surface,
-                borderWidth: 1,
-                borderColor: colors.border,
-                borderRadius: radius.lg,
-                borderCurve: "continuous",
-                padding: spacing.lg,
-                boxShadow: shadow.card,
-                gap: spacing.md,
-              }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-                {/* Avatar */}
+            {/* Identity hero */}
+            <View style={{ alignItems: "center", gap: spacing.xs, paddingTop: spacing.xs }}>
+              <Pressable
+                onPress={() => setEditProfileModalVisible(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Edit profile"
+                style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1, marginBottom: spacing.sm })}
+              >
                 <View
                   style={{
-                    width: 56,
-                    height: 56,
-                    borderRadius: radius.lg,
-                    borderCurve: "continuous",
+                    width: 84,
+                    height: 84,
+                    borderRadius: radius.full,
                     backgroundColor: colors.primary,
                     alignItems: "center",
                     justifyContent: "center",
                     boxShadow: shadow.raised,
                   }}
                 >
-                  <Text style={{ ...type.title, color: colors.onPrimary, fontSize: 20 }}>
+                  <Text style={{ ...type.hero, fontSize: 30, lineHeight: 36, color: colors.onPrimary }}>
                     {initials}
                   </Text>
                 </View>
-
-                {/* Identity Info */}
-                <View style={{ flex: 1, gap: 2 }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
-                    <Text style={{ ...type.heading, color: colors.ink }} numberOfLines={1}>
-                      {userName || "Home Seeker"}
-                    </Text>
-                    <ShieldCheck size={16} color={colors.success} strokeWidth={2} />
-                  </View>
-                  <Text selectable style={{ ...type.caption, color: colors.inkMuted }}>
-                    {userEmail}
-                  </Text>
-                  {profile?.phone ? (
-                    <Text style={{ ...type.caption, color: colors.inkSecondary }}>
-                      {profile.phone}
-                    </Text>
-                  ) : null}
+                <View
+                  style={{
+                    position: "absolute",
+                    right: -2,
+                    bottom: -2,
+                    width: 30,
+                    height: 30,
+                    borderRadius: radius.full,
+                    backgroundColor: colors.accent,
+                    borderWidth: 3,
+                    borderColor: colors.bg,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <EditPencil size={13} color={colors.onAccent} strokeWidth={2.2} />
                 </View>
-              </View>
+              </Pressable>
 
-              {/* Status Badges & City Selection Pill */}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
+                <Text style={{ ...type.title, fontSize: 22, color: colors.ink }} numberOfLines={1}>
+                  {userName || "Home Seeker"}
+                </Text>
+                <ShieldCheck size={18} color={colors.success} strokeWidth={2} />
+              </View>
+              <Text selectable style={{ ...type.body, color: colors.inkMuted }}>
+                {userEmail}
+              </Text>
+              {profile?.phone ? (
+                <Text selectable style={{ ...type.caption, color: colors.inkSecondary }}>
+                  {profile.phone}
+                </Text>
+              ) : null}
+
               <View
                 style={{
                   flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
                   flexWrap: "wrap",
+                  justifyContent: "center",
                   gap: spacing.sm,
-                  paddingTop: spacing.sm,
-                  borderTopWidth: 1,
-                  borderTopColor: colors.border,
+                  marginTop: spacing.sm,
                 }}
               >
                 <View
@@ -971,49 +967,46 @@ export default function ProfileScreen() {
                     alignItems: "center",
                     gap: 4,
                     backgroundColor: colors.successSoft,
-                    paddingHorizontal: spacing.sm + 2,
-                    paddingVertical: 3,
-                    borderRadius: radius.sm,
+                    paddingHorizontal: spacing.md,
+                    paddingVertical: 6,
+                    borderRadius: radius.full,
                   }}
                 >
                   <ShieldCheck size={13} color={colors.success} />
-                  <Text style={{ ...type.micro, color: colors.success }}>
-                    Identity Confirmed
-                  </Text>
+                  <Text style={{ ...type.micro, color: colors.success }}>Identity confirmed</Text>
                 </View>
 
                 <Pressable
                   onPress={() => setCityModalVisible(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Change city, currently ${selectedCity}`}
                   style={({ pressed }) => ({
                     flexDirection: "row",
                     alignItems: "center",
                     gap: 4,
-                    backgroundColor: pressed ? colors.accentSoft : colors.surfaceSubtle,
-                    paddingHorizontal: spacing.sm + 2,
-                    paddingVertical: 3,
-                    borderRadius: radius.sm,
+                    backgroundColor: pressed ? colors.accentSoft : colors.surface,
+                    paddingHorizontal: spacing.md,
+                    paddingVertical: 6,
+                    borderRadius: radius.full,
                     borderWidth: 1,
                     borderColor: colors.border,
                   })}
                 >
-                  <MapPin size={12} color={colors.accent} />
-                  <Text style={{ ...type.micro, color: colors.ink }}>
-                    City: {selectedCity}
-                  </Text>
-                  <ChevronRight size={10} color={colors.inkMuted} />
+                  <MapPin size={13} color={colors.accent} />
+                  <Text style={{ ...type.micro, color: colors.ink }}>{selectedCity}</Text>
+                  <ChevronRight size={11} color={colors.inkMuted} />
                 </Pressable>
               </View>
 
               {profile?.bio ? (
                 <Text
                   style={{
-                    ...type.caption,
+                    ...type.body,
                     color: colors.inkSecondary,
                     fontStyle: "italic",
-                    backgroundColor: colors.surfaceSubtle,
-                    padding: spacing.sm + 2,
-                    borderRadius: radius.md,
-                    lineHeight: 18,
+                    textAlign: "center",
+                    maxWidth: 320,
+                    marginTop: spacing.sm,
                   }}
                 >
                   &ldquo;{profile.bio}&rdquo;
@@ -1021,22 +1014,66 @@ export default function ProfileScreen() {
               ) : null}
             </View>
 
+            {/* Activity stats strip */}
+            <View
+              style={{
+                flexDirection: "row",
+                backgroundColor: colors.surface,
+                borderWidth: 1,
+                borderColor: colors.border,
+                borderRadius: radius.lg,
+                borderCurve: "continuous",
+                boxShadow: shadow.card,
+                overflow: "hidden",
+              }}
+            >
+              {[
+                { label: "Saved", value: savedProperties.length, icon: Heart, href: "/saved" },
+                { label: "Inquiries", value: myInquiriesList.length, icon: MessageSquare, href: "/my-inquiries" },
+                { label: "Site visits", value: myVisitsList.length, icon: Calendar, href: "/my-visits" },
+              ].map((stat, i) => (
+                <Pressable
+                  key={stat.label}
+                  onPress={() => router.push(stat.href as Href)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${stat.label}, ${stat.value}`}
+                  style={({ pressed }) => ({
+                    flex: 1,
+                    alignItems: "center",
+                    gap: 2,
+                    paddingVertical: spacing.md + 2,
+                    borderLeftWidth: i === 0 ? 0 : 1,
+                    borderLeftColor: colors.border,
+                    backgroundColor: pressed ? colors.surfaceSubtle : colors.surface,
+                  })}
+                >
+                  <stat.icon size={18} color={colors.accent} />
+                  <Text
+                    style={{ ...type.title, color: colors.ink, fontVariant: ["tabular-nums"] }}
+                  >
+                    {stat.value}
+                  </Text>
+                  <Text style={{ ...type.caption, color: colors.inkMuted }}>{stat.label}</Text>
+                </Pressable>
+              ))}
+            </View>
+
             {/* Pending Dealer Notice if applicable */}
             {dealerAccess === "pending" && userRole !== "broker" ? (
               <Pressable
                 onPress={() => router.push("/dealer-pending" as Href)}
                 style={{
-                  backgroundColor: "rgba(255, 184, 0, 0.12)",
+                  backgroundColor: colors.warningSoft,
                   borderRadius: radius.md,
                   padding: spacing.md,
                   gap: spacing.xs,
                   borderWidth: 1,
-                  borderColor: "rgba(255, 184, 0, 0.3)",
+                  borderColor: colors.warningBorder,
                 }}
               >
                 <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
-                  <Clock size={16} color="#B45309" />
-                  <Text style={{ ...type.emphasis, color: "#B45309" }}>Pending dealer access</Text>
+                  <Clock size={16} color={colors.warning} />
+                  <Text style={{ ...type.emphasis, color: colors.warning }}>Pending dealer access</Text>
                 </View>
                 <Text style={{ ...type.caption, color: colors.inkMuted }}>
                   Your directory profile is under review. You can still use all customer features.
@@ -1044,22 +1081,55 @@ export default function ProfileScreen() {
               </Pressable>
             ) : null}
 
-            {/* 3. Buyer Concierge & Advisory Suite */}
             <View style={{ gap: spacing.xs }}>
-              <Text style={{ ...type.label, color: colors.inkMuted }}>
-                BUYER CONCIERGE & ADVISORY
-              </Text>
+              <Text style={{ ...type.label, color: colors.inkMuted }}>ACTIVITY</Text>
+              <MenuGroup>
+                <MenuRow
+                  icon={Briefcase}
+                  label="My service bookings"
+                  sub="Requests sent to partners"
+                  onPress={() => router.push("/my-service-bookings" as Href)}
+                />
+                <MenuRow
+                  icon={Building2}
+                  label="Projects & destinations"
+                  sub="Browse launches and city hubs"
+                  onPress={() => router.push("/projects" as Href)}
+                  showDivider={dealerAccess === "none" || dealerAccess === "pending"}
+                />
+                {dealerAccess === "none" ? (
+                  <MenuRow
+                    icon={Briefcase}
+                    label="Become a verified dealer / broker"
+                    sub="List properties & expand your reach"
+                    onPress={() => router.push("/dealer-register" as Href)}
+                    showDivider={false}
+                  />
+                ) : dealerAccess === "pending" ? (
+                  <MenuRow
+                    icon={Shield}
+                    label="Dealer KYC status"
+                    sub="Verification in progress"
+                    onPress={() => router.push("/dealer-kyc" as Href)}
+                    showDivider={false}
+                  />
+                ) : null}
+              </MenuGroup>
+            </View>
+
+            <View style={{ gap: spacing.xs }}>
+              <Text style={{ ...type.label, color: colors.inkMuted }}>TOOLS & ADVICE</Text>
               <MenuGroup>
                 <MenuRow
                   icon={CreditCard}
-                  label="Home Loan & EMI Calculator"
-                  sub="Calculate monthly EMI & check bank pre-approval"
+                  label="Home loan & EMI calculator"
+                  sub="Monthly EMI & bank pre-approval"
                   onPress={() => setLoanModalVisible(true)}
                 />
                 <MenuRow
                   icon={FileCheck}
-                  label="RERA & Legal Verification"
-                  sub="Verify title deeds, clearances & RERA filings"
+                  label="RERA & legal verification"
+                  sub="Title deeds, clearances & RERA filings"
                   onPress={() =>
                     appAlert(
                       "Legal Title Checks",
@@ -1073,81 +1143,27 @@ export default function ProfileScreen() {
                 />
                 <MenuRow
                   icon={Building2}
-                  label="Interior Design & Shifting"
-                  sub="Connect with top local decorators & moving pros"
+                  label="Interior design & shifting"
+                  sub="Local decorators & moving pros"
                   onPress={() => router.push("/services")}
                   showDivider={false}
                 />
               </MenuGroup>
             </View>
 
-            {/* 4. My Real Estate Activity Links */}
             <View style={{ gap: spacing.xs }}>
-              <Text style={{ ...type.label, color: colors.inkMuted }}>MY ACTIVITY</Text>
+              <Text style={{ ...type.label, color: colors.inkMuted }}>ACCOUNT & HELP</Text>
               <MenuGroup>
-                <MenuRow
-                  icon={Heart}
-                  label="Saved properties"
-                  value={String(savedProperties.length)}
-                  onPress={() => router.push("/saved" as Href)}
-                />
-                <MenuRow
-                  icon={MessageSquare}
-                  label="My inquiries"
-                  value={String(myInquiriesList.length)}
-                  onPress={() => router.push("/my-inquiries" as Href)}
-                />
-                <MenuRow
-                  icon={Calendar}
-                  label="My site visits"
-                  value={String(myVisitsList.length)}
-                  onPress={() => router.push("/my-visits" as Href)}
-                />
-                <MenuRow
-                  icon={Briefcase}
-                  label="My service bookings"
-                  sub="Requests sent to partners"
-                  onPress={() => router.push("/my-service-bookings" as Href)}
-                />
-                <MenuRow
-                  icon={Building2}
-                  label="Projects & destinations"
-                  sub="Browse launches and city hubs"
-                  onPress={() => router.push("/projects" as Href)}
-                />
-                {dealerAccess === "none" ? (
-                  <MenuRow
-                    icon={Briefcase}
-                    label="Become a verified dealer / broker"
-                    sub="List properties & expand your reach"
-                    onPress={() => router.push("/dealer-register" as Href)}
-                  />
-                ) : dealerAccess === "pending" ? (
-                  <MenuRow
-                    icon={Shield}
-                    label="Dealer KYC status"
-                    sub="Verification in progress"
-                    onPress={() => router.push("/dealer-kyc" as Href)}
-                  />
-                ) : null}
                 <MenuRow
                   icon={Bell}
                   label="Notification alerts"
                   sub="Price drops & matching listings"
                   onPress={() => setNotifModalVisible(true)}
-                  showDivider={false}
                 />
-              </MenuGroup>
-            </View>
-
-            {/* 5. Help, FAQs & Support */}
-            <View style={{ gap: spacing.xs }}>
-              <Text style={{ ...type.label, color: colors.inkMuted }}>HELP & LEGAL</Text>
-              <MenuGroup>
                 <MenuRow
                   icon={HelpCircle}
-                  label="Customer FAQs & Support"
-                  sub="Common questions about visits, RERA & booking"
+                  label="FAQs & support"
+                  sub="Visits, RERA & booking questions"
                   onPress={() => setFaqModalVisible(true)}
                 />
                 <MenuRow
@@ -1164,17 +1180,30 @@ export default function ProfileScreen() {
               </MenuGroup>
             </View>
 
-            {/* Sign out */}
-            <MenuGroup>
-              <MenuRow
-                icon={LogOut}
-                label="Sign out"
+            <View style={{ alignItems: "center", gap: spacing.xs, paddingTop: spacing.sm }}>
+              <Pressable
                 onPress={handleLogout}
-                destructive
-                showChevron={false}
-                showDivider={false}
-              />
-            </MenuGroup>
+                accessibilityRole="button"
+                hitSlop={8}
+                style={({ pressed }) => ({
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: spacing.xs + 2,
+                  paddingHorizontal: spacing.lg,
+                  paddingVertical: spacing.sm,
+                  borderRadius: radius.full,
+                  backgroundColor: pressed ? colors.dangerSoft : "transparent",
+                })}
+              >
+                <LogOut size={16} color={colors.danger} />
+                <Text style={{ ...type.label, fontWeight: "600", color: colors.danger }}>
+                  Sign out
+                </Text>
+              </Pressable>
+              <Text style={{ ...type.caption, color: colors.inkMuted }}>
+                SqftGo v{Constants.expoConfig?.version ?? "1.0.0"}
+              </Text>
+            </View>
           </>
         )}
       </ScrollView>

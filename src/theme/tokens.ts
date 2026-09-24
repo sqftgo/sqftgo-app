@@ -2,7 +2,7 @@
  * Design tokens — single source of truth for SqftGo's visual language.
  *
  * 1. Typography: Fredoka for logo/wordmark, Inter for all UI text.
- * 2. Palette: Deep Emerald Forest (#0F382C) primary, Warm Terracotta (#C86D51) single accent, Light Gray canvas (#F8F9FA).
+ * 2. Palette: Deep Navy ink (#0F1E36) primary, Terracotta (#E05A36) single accent, warm cream canvas (#FAF9F6).
  * 3. Buttons: Flat with 1px border or subtle 0 2px 4px rgba(0,0,0,0.08) neutral shadow.
  */
 
@@ -45,6 +45,12 @@ export const colors = {
   successSoft: "rgba(14, 159, 110, 0.10)",
   danger: "#DC2626",
   dangerSoft: "rgba(220, 38, 38, 0.08)",
+  warning: "#B45309",
+  warningSoft: "rgba(255, 184, 0, 0.12)",
+  warningBorder: "rgba(255, 184, 0, 0.30)",
+  /** Rating stars */
+  star: "#FFB800",
+  placeholder: "#9CA3AF",
 
   onPrimary: "#FFFFFF",
   onAccent: "#FFFFFF",

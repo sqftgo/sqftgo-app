@@ -33,11 +33,7 @@ export default function DealerAnalyticsScreen() {
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.bg }}>
       <View style={{ paddingHorizontal: spacing.lg }}>
-        <ScreenNavbar
-          eyebrow="Dealer portal"
-          title="Analytics"
-          subtitle="Performance overview for your listings"
-        />
+        <ScreenNavbar title="Analytics" subtitle="How your listings are performing" />
       </View>
 
       {loading || !data ? (

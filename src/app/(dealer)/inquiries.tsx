@@ -135,11 +135,7 @@ export default function DealerInquiriesScreen() {
           }}
           ListHeaderComponent={
             <View style={{ gap: spacing.md, marginBottom: spacing.sm }}>
-              <ScreenNavbar
-                eyebrow="Dealer inbox"
-                title="Communications"
-                subtitle="Inquiries and message threads with buyers"
-              />
+              <ScreenNavbar title="Inbox" subtitle="Buyer inquiries and messages" />
               <View
                 style={{
                   flexDirection: "row",
@@ -329,28 +325,16 @@ export default function DealerInquiriesScreen() {
           ListHeaderComponent={
             <View style={{ gap: spacing.md, marginBottom: spacing.sm }}>
               <ScreenNavbar
-                eyebrow="Dealer inbox"
-                title="Communications"
-                subtitle="Inquiries and message threads with buyers"
-                rightAction={
-                  <Pressable
-                    onPress={() => setComposeOpen(true)}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 6,
-                      backgroundColor: colors.accent,
-                      paddingHorizontal: spacing.md,
-                      paddingVertical: spacing.sm,
-                      borderRadius: radius.md,
-                    }}
-                  >
-                    <Plus size={14} color={colors.onAccent} />
-                    <Text style={{ ...type.caption, color: colors.onAccent, fontWeight: "700" }}>
-                      Compose
-                    </Text>
-                  </Pressable>
-                }
+                title="Inbox"
+                subtitle="Buyer inquiries and messages"
+                actions={[
+                  {
+                    icon: Plus,
+                    label: "Compose message",
+                    tone: "accent",
+                    onPress: () => setComposeOpen(true),
+                  },
+                ]}
               />
               <View
                 style={{
