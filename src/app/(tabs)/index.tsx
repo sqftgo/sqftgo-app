@@ -169,127 +169,25 @@ export default function HomeScreen() {
       >
         {/* Top Header & Search Hero */}
         <View style={{ paddingHorizontal: spacing.lg, gap: spacing.md, paddingTop: spacing.xs }}>
-          {/* Header Row */}
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "flex-start",
-              justifyContent: "space-between",
-              gap: spacing.md,
-            }}
-          >
-            <View style={{ flex: 1 }}>
-              <ScreenNavbar
-                eyebrow={`${greetingForHour(new Date().getHours())}, ${firstName}`}
-                title={selectedCity}
-                subtitle="Tap to change location"
-                onPressTitle={() => setCityModalVisible(true)}
-              />
-            </View>
-
-            {/* Header Action Controls: Notifications | Saved */}
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: spacing.xs + 2,
-                marginTop: spacing.md + 10,
-              }}
-            >
-              {/* Notifications Button */}
-              <Pressable
-                onPress={() => setNotificationsVisible(true)}
-                accessibilityRole="button"
-                accessibilityLabel={
-                  unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"
-                }
-                style={({ pressed }) => ({
-                  width: 42,
-                  height: 42,
-                  borderRadius: radius.md,
-                  backgroundColor: colors.surface,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: shadow.card,
-                  opacity: pressed ? 0.7 : 1,
-                })}
-              >
-                <Bell size={18} color={colors.ink} />
-                {unreadCount > 0 && (
-                  <View
-                    style={{
-                      position: "absolute",
-                      top: 9,
-                      right: 10,
-                      width: 8,
-                      height: 8,
-                      borderRadius: radius.full,
-                      backgroundColor: colors.accent,
-                      borderWidth: 1.5,
-                      borderColor: colors.surface,
-                    }}
-                  />
-                )}
-              </Pressable>
-
-              {/* Saved Properties Button */}
-              <Pressable
-                onPress={() => router.push("/saved" as Href)}
-                accessibilityRole="button"
-                accessibilityLabel={
-                  savedCount > 0 ? `Saved properties, ${savedCount} shortlisted` : "Saved properties"
-                }
-                style={({ pressed }) => ({
-                  width: 42,
-                  height: 42,
-                  borderRadius: radius.md,
-                  backgroundColor: colors.surface,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: shadow.card,
-                  opacity: pressed ? 0.7 : 1,
-                })}
-              >
-                <Bookmark
-                  size={18}
-                  color={savedCount > 0 ? colors.accent : colors.ink}
-                  strokeWidth={savedCount > 0 ? 2.5 : 2}
-                />
-                {savedCount > 0 && (
-                  <View
-                    style={{
-                      position: "absolute",
-                      top: -3,
-                      right: -3,
-                      minWidth: 16,
-                      height: 16,
-                      borderRadius: 8,
-                      backgroundColor: colors.accent,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      paddingHorizontal: 3,
-                      borderWidth: 1.5,
-                      borderColor: colors.surface,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        color: colors.onAccent,
-                        fontSize: 9,
-                        fontWeight: "800",
-                      }}
-                    >
-                      {savedCount > 9 ? "9+" : savedCount}
-                    </Text>
-                  </View>
-                )}
-              </Pressable>
-            </View>
-          </View>
+          <ScreenNavbar
+            eyebrow={`${greetingForHour(new Date().getHours())}, ${firstName}`}
+            title={selectedCity}
+            onPressTitle={() => setCityModalVisible(true)}
+            actions={[
+              {
+                icon: Bell,
+                label: "Notifications",
+                badge: unreadCount > 0,
+                onPress: () => setNotificationsVisible(true),
+              },
+              {
+                icon: Bookmark,
+                label: "Saved properties",
+                badge: savedCount,
+                onPress: () => router.push("/saved" as Href),
+              },
+            ]}
+          />
 
           {/* Search Card Container with Intent Switcher */}
           <View

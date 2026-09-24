@@ -13,7 +13,14 @@ import { initialsFromName } from "@/lib/format";
 import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
 
 /** Contact and profile card for brokers, consultants, and service partners. */
-export function ExpertCard({ profile }: { profile: DirectoryProfile }) {
+export function ExpertCard({
+  profile,
+  variant = "full",
+}: {
+  profile: DirectoryProfile;
+  /** `compact` is a fixed-width card for horizontal rails. */
+  variant?: "full" | "compact";
+}) {
   const router = useRouter();
 
   const handleOpenProfile = () => {
@@ -28,6 +35,85 @@ export function ExpertCard({ profile }: { profile: DirectoryProfile }) {
 
   const initials = initialsFromName(profile.ownerName || profile.firmName);
   const exp = profile.experience || "5+ Years";
+
+  if (variant === "compact") {
+    return (
+      <Pressable
+        onPress={handleOpenProfile}
+        accessibilityRole="button"
+        accessibilityLabel={`${profile.ownerName}, ${profile.firmName}`}
+        style={({ pressed }) => ({
+          width: 240,
+          backgroundColor: colors.surface,
+          borderRadius: radius.lg,
+          borderCurve: "continuous",
+          borderWidth: 1,
+          borderColor: colors.border,
+          padding: spacing.md,
+          gap: spacing.sm + 2,
+          boxShadow: shadow.card,
+          transform: [{ scale: pressed ? 0.98 : 1 }],
+        })}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm + 2 }}>
+          <View
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: radius.full,
+              backgroundColor: colors.primary,
+              alignItems: "center",
+              justifyContent: "center",
+              overflow: "hidden",
+            }}
+          >
+            {profile.avatarUrl ? (
+              <Image
+                source={{ uri: profile.avatarUrl }}
+                style={{ width: "100%", height: "100%" }}
+                resizeMode="cover"
+              />
+            ) : (
+              <Text style={{ ...type.emphasis, color: colors.onPrimary }}>{initials}</Text>
+            )}
+          </View>
+          <View style={{ flex: 1, gap: 1 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+              <Text numberOfLines={1} style={{ ...type.emphasis, color: colors.ink, flexShrink: 1 }}>
+                {profile.ownerName}
+              </Text>
+              {profile.reraId ? <ShieldCheck size={13} color={colors.success} strokeWidth={2.5} /> : null}
+            </View>
+            <Text numberOfLines={1} style={{ ...type.caption, color: colors.inkSecondary }}>
+              {profile.firmName}
+            </Text>
+          </View>
+        </View>
+
+        <View
+          style={{
+            alignSelf: "flex-start",
+            backgroundColor: colors.accentSoft,
+            paddingHorizontal: spacing.sm,
+            paddingVertical: 3,
+            borderRadius: radius.full,
+          }}
+        >
+          <Text numberOfLines={1} style={{ ...type.micro, color: colors.accent }}>
+            {profile.category}
+          </Text>
+        </View>
+
+        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
+          <MapPin size={12} color={colors.inkMuted} />
+          <Text numberOfLines={1} style={{ ...type.caption, color: colors.inkMuted, flex: 1 }}>
+            {profile.city} · {exp}
+          </Text>
+          <ChevronRight size={14} color={colors.inkMuted} />
+        </View>
+      </Pressable>
+    );
+  }
 
   return (
     <Pressable

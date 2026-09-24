@@ -9,6 +9,7 @@ import { appAlert } from "@/components/ui/app-alert";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
+  Building2,
   ClipboardList,
   Pencil,
   Plus,
@@ -17,7 +18,7 @@ import {
 } from "@/components/ui/icons";
 
 import { EmptyState } from "@/components/ui/empty-state";
-import { ScreenNavbar } from "@/components/ui/screen-navbar";
+import { HeaderPillButton, ScreenNavbar } from "@/components/ui/screen-navbar";
 import { useApp } from "@/context/AppContext";
 import type { Property, PropertyStatus } from "@/data/types";
 import { formatPriceWithPeriod } from "@/lib/format";
@@ -205,46 +206,23 @@ export default function DealerPropertiesScreen() {
         ListHeaderComponent={
           <View style={{ gap: spacing.md, marginBottom: spacing.md }}>
             <ScreenNavbar
-              eyebrow="Dealer listings"
               title="My Properties"
               subtitle={`${mine.length} listing${mine.length === 1 ? "" : "s"}`}
               rightAction={
-                <View style={{ flexDirection: "row", gap: spacing.sm }}>
-                  <Pressable
-                    onPress={() => router.push("/dealer-projects" as Href)}
-                    style={{
-                      paddingHorizontal: spacing.md,
-                      paddingVertical: spacing.sm,
-                      borderRadius: radius.md,
-                      borderWidth: 1,
-                      borderColor: colors.border,
-                      backgroundColor: colors.surface,
-                    }}
-                  >
-                    <Text style={{ ...type.caption, color: colors.ink, fontWeight: "600" }}>
-                      Projects
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => router.push("/post-property" as Href)}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 6,
-                      backgroundColor: colors.accent,
-                      paddingHorizontal: spacing.md,
-                      paddingVertical: spacing.sm,
-                      borderRadius: radius.md,
-                      boxShadow: shadow.button,
-                    }}
-                  >
-                    <Plus size={16} color={colors.onAccent} />
-                    <Text style={{ ...type.caption, color: colors.onAccent, fontWeight: "600" }}>
-                      Add
-                    </Text>
-                  </Pressable>
-                </View>
+                <HeaderPillButton
+                  icon={Building2}
+                  label="Projects"
+                  onPress={() => router.push("/dealer-projects" as Href)}
+                />
               }
+              actions={[
+                {
+                  icon: Plus,
+                  label: "Add property",
+                  tone: "accent",
+                  onPress: () => router.push("/post-property" as Href),
+                },
+              ]}
             />
             <FlatList
               horizontal

@@ -127,8 +127,8 @@ export default function DealerDashboardScreen() {
         <View style={{ paddingHorizontal: spacing.lg }}>
           <ScreenNavbar
             eyebrow="Dealer portal"
-            title={userName ? `Welcome, ${userName.split(" ")[0]}` : "Welcome"}
-            subtitle="Listings go live after web admin approval"
+            title={userName ? `Hi, ${userName.split(" ")[0]}` : "Dashboard"}
+            subtitle="Listings go live after admin approval"
           />
         </View>
 

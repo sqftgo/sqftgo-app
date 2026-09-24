@@ -116,7 +116,7 @@ export default function DealerSubscriptionScreen() {
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.bg }}>
       <View style={{ paddingHorizontal: spacing.lg }}>
-        <ScreenNavbar eyebrow="Dealer portal" title="Plans & billing" subtitle="Listing packs and partner plans" />
+        <ScreenNavbar title="Plans & billing" subtitle="Listing packs and partner plans" />
       </View>
 
       {loading ? (
