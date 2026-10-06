@@ -1,3 +1,5 @@
+import type { Href } from "expo-router";
+
 export interface AppNotification {
   id: string;
   title: string;
@@ -5,6 +7,8 @@ export interface AppNotification {
   time: string;
   read: boolean;
   tag: "Price Drop" | "Verified" | "Callback" | "New Match";
+  /** Screen the notification opens, derived from the server's entity reference. */
+  href?: Href;
 }
 
 export const seedNotifications: AppNotification[] = [

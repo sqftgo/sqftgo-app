@@ -1,241 +1,186 @@
+import { type Href } from "expo-router";
 import React, { useState } from "react";
-import {
-  KeyboardAvoidingView,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import { appAlert } from "@/components/ui/app-alert";
-import { useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { ChevronLeft } from "@/components/ui/icons";
+import { StyleSheet, Text, View } from "react-native";
 
-import { useApp } from "@/context/AppContext";
-import { KYC_STATUS_LABEL } from "@/lib/status-labels";
-import { pickAndUploadKycDocument } from "@/lib/media-upload";
+import { Button, EmptyState, ListRow, ListSection, Screen, StatusBadge, TextField, toast, useBack } from "@/components/ds";
+import { appAlert } from "@/components/ui/app-alert";
+import { CheckCircle, FileCheck, ShieldCheck } from "@/components/ui/icons";
+import { usePlatform, useSession } from "@/hooks/domain";
 import type { KycDocumentType } from "@/data/types";
-import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
+import { pickAndUploadKycDocument } from "@/lib/media-upload";
+import { KYC_STATUS_LABEL } from "@/lib/status-labels";
+import { colors, radius, spacing, type } from "@/theme/tokens";
 
 const DOC_TYPES: { type: KycDocumentType; label: string }[] = [
-  { type: "pan_card", label: "Upload PAN card" },
-  { type: "aadhaar", label: "Upload Aadhaar" },
-  { type: "rera_certificate", label: "Upload RERA certificate" },
+  { type: "pan_card", label: "PAN card" },
+  { type: "aadhaar", label: "Aadhaar" },
+  { type: "rera_certificate", label: "RERA certificate" },
 ];
 
+const PAN_RE = /^[A-Z]{5}[0-9]{4}[A-Z]$/i;
+
 export default function DealerKycScreen() {
-  const router = useRouter();
-  const { profile, submitKyc, dealerAccess, userRole, isApiMode } = useApp();
+  const back = useBack("/(dealer)" as Href);
+  const { profile, submitKyc, dealerAccess, userRole } = useSession();
+  const { isApiMode } = usePlatform();
   const existing = profile?.kyc;
 
   const [panNumber, setPanNumber] = useState(existing?.panNumber ?? "");
   const [aadhaarLast4, setAadhaarLast4] = useState(existing?.aadhaarLast4 ?? "");
   const [dealerNotes, setDealerNotes] = useState(existing?.dealerNotes ?? "");
-  const [uploadedDocs, setUploadedDocs] = useState<string[]>([]);
+  const [uploadedDocs, setUploadedDocs] = useState<KycDocumentType[]>([]);
   const [uploadingDoc, setUploadingDoc] = useState<KycDocumentType | null>(null);
+  const [errors, setErrors] = useState<{ pan?: string; aadhaar?: string }>({});
+  const [submitting, setSubmitting] = useState(false);
 
-  const canSubmit =
-    (dealerAccess === "pending" || userRole === "broker") &&
-    (!existing || existing.status === "draft" || existing.status === "rejected");
+  const isDealer = dealerAccess === "pending" || userRole === "broker";
+  const canSubmit = isDealer && (!existing || existing.status === "draft" || existing.status === "rejected");
 
-  const handleSubmit = () => {
-    if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/i.test(panNumber.trim())) {
-      appAlert("Invalid PAN", "Enter a valid 10-character PAN (e.g. ABCDE1234F).");
-      return;
+  const upload = async (doc: KycDocumentType) => {
+    setUploadingDoc(doc);
+    const ok = await pickAndUploadKycDocument(doc);
+    setUploadingDoc(null);
+    if (ok) {
+      setUploadedDocs((prev) => (prev.includes(doc) ? prev : [...prev, doc]));
+      toast("Document uploaded");
     }
-    if (!/^\d{4}$/.test(aadhaarLast4.trim())) {
-      appAlert("Invalid Aadhaar", "Enter the last 4 digits of Aadhaar only.");
-      return;
-    }
-    void (async () => {
-      await submitKyc({
-        panNumber: panNumber.trim(),
-        aadhaarLast4: aadhaarLast4.trim(),
-        dealerNotes: dealerNotes.trim() || undefined,
-      });
-      appAlert(
-        "KYC submitted",
-        "Status is pending. Web admin reviews documents — this app only shows status.",
-        [{ text: "OK", onPress: () => router.back() }],
-      );
-    })();
   };
 
-  const inputStyle = {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    ...type.body,
-    color: colors.ink,
+  const submit = async () => {
+    const e: typeof errors = {};
+    if (!PAN_RE.test(panNumber.trim())) e.pan = "Enter a valid PAN, e.g. ABCDE1234F.";
+    if (!/^\d{4}$/.test(aadhaarLast4.trim())) e.aadhaar = "Enter only the last 4 digits.";
+    setErrors(e);
+    if (Object.keys(e).length) return;
+
+    setSubmitting(true);
+    const result = await submitKyc({
+      panNumber: panNumber.trim(),
+      aadhaarLast4: aadhaarLast4.trim(),
+      dealerNotes: dealerNotes.trim() || undefined,
+    });
+    setSubmitting(false);
+    if (!result.ok) {
+      appAlert("Couldn't submit KYC", result.message);
+      return;
+    }
+    toast("KYC sent for review");
+    back();
   };
+
+  if (!isDealer) {
+    return (
+      <Screen title="Dealer KYC" fallbackHref={"/(tabs)/profile" as Href}>
+        <EmptyState
+          icon={ShieldCheck}
+          title="Register as a dealer first"
+          message="KYC is part of dealer registration. Apply as a dealer, then verify your identity here."
+        />
+      </Screen>
+    );
+  }
 
   return (
-    <SafeAreaView edges={["top", "bottom"]} style={{ flex: 1, backgroundColor: colors.bg }}>
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          paddingHorizontal: spacing.lg,
-          paddingVertical: spacing.md,
-          borderBottomWidth: 1,
-          borderBottomColor: colors.border,
-          gap: spacing.sm,
-        }}
-      >
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <ChevronLeft size={22} color={colors.ink} />
-        </Pressable>
-        <Text style={{ ...type.heading, color: colors.ink, flex: 1 }}>Dealer KYC</Text>
-      </View>
-
-      <KeyboardAvoidingView
-        behavior={process.env.EXPO_OS === "ios" ? "padding" : undefined}
-        style={{ flex: 1 }}
-      >
-        <ScrollView contentContainerStyle={{ padding: spacing.xl, gap: spacing.md }}>
-          <Text style={{ ...type.body, color: colors.inkMuted }}>
-            Submit identity documents for review. Approve / reject happens on web admin — Expo
-            only shows status.
-          </Text>
-
-          {existing ? (
-            <View
-              style={{
-                backgroundColor: colors.surface,
-                borderWidth: 1,
-                borderColor: colors.border,
-                borderRadius: radius.lg,
-                padding: spacing.md,
-                gap: spacing.xs,
-                boxShadow: shadow.card,
-              }}
-            >
-              <Text style={{ ...type.label, color: colors.inkMuted }}>CURRENT STATUS</Text>
-              <Text style={{ ...type.heading, color: colors.ink }}>
-                {KYC_STATUS_LABEL[existing.status]}
-              </Text>
-              {existing.rejectionReason ? (
-                <Text style={{ ...type.caption, color: colors.danger }}>
-                  {existing.rejectionReason}
-                </Text>
-              ) : null}
-              {existing.submittedAt ? (
-                <Text style={{ ...type.micro, color: colors.inkMuted }}>
-                  Submitted {new Date(existing.submittedAt).toLocaleString()}
-                </Text>
-              ) : null}
-            </View>
+    <Screen
+      title="Dealer KYC"
+      subtitle="Verify your identity to unlock dealer tools"
+      fallbackHref={"/(dealer)" as Href}
+      footer={
+        canSubmit ? (
+          <Button label="Submit for review" size="lg" fullWidth loading={submitting} onPress={() => void submit()} />
+        ) : undefined
+      }
+    >
+      {existing ? (
+        <View style={[styles.status, existing.status === "rejected" && styles.statusWarn]}>
+          <StatusBadge label={KYC_STATUS_LABEL[existing.status]} />
+          {existing.rejectionReason ? (
+            <Text style={styles.body}>Not approved: {existing.rejectionReason}. Update your details and resubmit.</Text>
+          ) : existing.status === "pending" ? (
+            <Text style={styles.body}>Our team is reviewing your documents. We&apos;ll notify you once it&apos;s done.</Text>
+          ) : existing.status === "approved" ? (
+            <Text style={styles.body}>Your identity is verified.</Text>
           ) : null}
-
-          {canSubmit ? (
-            <>
-              <Text style={{ ...type.label, color: colors.inkMuted }}>PAN NUMBER *</Text>
-              <TextInput
-                value={panNumber}
-                onChangeText={setPanNumber}
-                placeholder="ABCDE1234F"
-                placeholderTextColor={colors.inkMuted}
-                autoCapitalize="characters"
-                maxLength={10}
-                style={inputStyle}
-              />
-
-              <Text style={{ ...type.label, color: colors.inkMuted }}>AADHAAR LAST 4 *</Text>
-              <TextInput
-                value={aadhaarLast4}
-                onChangeText={setAadhaarLast4}
-                placeholder="1234"
-                placeholderTextColor={colors.inkMuted}
-                keyboardType="number-pad"
-                maxLength={4}
-                style={inputStyle}
-              />
-
-              <Text style={{ ...type.label, color: colors.inkMuted }}>NOTES</Text>
-              <TextInput
-                value={dealerNotes}
-                onChangeText={setDealerNotes}
-                placeholder="Optional note for reviewers"
-                placeholderTextColor={colors.inkMuted}
-                multiline
-                style={{ ...inputStyle, minHeight: 80, textAlignVertical: "top" as const }}
-              />
-
-              <Text style={{ ...type.caption, color: colors.inkMuted }}>
-                {isApiMode
-                  ? "Upload supporting documents, then submit for web admin review."
-                  : "Document upload requires API mode. Form fields are stored locally in mock mode."}
-              </Text>
-
-              {isApiMode
-                ? DOC_TYPES.map((doc) => (
-                    <Pressable
-                      key={doc.type}
-                      disabled={uploadingDoc !== null}
-                      onPress={() => {
-                        void (async () => {
-                          setUploadingDoc(doc.type);
-                          const ok = await pickAndUploadKycDocument(doc.type);
-                          setUploadingDoc(null);
-                          if (ok) {
-                            setUploadedDocs((prev) =>
-                              prev.includes(doc.type) ? prev : [...prev, doc.type],
-                            );
-                            appAlert("Uploaded", `${doc.label} uploaded.`);
-                          }
-                        })();
-                      }}
-                      style={({ pressed }) => ({
-                        height: 44,
-                        borderRadius: radius.md,
-                        borderWidth: 1,
-                        borderColor: colors.border,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        opacity: pressed || uploadingDoc ? 0.7 : 1,
-                        backgroundColor: colors.surface,
-                      })}
-                    >
-                      <Text style={{ ...type.label, color: colors.ink }}>
-                        {uploadingDoc === doc.type
-                          ? "Uploading…"
-                          : uploadedDocs.includes(doc.type)
-                            ? `✓ ${doc.label}`
-                            : doc.label}
-                      </Text>
-                    </Pressable>
-                  ))
-                : null}
-
-              <Pressable
-                onPress={handleSubmit}
-                style={({ pressed }) => ({
-                  height: 50,
-                  marginTop: spacing.sm,
-                  borderRadius: radius.md,
-                  backgroundColor: colors.accent,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  opacity: pressed ? 0.85 : 1,
-                  boxShadow: shadow.accent,
-                })}
-              >
-                <Text style={{ ...type.emphasis, color: colors.onAccent }}>Submit for review</Text>
-              </Pressable>
-            </>
-          ) : (
-            <Text style={{ ...type.body, color: colors.inkMuted }}>
-              {dealerAccess === "none" && userRole !== "broker"
-                ? "Register as a dealer first, then submit KYC."
-                : "KYC is awaiting review or already approved. No further edits in the app."}
+          {existing.submittedAt ? (
+            <Text style={styles.meta}>
+              Submitted {new Date(existing.submittedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
             </Text>
+          ) : null}
+        </View>
+      ) : (
+        <Text style={styles.body}>
+          Share your PAN and Aadhaar details with supporting documents. Our team reviews them, usually within 2 working days.
+        </Text>
+      )}
+
+      {canSubmit ? (
+        <>
+          <View style={styles.fields}>
+            <TextField
+              label="PAN number"
+              required
+              autoCapitalize="characters"
+              maxLength={10}
+              placeholder="ABCDE1234F"
+              value={panNumber}
+              onChangeText={(v) => {
+                setPanNumber(v);
+                setErrors((x) => ({ ...x, pan: undefined }));
+              }}
+              error={errors.pan}
+            />
+            <TextField
+              label="Aadhaar, last 4 digits"
+              required
+              keyboardType="number-pad"
+              maxLength={4}
+              placeholder="1234"
+              value={aadhaarLast4}
+              onChangeText={(v) => {
+                setAadhaarLast4(v);
+                setErrors((x) => ({ ...x, aadhaar: undefined }));
+              }}
+              error={errors.aadhaar}
+            />
+            <TextField
+              label="Notes for our team"
+              multiline
+              placeholder="Optional"
+              value={dealerNotes}
+              onChangeText={setDealerNotes}
+            />
+          </View>
+
+          {isApiMode ? (
+            <ListSection title="Documents" footer="Clear photos of the original documents. JPG or PNG.">
+              {DOC_TYPES.map((doc) => {
+                const done = uploadedDocs.includes(doc.type);
+                return (
+                  <ListRow
+                    key={doc.type}
+                    icon={done ? CheckCircle : FileCheck}
+                    iconTint={done ? colors.success : undefined}
+                    title={doc.label}
+                    value={uploadingDoc === doc.type ? "Uploading…" : done ? "Uploaded" : "Add"}
+                    disabled={uploadingDoc !== null}
+                    onPress={() => void upload(doc.type)}
+                  />
+                );
+              })}
+            </ListSection>
+          ) : (
+            <Text style={styles.meta}>Document upload needs a connection to SqftGo servers.</Text>
           )}
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+        </>
+      ) : null}
+    </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  status: { gap: spacing.sm, padding: spacing.lg, borderRadius: radius.lg, backgroundColor: colors.surfaceSubtle, alignItems: "flex-start" },
+  statusWarn: { backgroundColor: colors.warningSoft, borderWidth: 1, borderColor: colors.warningBorder },
+  body: { ...type.body, color: colors.inkSecondary },
+  meta: { ...type.caption, color: colors.inkMuted },
+  fields: { gap: spacing.lg },
+});

@@ -1,131 +1,86 @@
-import React, { useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
-import { Image } from "expo-image";
+import React from "react";
+import { Linking, Platform, Text, View } from "react-native";
 
-import { MapPin, PlusCircle, Sparkles, Train } from "@/components/ui/icons";
+import { Button } from "@/components/ds/Button";
+import { MapPin, PlusCircle, Sparkles, Train, type IconComponent } from "@/components/ui/icons";
 import type { Property } from "@/data/types";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 
 import { PropertySection } from "./PropertySection";
 
-const MAP_IMAGE =
-  "https://images.unsplash.com/photo-1569336415962-a4bd9f69cd83?auto=format&fit=crop&w=800&h=400&q=80";
-
-// Nearby landmarks from the dealer listing, with generic fallbacks for older properties.
-function nearbyFacilities(property: Property) {
-  return [
-    {
-      id: "hospital",
-      name: "Hospital",
-      icon: PlusCircle,
-      detail: property.nearbyHospital || "Ask the dealer for the nearest hospital",
-    },
-    {
-      id: "school",
-      name: "School",
-      icon: Sparkles,
-      detail: property.nearbySchool || "Ask the dealer for the nearest school",
-    },
-    {
-      id: "transport",
-      name: "Transportation",
-      icon: Train,
-      detail: property.nearbyTransportation || "Ask the dealer for transit access",
-    },
-  ];
+function openInMaps(property: Property) {
+  const query = encodeURIComponent(
+    [property.locality, property.city, property.state ?? "Rajasthan", property.country ?? "India"]
+      .filter(Boolean)
+      .join(", "),
+  );
+  const native = Platform.OS === "ios" ? `maps:0,0?q=${query}` : `geo:0,0?q=${query}`;
+  Linking.openURL(native).catch(() =>
+    Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${query}`),
+  );
 }
 
 export function LocationSection({ property }: { property: Property }) {
-  const facilities = nearbyFacilities(property);
-  const [selectedId, setSelectedId] = useState(facilities[0].id);
-  const selected = facilities.find((f) => f.id === selectedId) ?? facilities[0];
+  const landmarks: { label: string; detail: string; icon: IconComponent }[] = [
+    property.nearbyHospital ? { label: "Hospital", detail: property.nearbyHospital, icon: PlusCircle } : null,
+    property.nearbySchool ? { label: "School", detail: property.nearbySchool, icon: Sparkles } : null,
+    property.nearbyTransportation
+      ? { label: "Transport", detail: property.nearbyTransportation, icon: Train }
+      : null,
+  ].filter((x): x is { label: string; detail: string; icon: IconComponent } => x !== null);
 
   return (
-    <PropertySection title="Location & nearby">
-      <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
-        <MapPin size={15} color={colors.accent} />
-        <Text style={{ ...type.body, color: colors.inkSecondary }}>
-          {property.locality}, {property.city}
+    <PropertySection title="Location">
+      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: spacing.sm }}>
+        <MapPin size={18} color={colors.accent} />
+        <Text style={{ ...type.body, color: colors.ink, flex: 1 }} selectable>
+          {[property.locality, property.city, property.state].filter(Boolean).join(", ")}
         </Text>
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: spacing.sm }}
-      >
-        {facilities.map(({ id, name, icon: Icon }) => {
-          const active = id === selectedId;
-          return (
-            <Pressable
-              key={id}
-              onPress={() => setSelectedId(id)}
-              accessibilityRole="button"
-              accessibilityState={{ selected: active }}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 6,
-                paddingHorizontal: spacing.md,
-                paddingVertical: spacing.sm,
-                borderRadius: radius.full,
-                borderWidth: 1,
-                borderColor: active ? colors.accent : colors.border,
-                backgroundColor: active ? colors.accentSoft : colors.surface,
-              }}
-            >
-              <Icon size={15} color={active ? colors.accent : colors.inkSecondary} />
-              <Text
-                style={{ ...type.label, fontWeight: "600", color: active ? colors.accent : colors.ink }}
-              >
-                {name}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-
-      <View
-        style={{
-          height: 170,
-          borderRadius: radius.lg,
-          borderCurve: "continuous",
-          overflow: "hidden",
-          backgroundColor: colors.surfaceSubtle,
-        }}
-      >
-        <Image source={{ uri: MAP_IMAGE }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+      {landmarks.length > 0 ? (
         <View
           style={{
-            position: "absolute",
-            left: spacing.md,
-            right: spacing.md,
-            bottom: spacing.md,
-            flexDirection: "row",
-            alignItems: "center",
-            gap: spacing.sm,
-            padding: spacing.sm + 2,
-            borderRadius: radius.md,
-            backgroundColor: colors.surface,
+            borderRadius: radius.lg,
+            borderCurve: "continuous",
+            borderWidth: 1,
+            borderColor: colors.border,
+            overflow: "hidden",
           }}
         >
-          <View
-            style={{
-              width: 30,
-              height: 30,
-              borderRadius: radius.full,
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: colors.accent,
-            }}
-          >
-            <MapPin size={16} color={colors.onAccent} />
-          </View>
-          <Text style={{ ...type.caption, color: colors.ink, flex: 1 }} numberOfLines={2}>
-            {selected.detail}
-          </Text>
+          {landmarks.map(({ label, detail, icon: Icon }, i) => (
+            <View
+              key={label}
+              style={{
+                flexDirection: "row",
+                gap: spacing.md,
+                padding: spacing.md,
+                borderTopWidth: i === 0 ? 0 : 1,
+                borderTopColor: colors.border,
+              }}
+            >
+              <View
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: radius.sm,
+                  backgroundColor: colors.accentSoft,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Icon size={16} color={colors.accent} />
+              </View>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={{ ...type.caption, color: colors.inkMuted }}>{label}</Text>
+                <Text style={{ ...type.body, color: colors.ink }}>{detail}</Text>
+              </View>
+            </View>
+          ))}
         </View>
-      </View>
+      ) : null}
+
+      <Button label="Open in Maps" icon={MapPin} variant="secondary" onPress={() => openInMaps(property)} fullWidth />
     </PropertySection>
   );
 }

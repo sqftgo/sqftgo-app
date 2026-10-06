@@ -44,6 +44,23 @@ export function ownsDirectory(
   return false;
 }
 
+/** Active listings belonging to a directory profile (mirrors web `filterDealerListings`). */
+export function filterDealerListings(
+  properties: Property[],
+  profile: Pick<DirectoryProfile, "userId" | "email" | "mobile">,
+): Property[] {
+  const active = properties.filter((p) => p.status === "Active");
+  if (profile.userId) {
+    return active.filter((p) => p.ownerId === profile.userId || p.brokerId === profile.userId);
+  }
+  const email = profile.email?.toLowerCase();
+  return active.filter(
+    (p) =>
+      (email && p.ownerEmail?.toLowerCase() === email) ||
+      (profile.mobile && p.ownerPhone === profile.mobile),
+  );
+}
+
 export function ownedPropertyIds(
   properties: Property[],
   opts: { userId?: string; email?: string },

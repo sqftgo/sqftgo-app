@@ -1,8 +1,11 @@
-import React, { useCallback, useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "expo-router";
+import React, { useState } from "react";
 import { FlatList, Pressable, Text, View } from "react-native";
-import { BellOff } from "@/components/ui/icons";
+import { BellOff, ChevronRight } from "@/components/ui/icons";
 
 import { ModalSheet, ModalSheetHeader } from "@/components/ui/modal-sheet";
+import { useApp } from "@/context/AppContext";
 import { seedNotifications, type AppNotification } from "@/data/notifications";
 import { isApiMode } from "@/lib/api/config";
 import {
@@ -12,39 +15,45 @@ import {
 } from "@/lib/api/services/notifications";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 
+const NOTIFICATIONS_KEY = ["notifications"] as const;
+
 /** Owns notification state; pass the result into NotificationsSheet. */
 export function useNotifications() {
-  const [notifications, setNotifications] = useState<AppNotification[]>(
-    isApiMode ? [] : seedNotifications,
-  );
+  const { isLoggedIn } = useApp();
+  const queryClient = useQueryClient();
+  const [local, setLocal] = useState<AppNotification[]>(seedNotifications);
 
-  const refresh = useCallback(async () => {
-    if (!isApiMode) return;
-    try {
-      const items = await apiListNotifications();
-      setNotifications(items);
-    } catch {
-      // keep current
-    }
-  }, []);
+  const query = useQuery({
+    queryKey: NOTIFICATIONS_KEY,
+    queryFn: apiListNotifications,
+    enabled: isApiMode && isLoggedIn,
+    refetchInterval: 2 * 60_000,
+  });
 
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
-
+  const notifications = isApiMode ? (isLoggedIn ? (query.data ?? []) : []) : local;
   const unreadCount = notifications.filter((n) => !n.read).length;
 
+  const update = (fn: (list: AppNotification[]) => AppNotification[]) => {
+    if (isApiMode) queryClient.setQueryData<AppNotification[]>(NOTIFICATIONS_KEY, (prev) => fn(prev ?? []));
+    else setLocal(fn);
+  };
+
   const markRead = (id: string) => {
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
-    if (isApiMode) apiMarkNotificationRead(id).catch(() => {});
+    if (notifications.find((n) => n.id === id)?.read) return;
+    update((list) => list.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    if (isApiMode) {
+      apiMarkNotificationRead(id).catch(() => void queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_KEY }));
+    }
   };
 
   const markAllRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-    if (isApiMode) apiMarkAllNotificationsRead().catch(() => {});
+    update((list) => list.map((n) => ({ ...n, read: true })));
+    if (isApiMode) {
+      apiMarkAllNotificationsRead().catch(() => void queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_KEY }));
+    }
   };
 
-  return { notifications, unreadCount, markRead, markAllRead, refresh };
+  return { notifications, unreadCount, markRead, markAllRead, refresh: () => void query.refetch() };
 }
 
 interface NotificationsSheetProps {
@@ -64,6 +73,14 @@ export function NotificationsSheet({
   onMarkRead,
   onMarkAllRead,
 }: NotificationsSheetProps) {
+  const router = useRouter();
+  const open = (item: AppNotification) => {
+    onMarkRead(item.id);
+    if (!item.href) return;
+    onClose();
+    router.push(item.href);
+  };
+
   const markAllAction = unreadCount > 0 ? (
     <Pressable onPress={onMarkAllRead} hitSlop={8} accessibilityRole="button">
       <Text style={{ ...type.label, color: colors.accent }}>Mark all read</Text>
@@ -95,9 +112,10 @@ export function NotificationsSheet({
           }}
           renderItem={({ item }) => (
             <Pressable
-              onPress={() => onMarkRead(item.id)}
+              onPress={() => open(item)}
               accessibilityRole="button"
               accessibilityLabel={item.title}
+              accessibilityHint={item.href ? "Opens the related screen" : undefined}
               style={({ pressed }) => ({
                 flexDirection: "row",
                 gap: spacing.md,
@@ -140,6 +158,7 @@ export function NotificationsSheet({
                   {item.message}
                 </Text>
               </View>
+              {item.href ? <ChevronRight size={16} color={colors.inkMuted} style={{ alignSelf: "center" }} /> : null}
             </Pressable>
           )}
         />

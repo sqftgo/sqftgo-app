@@ -1,12 +1,8 @@
-/** Lakh / Crore formatting used across the property detail screen. */
+import { formatIndianPrice } from "@/lib/format";
+
+/** Lakh / Crore with the unit spelled out, used on the property detail screen. */
 export function formatIndianCurrency(num: number): string {
-  if (num >= 10000000) {
-    return `₹${(num / 10000000).toFixed(2)} Crore`;
-  }
-  if (num >= 100000) {
-    return `₹${(num / 100000).toFixed(1)} Lakh`;
-  }
-  return `₹${Math.round(num).toLocaleString("en-IN")}`;
+  return formatIndianPrice(num, { long: true });
 }
 
 export function isRentalPurpose(purpose: string): boolean {

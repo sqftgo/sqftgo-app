@@ -32,11 +32,18 @@ export async function apiCreateVisit(
 
 export async function apiPatchVisit(
   id: string,
-  body: { status: VisitStatus },
+  body: { status?: VisitStatus; date?: string; time?: string },
 ): Promise<SiteVisit> {
   const raw = await apiFetch<Parameters<typeof mapVisitFromApi>[0]>(
     `/api/visits/${id}`,
-    { method: "PATCH", body: { status: mapVisitStatusToApi(body.status) } },
+    {
+      method: "PATCH",
+      body: {
+        ...(body.status ? { status: mapVisitStatusToApi(body.status) } : {}),
+        ...(body.date ? { date: body.date } : {}),
+        ...(body.time ? { time: body.time } : {}),
+      },
+    },
   );
   return mapVisitFromApi(raw);
 }

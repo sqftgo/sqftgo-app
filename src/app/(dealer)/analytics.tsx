@@ -1,185 +1,142 @@
-import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
-import { useRouter, type Href } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "expo-router";
+import React from "react";
+import { StyleSheet, Text, View } from "react-native";
 
-import { ScreenNavbar } from "@/components/ui/screen-navbar";
+import {
+  BarChart,
+  DonutChart,
+  ErrorState,
+  ListRow,
+  ListSection,
+  ListSkeleton,
+  Screen,
+  StatCard,
+  StatGrid,
+} from "@/components/ds";
+import { EmptyState } from "@/components/ui/empty-state";
+import { BarChart3, Building2, Calendar, MessageSquare, Wallet } from "@/components/ui/icons";
 import { useApp } from "@/context/AppContext";
-import type { DealerAnalytics } from "@/data/types";
 import { formatIndianPrice } from "@/lib/format";
 import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
+
+function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <View style={styles.panel}>
+      <Text style={styles.panelTitle}>{title}</Text>
+      {children}
+    </View>
+  );
+}
 
 export default function DealerAnalyticsScreen() {
   const router = useRouter();
   const { fetchDealerAnalytics } = useApp();
-  const [data, setData] = useState<DealerAnalytics | null>(null);
-  const [loading, setLoading] = useState(true);
+  const query = useQuery({ queryKey: ["dealer", "analytics"], queryFn: fetchDealerAnalytics });
+  const data = query.data;
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      const analytics = await fetchDealerAnalytics();
-      if (!cancelled) {
-        setData(analytics);
-        setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [fetchDealerAnalytics]);
+  const statusData = data
+    ? [
+        { label: "Active", value: data.listingsActive, color: colors.success },
+        { label: "In review", value: data.listingsPending, color: colors.gold },
+        { label: "Draft", value: data.listingsDraft, color: colors.inkMuted },
+        { label: "Not approved", value: data.listingsRejected, color: colors.danger },
+      ].filter((d) => d.value > 0)
+    : [];
 
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.bg }}>
-      <View style={{ paddingHorizontal: spacing.lg }}>
-        <ScreenNavbar title="Analytics" subtitle="How your listings are performing" />
-      </View>
-
-      {loading || !data ? (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator color={colors.accent} />
-        </View>
+    <Screen
+      title="Analytics"
+      root
+      refreshing={query.isRefetching}
+      onRefresh={() => void query.refetch()}
+      contentStyle={{ gap: spacing.lg }}
+    >
+      {query.isPending ? (
+        <ListSkeleton rows={4} />
+      ) : !data ? (
+        <ErrorState message="Check your connection and try again." onRetry={() => void query.refetch()} />
+      ) : data.listingsTotal === 0 ? (
+        <EmptyState
+          icon={BarChart3}
+          title="No data yet"
+          message="Once you add listings, their views, inquiries and visits show up here."
+          actionLabel="Add a listing"
+          onAction={() => router.push("/post-property")}
+        />
       ) : (
-        <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing["3xl"], gap: spacing.md }}>
-          {/* KPI Grid */}
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
-            {[
-              { label: "Listings", value: data.listingsTotal },
-              { label: "Active", value: data.listingsActive },
-              { label: "Pending", value: data.listingsPending },
-              { label: "Draft", value: data.listingsDraft },
-              { label: "Inquiries", value: data.inquiriesTotal },
-              { label: "Visits", value: data.visitsTotal },
-              { label: "Visits pending", value: data.visitsPending },
-              { label: "Visits confirmed", value: data.visitsConfirmed },
-            ].map((kpi) => (
-              <View
-                key={kpi.label}
-                style={{
-                  width: "47%",
-                  flexGrow: 1,
-                  backgroundColor: colors.surface,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  borderRadius: radius.md,
-                  borderCurve: "continuous",
-                  padding: spacing.md,
-                  boxShadow: shadow.card,
-                }}
-              >
-                <Text style={{ ...type.heading, color: colors.ink }}>{kpi.value}</Text>
-                <Text style={{ ...type.caption, color: colors.inkMuted }}>{kpi.label}</Text>
-              </View>
-            ))}
-          </View>
+        <>
+          <StatGrid>
+            <StatCard
+              label="Active listings"
+              value={data.listingsActive}
+              icon={Building2}
+              hint={`${data.listingsTotal} total`}
+              onPress={() => router.push("/(dealer)/properties")}
+            />
+            <StatCard
+              label="Inquiries"
+              value={data.inquiriesTotal}
+              icon={MessageSquare}
+              onPress={() => router.push("/(dealer)/inquiries")}
+            />
+            <StatCard
+              label="Site visits"
+              value={data.visitsTotal}
+              icon={Calendar}
+              hint={data.visitsPending > 0 ? `${data.visitsPending} to confirm` : `${data.visitsConfirmed} confirmed`}
+              onPress={() => router.push("/manage-visits")}
+            />
+            <StatCard label="Inventory value" value={formatIndianPrice(data.inventoryValueSum)} icon={Wallet} />
+          </StatGrid>
 
-          {/* Inventory Value */}
-          <View
-            style={{
-              backgroundColor: colors.surface,
-              borderWidth: 1,
-              borderColor: colors.border,
-              borderRadius: radius.lg,
-              borderCurve: "continuous",
-              padding: spacing.lg,
-              boxShadow: shadow.card,
-            }}
-          >
-            <Text style={{ ...type.label, color: colors.inkMuted }}>INVENTORY VALUE</Text>
-            <Text style={{ ...type.title, color: colors.ink, marginTop: spacing.xs }}>
-              {formatIndianPrice(data.inventoryValueSum)}
-            </Text>
-          </View>
-
-          {/* City Breakdown */}
-          {data.cityBreakdown.length > 0 ? (
-            <View
-              style={{
-                backgroundColor: colors.surface,
-                borderWidth: 1,
-                borderColor: colors.border,
-                borderRadius: radius.lg,
-                borderCurve: "continuous",
-                padding: spacing.lg,
-                gap: spacing.sm,
-                boxShadow: shadow.card,
-              }}
-            >
-              <Text style={{ ...type.label, color: colors.inkMuted }}>BY CITY</Text>
-              {data.cityBreakdown.map((row) => (
-                <View
-                  key={row.city}
-                  style={{ flexDirection: "row", justifyContent: "space-between" }}
-                >
-                  <Text style={{ ...type.body, color: colors.ink }}>{row.city}</Text>
-                  <Text style={{ ...type.emphasis, color: colors.ink }}>{row.count}</Text>
-                </View>
-              ))}
-            </View>
+          {statusData.length > 0 ? (
+            <Panel title="Listings by status">
+              <DonutChart data={statusData} centerLabel="listings" />
+            </Panel>
           ) : null}
 
-          {/* Monthly Inquiries */}
           {data.monthlyInquiries.length > 0 ? (
-            <View
-              style={{
-                backgroundColor: colors.surface,
-                borderWidth: 1,
-                borderColor: colors.border,
-                borderRadius: radius.lg,
-                borderCurve: "continuous",
-                padding: spacing.lg,
-                gap: spacing.sm,
-                boxShadow: shadow.card,
-              }}
-            >
-              <Text style={{ ...type.label, color: colors.inkMuted }}>MONTHLY INQUIRIES</Text>
-              {data.monthlyInquiries.map((row) => (
-                <View
-                  key={row.month}
-                  style={{ flexDirection: "row", justifyContent: "space-between" }}
-                >
-                  <Text style={{ ...type.body, color: colors.ink }}>{row.month}</Text>
-                  <Text style={{ ...type.emphasis, color: colors.ink }}>{row.count}</Text>
-                </View>
-              ))}
-            </View>
+            <Panel title="Inquiries per month">
+              <BarChart data={data.monthlyInquiries.map((m) => ({ label: m.month, value: m.count }))} />
+            </Panel>
           ) : null}
 
-          {/* Top Listings */}
-          {data.topListings.length > 0 ? (
-            <View
-              style={{
-                backgroundColor: colors.surface,
-                borderWidth: 1,
-                borderColor: colors.border,
-                borderRadius: radius.lg,
-                borderCurve: "continuous",
-                padding: spacing.lg,
-                gap: spacing.sm,
-                boxShadow: shadow.card,
-              }}
-            >
-              <Text style={{ ...type.label, color: colors.inkMuted }}>TOP LISTINGS</Text>
-              {data.topListings.map((row) => (
-                <Pressable
-                  key={row.id}
-                  onPress={() => router.push(`/edit-property/${row.id}` as Href)}
-                  style={{ paddingVertical: spacing.xs }}
-                >
-                  <Text style={{ ...type.emphasis, color: colors.ink }} numberOfLines={1}>
-                    {row.title}
-                  </Text>
-                  <Text style={{ ...type.caption, color: colors.inkMuted }}>
-                    {row.city} · {row.status} · {row.inquiryCount} inquiries
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
+          {data.cityBreakdown.length > 1 ? (
+            <Panel title="Listings by city">
+              <BarChart data={data.cityBreakdown.map((c) => ({ label: c.city, value: c.count }))} />
+            </Panel>
           ) : null}
-        </ScrollView>
+
+          {data.topListings.length > 0 ? (
+            <ListSection title="Most inquired">
+              {data.topListings.map((row) => (
+                <ListRow
+                  key={row.id}
+                  title={row.title}
+                  subtitle={`${row.city} · ${row.status}`}
+                  value={`${row.inquiryCount}`}
+                  onPress={() => router.push({ pathname: "/property/[id]", params: { id: row.id } })}
+                />
+              ))}
+            </ListSection>
+          ) : null}
+        </>
       )}
-    </SafeAreaView>
+    </Screen>
   );
 }
 
+const styles = StyleSheet.create({
+  panel: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    borderCurve: "continuous",
+    padding: spacing.lg,
+    gap: spacing.lg,
+    boxShadow: shadow.card,
+  },
+  panelTitle: { ...type.emphasis, color: colors.ink },
+});

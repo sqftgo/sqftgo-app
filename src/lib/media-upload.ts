@@ -44,8 +44,58 @@ export async function pickAndUploadPropertyImage(): Promise<string | null> {
   }
 }
 
+/** Multi-select up to `limit` photos and upload them sequentially; returns uploaded URLs. */
+export async function pickAndUploadPropertyImages(
+  limit: number,
+  onProgress?: (done: number, total: number) => void,
+): Promise<string[]> {
+  if (limit <= 0) return [];
+  if (!isApiMode) {
+    appAlert("API mode required", "Image upload needs EXPO_PUBLIC_API_URL.");
+    return [];
+  }
+  if (!(await ensureLibraryPermission())) return [];
+
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ["images"],
+    quality: 0.85,
+    allowsMultipleSelection: true,
+    selectionLimit: limit,
+    orderedSelection: true,
+  });
+  if (result.canceled || !result.assets.length) return [];
+
+  const assets = result.assets.slice(0, limit);
+  const urls: string[] = [];
+  let failed = 0;
+  onProgress?.(0, assets.length);
+  for (const [i, asset] of assets.entries()) {
+    try {
+      const { url } = await apiUploadPropertyImage({
+        uri: asset.uri,
+        fileName: asset.fileName ?? `property-${Date.now()}-${i}.jpg`,
+        mimeType: asset.mimeType ?? "image/jpeg",
+      });
+      urls.push(url);
+    } catch {
+      failed += 1;
+    }
+    onProgress?.(i + 1, assets.length);
+  }
+  if (failed) {
+    appAlert(
+      "Some photos didn't upload",
+      `${failed} of ${assets.length} photos failed. Try adding them again.`,
+    );
+  }
+  return urls;
+}
+
 export async function pickAndUploadAvatar(): Promise<string | null> {
-  if (!isApiMode) return null;
+  if (!isApiMode) {
+    appAlert("API mode required", "Photo upload needs EXPO_PUBLIC_API_URL.");
+    return null;
+  }
   if (!(await ensureLibraryPermission())) return null;
 
   const result = await ImagePicker.launchImageLibraryAsync({
@@ -64,7 +114,8 @@ export async function pickAndUploadAvatar(): Promise<string | null> {
       mimeType: asset.mimeType ?? "image/jpeg",
     });
     return url;
-  } catch {
+  } catch (e) {
+    appAlert("Upload failed", e instanceof Error ? e.message : "Could not upload photo.");
     return null;
   }
 }

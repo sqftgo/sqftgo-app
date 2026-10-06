@@ -7,7 +7,7 @@
  * for a directory card; dashboard unlock still needs broker role.
  */
 
-import React, { createContext, useCallback, useEffect, useMemo, useState } from "react";
+import React, { createContext, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { seedDirectoryProfiles } from "@/data/directory";
@@ -30,15 +30,18 @@ import type {
   VisitStatus,
 } from "@/data/types";
 import { isApiMode } from "@/lib/api/config";
-import { setAccessToken } from "@/lib/api/auth-token";
+import { clearTokens, getTokens, setTokens } from "@/lib/api/auth-token";
+import { ApiError, onSessionEvent } from "@/lib/api/client";
 import {
   apiForgotPassword,
+  apiGoogleSignIn,
   apiLogin,
   apiLogout,
   apiMe,
   apiSignup,
   apiUpdateMe,
   apiUpdatePassword,
+  type AuthMeResponse,
 } from "@/lib/api/services/auth";
 import { deriveDealerAnalytics, apiGetDealerAnalytics } from "@/lib/api/services/analytics";
 import {
@@ -125,7 +128,9 @@ interface Session {
   directoryProfileId?: string;
   kyc?: DealerKyc;
   joinedDate: string;
-  accessToken?: string;
+  bio?: string;
+  city?: string;
+  avatarUrl?: string;
 }
 
 const GUEST_SESSION: Session = {
@@ -219,7 +224,7 @@ const PENDING_DIRECTORY: DirectoryProfile = {
   email: "pending@sqftgo.com",
   website: "https://patelrealty.example",
   mobile: "+91 99000 11122",
-  description: "Awaiting dealer access approval from SqftGo web admin.",
+  description: "Waiting for approval from the SqftGo team.",
   experience: "6 years",
   specialties: ["Residential", "Resale"],
   listingsCount: 0,
@@ -241,6 +246,12 @@ export type AuthResult =
       code: "invalid" | "suspended" | "admin_unsupported" | "exists" | "network";
       message: string;
     };
+
+export type ActionResult = { ok: true } | { ok: false; message: string };
+
+function failure(e: unknown, fallback: string): { ok: false; message: string } {
+  return { ok: false, message: e instanceof Error && e.message ? e.message : fallback };
+}
 
 export interface NotifPrefs {
   inquiries: boolean;
@@ -284,7 +295,7 @@ interface AppContextType {
   }) => Promise<Inquiry | null> | Inquiry | null;
   markInquiryRead: (id: string) => void;
   archiveInquiry: (id: string) => void;
-  replyInquiry: (id: string, replyMessage: string) => void;
+  replyInquiry: (id: string, replyMessage: string) => Promise<ActionResult>;
   createMessageThread: (input: {
     buyerEmail: string;
     propertyId?: string;
@@ -298,8 +309,25 @@ interface AppContextType {
     visitTime: string;
     phone?: string;
     notes?: string;
+    /** Required for guests; defaults to the signed-in account. */
+    name?: string;
+    email?: string;
   }) => Promise<SiteVisit | null> | SiteVisit | null;
-  updateVisitStatus: (id: string, status: VisitStatus) => void;
+  /** Last error from bookVisit / submitInquiry / addProperty, for user-facing messages. */
+  lastActionError: string | null;
+  /** Latest action failure, safe to read right after awaiting an action. */
+  getLastActionError: () => string | null;
+  updateVisitStatus: (id: string, status: VisitStatus) => Promise<ActionResult>;
+  rescheduleVisit: (id: string, input: { date: string; time: string }) => Promise<ActionResult>;
+  cancelVisit: (id: string) => Promise<ActionResult>;
+  refreshVisits: () => Promise<void>;
+  refreshInquiries: () => Promise<void>;
+  refreshMyProperties: () => Promise<void>;
+  /** True when the public listings request failed (offline / server unreachable), as opposed to an empty catalog. */
+  catalogLoadFailed: boolean;
+  reloadCatalog: () => Promise<void>;
+  /** Upserts properties fetched outside the context (detail screen, search pages). */
+  mergeProperties: (items: Property[]) => void;
   fetchDealerAnalytics: () => Promise<DealerAnalytics>;
   updatePassword: (input: {
     currentPassword: string;
@@ -328,6 +356,7 @@ interface AppContextType {
     name: string;
     intent?: "user" | "dealer";
   }) => Promise<AuthResult> | AuthResult;
+  signInWithGoogle: () => Promise<AuthResult & { cancelled?: boolean }>;
   signOut: () => void;
   refreshSessionFromApi: () => Promise<void>;
   updateProfile: (patch: {
@@ -335,19 +364,28 @@ interface AppContextType {
     phone?: string;
     bio?: string;
     city?: string;
-  }) => Promise<void> | void;
+    avatarUrl?: string | null;
+  }) => Promise<ActionResult>;
+  /** Platform-wide maintenance flag from public settings. */
+  maintenanceMode: boolean;
+  /** Message shown after a forced sign-out (session expired / account suspended). */
+  sessionNotice: string | null;
+  clearSessionNotice: () => void;
   forgotPassword: (email: string) => Promise<{ ok: boolean; message?: string }>;
   registerAsDealer: (input: Omit<DirectoryProfile, "id" | "userId" | "listingsCount">) => Promise<{
     ok: boolean;
     message?: string;
   }>;
+  registerServiceProfile: (
+    input: Omit<DirectoryProfile, "id" | "userId" | "listingsCount">,
+  ) => Promise<{ ok: true; profile: DirectoryProfile } | { ok: false; message: string }>;
   /** Demo-only stand-in for web admin role promotion — mock mode only */
   simulateDealerApproval: () => void;
   submitKyc: (input: {
     panNumber: string;
     aadhaarLast4: string;
     dealerNotes?: string;
-  }) => Promise<void> | void;
+  }) => Promise<ActionResult>;
   hasCompletedOnboarding: boolean | undefined;
   setHasCompletedOnboarding: (val: boolean) => void;
   onboardingStep: number;
@@ -398,25 +436,14 @@ function sessionFromAccount(account: StoredAccount): Session {
   };
 }
 
-function sessionFromApiUser(
-  user: {
-    id: string;
-    email: string;
-    name: string;
-    phone?: string;
-    role: UserRole | "admin";
-    status: AccountStatus;
-    dealerAccess?: DealerAccessStatus;
-    listingStatus?: ListerStatus;
-    listingVerifiedAt?: string | null;
-    directoryProfileId?: string;
-    kyc?: DealerKyc;
-    joinedDate?: string;
-    accessToken?: string;
-  },
-  token?: string,
-): Session {
+/**
+ * `/api/auth/me` does not report pending dealer access, listing verification or KYC,
+ * so those are carried over from the previous session when the API omits them.
+ */
+function sessionFromApiUser(user: AuthMeResponse, previous?: Session): Session {
   if (user.role === "admin") return { ...GUEST_SESSION };
+  const carry = previous?.isLoggedIn && previous.accountId === user.id ? previous : undefined;
+  const apiAccess = dealerAccessFromRole(user.role, user.dealerAccess);
   return {
     isLoggedIn: true,
     accountId: user.id,
@@ -425,12 +452,15 @@ function sessionFromApiUser(
     phone: user.phone,
     role: user.role,
     status: user.status,
-    dealerAccess: dealerAccessFromRole(user.role, user.dealerAccess),
-    listingStatus: user.listingStatus ?? "none",
-    directoryProfileId: user.directoryProfileId,
-    kyc: user.kyc,
-    joinedDate: user.joinedDate ?? new Date().toISOString(),
-    accessToken: token ?? user.accessToken,
+    dealerAccess:
+      apiAccess === "none" && carry?.dealerAccess === "pending" ? "pending" : apiAccess,
+    listingStatus: user.listingStatus ?? carry?.listingStatus ?? "none",
+    directoryProfileId: user.directoryProfileId ?? carry?.directoryProfileId,
+    kyc: user.kyc ?? carry?.kyc,
+    joinedDate: user.joinedDate ?? carry?.joinedDate ?? new Date().toISOString(),
+    bio: user.bio,
+    city: user.city,
+    avatarUrl: user.avatarUrl ?? undefined,
   };
 }
 
@@ -448,23 +478,29 @@ function profileFromSession(session: Session): UserProfile | null {
     listingStatus: session.listingStatus,
     directoryProfileId: session.directoryProfileId,
     kyc: session.kyc,
+    bio: session.bio,
+    city: session.city,
+    avatar: session.avatarUrl,
   };
 }
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [selectedCity, setSelectedCityState] = useState("Udaipur");
-  const [properties, setProperties] = useState<Property[]>(seedWithBroker);
+  const [properties, setProperties] = useState<Property[]>(isApiMode ? [] : seedWithBroker);
+  const [catalogLoadFailed, setCatalogLoadFailed] = useState(false);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [visits, setVisits] = useState<SiteVisit[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [messageThreads, setMessageThreads] = useState<MessageThread[]>([]);
   const [messagesByThread, setMessagesByThread] = useState<Record<string, Message[]>>({});
-  const [directoryProfiles, setDirectoryProfiles] = useState<DirectoryProfile[]>([
-    ...seedDirectoryProfiles.map((d, i) =>
-      i === 0 ? { ...d, userId: "acc-broker" } : d,
-    ),
-    PENDING_DIRECTORY,
-  ]);
+  const [directoryProfiles, setDirectoryProfiles] = useState<DirectoryProfile[]>(
+    isApiMode
+      ? []
+      : [
+          ...seedDirectoryProfiles.map((d, i) => (i === 0 ? { ...d, userId: "acc-broker" } : d)),
+          PENDING_DIRECTORY,
+        ],
+  );
   const [accounts, setAccounts] = useState<StoredAccount[]>(DEMO_ACCOUNTS);
   const [session, setSession] = useState<Session>(GUEST_SESSION);
   const [preferredRole, setPreferredRoleState] = useState<UserRole>("user");
@@ -481,6 +517,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [platformSettings, setPlatformSettings] = useState<PublicPlatformSettings>(
     DEFAULT_PLATFORM_SETTINGS,
   );
+  const [sessionNotice, setSessionNotice] = useState<string | null>(null);
+  const [lastActionError, setLastActionErrorState] = useState<string | null>(null);
+  // Callers read the failure right after `await`, before the state update renders.
+  const lastActionErrorRef = useRef<string | null>(null);
+  const setLastActionError = useCallback((message: string | null) => {
+    lastActionErrorRef.current = message;
+    setLastActionErrorState(message);
+  }, []);
+  const getLastActionError = useCallback(() => lastActionErrorRef.current, []);
 
   const persistProperties = useCallback((next: Property[]) => {
     AsyncStorage.setItem(STORAGE_KEYS.properties, JSON.stringify(next)).catch(() => {});
@@ -547,7 +592,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         favIds,
         settings,
       ] = await Promise.all([
-          apiListProperties({ status: "Active", limit: 100 }).catch(() => [] as Property[]),
+          apiListProperties({ status: "Active", limit: 100 }).catch(() => null),
           role === "broker" || role === "user"
             ? apiListMyProperties().catch(() => [] as Property[])
             : Promise.resolve([] as Property[]),
@@ -561,24 +606,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             : Promise.resolve([] as Inquiry[]),
           apiListVisits().catch(() => [] as SiteVisit[]),
           apiListThreads().catch(() => [] as MessageThread[]),
-          apiListFavorites().catch(() => [] as string[]),
+          role ? apiListFavorites().catch(() => null) : Promise.resolve(null),
           apiGetPlatformSettings().catch(() => DEFAULT_PLATFORM_SETTINGS),
         ]);
 
       setPlatformSettings(settings);
+      setCatalogLoadFailed(publicList === null);
       const byId = new Map<string, Property>();
-      for (const p of publicList) byId.set(p.id, p);
+      for (const p of publicList ?? []) byId.set(p.id, p);
       for (const p of mine) byId.set(p.id, p);
       const merged = [...byId.values()];
-      if (merged.length) setProperties(merged);
+      setProperties(merged);
 
-      const dirs = [...dirsMine, ...dirsPublic];
-      if (dirs.length) {
-        setDirectoryProfiles((prev) => {
-          const ids = new Set(dirs.map((d) => d.id));
-          return [...dirs, ...prev.filter((p) => !ids.has(p.id))];
-        });
-      }
+      const dirById = new Map<string, DirectoryProfile>();
+      for (const d of dirsPublic) dirById.set(d.id, d);
+      for (const d of dirsMine) dirById.set(d.id, d);
+      setDirectoryProfiles([...dirById.values()]);
 
       const titleById = new Map(merged.map((p) => [p.id, p.title]));
       const inquiryById = new Map<string, Inquiry>();
@@ -597,7 +640,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         })),
       );
       setMessageThreads(threads);
-      if (favIds.length) {
+      if (favIds) {
         setFavorites(favIds);
         AsyncStorage.setItem(STORAGE_KEYS.favorites, JSON.stringify(favIds)).catch(() => {});
       }
@@ -670,12 +713,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       }
 
-      if (storedDirectory) {
+      if (!isApiMode && storedDirectory) {
         const parsed: DirectoryProfile[] = JSON.parse(storedDirectory);
         if (Array.isArray(parsed) && parsed.length > 0) setDirectoryProfiles(parsed);
       }
 
-      if (storedMessages) {
+      if (!isApiMode && storedMessages) {
         const parsed = JSON.parse(storedMessages) as {
           threads?: MessageThread[];
           byThread?: Record<string, Message[]>;
@@ -700,6 +743,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           kyc?: DealerKyc;
           listingStatus?: ListerStatus;
           joinedDate?: string;
+          bio?: string;
+          city?: string;
+          avatarUrl?: string;
+          /** Legacy: tokens used to live in the session blob. */
           accessToken?: string;
         };
         if (parsed?.role === "admin" || !parsed?.isLoggedIn) {
@@ -721,26 +768,55 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             directoryProfileId: parsed.directoryProfileId,
             kyc: parsed.kyc,
             joinedDate: parsed.joinedDate ?? "",
-            accessToken: parsed.accessToken,
+            bio: parsed.bio,
+            city: parsed.city,
+            avatarUrl: parsed.avatarUrl,
           };
           activeSession = nextSession;
           setSession(nextSession);
-          if (isApiMode && parsed.accessToken) {
-            await setAccessToken(parsed.accessToken);
-            try {
-              const me = await apiMe();
-              if (me.role === "admin") {
-                activeSession = GUEST_SESSION;
-                setSession(GUEST_SESSION);
-                await setAccessToken(null);
-              } else {
-                const refreshed = sessionFromApiUser(me, parsed.accessToken);
-                activeSession = refreshed;
-                setSession(refreshed);
-                await hydrateFromApi(refreshed.role);
+          if (isApiMode) {
+            const tokens = await getTokens();
+            if (!tokens.accessToken && parsed.accessToken) {
+              await setTokens({ accessToken: parsed.accessToken });
+            }
+            if (!tokens.accessToken && !parsed.accessToken) {
+              activeSession = GUEST_SESSION;
+              setSession(GUEST_SESSION);
+              AsyncStorage.removeItem(STORAGE_KEYS.session).catch(() => {});
+            } else {
+              try {
+                const me = await apiMe();
+                if (me.role === "admin" || me.status === "suspended") {
+                  activeSession = GUEST_SESSION;
+                  setSession(GUEST_SESSION);
+                  await clearTokens();
+                  AsyncStorage.removeItem(STORAGE_KEYS.session).catch(() => {});
+                  if (me.status === "suspended") {
+                    setSessionNotice("This account is suspended. Contact support.");
+                  }
+                } else {
+                  const refreshed = sessionFromApiUser(me, nextSession);
+                  activeSession = refreshed;
+                  setSession(refreshed);
+                  AsyncStorage.setItem(STORAGE_KEYS.session, JSON.stringify(refreshed)).catch(
+                    () => {},
+                  );
+                  await hydrateFromApi(refreshed.role);
+                }
+              } catch (e) {
+                if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
+                  activeSession = GUEST_SESSION;
+                  setSession(GUEST_SESSION);
+                  await clearTokens();
+                  AsyncStorage.removeItem(STORAGE_KEYS.session).catch(() => {});
+                  setSessionNotice(
+                    e.status === 403
+                      ? "This account is suspended. Contact support."
+                      : "Your session expired. Please sign in again.",
+                  );
+                }
+                // Network errors keep the restored session for offline use.
               }
-            } catch {
-              // keep restored session
             }
           }
         }
@@ -778,21 +854,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setHasCompletedOnboardingState(onboarding === "true");
 
       // API mode: load public catalog for guests (logged-in hydrate runs separately).
-      if (isApiMode) {
-        const hasSession = activeSession.isLoggedIn && Boolean(activeSession.accessToken);
-        if (!hasSession) {
-          const [publicList, dirs] = await Promise.all([
-            apiListProperties({ status: "Active", limit: 100 }).catch(() => [] as Property[]),
-            apiListDealers(false).catch(() => [] as DirectoryProfile[]),
-          ]);
-          if (publicList.length) setProperties(publicList);
-          if (dirs.length) {
-            setDirectoryProfiles((prev) => {
-              const ids = new Set(dirs.map((d) => d.id));
-              return [...dirs, ...prev.filter((p) => !ids.has(p.id))];
-            });
-          }
-        }
+      if (isApiMode && !activeSession.isLoggedIn) {
+        const [publicList, dirs, settings] = await Promise.all([
+          apiListProperties({ status: "Active", limit: 100 }).catch(() => null),
+          apiListDealers(false).catch(() => [] as DirectoryProfile[]),
+          apiGetPlatformSettings().catch(() => null),
+        ]);
+        setCatalogLoadFailed(publicList === null);
+        setProperties(publicList ?? []);
+        setDirectoryProfiles(dirs);
+        if (settings) setPlatformSettings(settings);
       }
 
       setAuthStatus(activeSession.isLoggedIn ? "authenticated" : "unauthenticated");
@@ -860,39 +931,64 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     [session.isLoggedIn],
   );
 
+  const completeApiSignIn = useCallback(
+    async (res: AuthMeResponse): Promise<AuthResult> => {
+      if (res.role === "admin") {
+        await clearTokens();
+        return {
+          ok: false,
+          code: "admin_unsupported",
+          message: "Admin accounts sign in on the SqftGo website. Use a buyer or dealer account here.",
+        };
+      }
+      if (res.status === "suspended") {
+        await clearTokens();
+        return {
+          ok: false,
+          code: "suspended",
+          message: "This account is suspended. Contact support.",
+        };
+      }
+      const next = sessionFromApiUser(res);
+      setSessionNotice(null);
+      persistSession(next);
+      await hydrateFromApi(next.role);
+      return {
+        ok: true,
+        role: res.role,
+        dealerAccess: dealerAccessFromRole(res.role, res.dealerAccess),
+      };
+    },
+    [persistSession, hydrateFromApi],
+  );
+
+  useEffect(() => {
+    if (!isApiMode) return;
+    return onSessionEvent((event) => {
+      persistSession(GUEST_SESSION);
+      setInquiries([]);
+      setVisits([]);
+      setMessageThreads([]);
+      setMessagesByThread({});
+      setSessionNotice(
+        event === "suspended"
+          ? "This account is suspended. Contact support."
+          : "Your session expired. Please sign in again.",
+      );
+    });
+  }, [persistSession]);
+
   const signIn = useCallback(
     async (email: string, password: string): Promise<AuthResult> => {
       if (isApiMode) {
         try {
           const res = await apiLogin(email.trim().toLowerCase(), password);
-          if (res.role === "admin") {
-            await setAccessToken(null);
-            return {
-              ok: false,
-              code: "admin_unsupported",
-              message: "Admin accounts use the web admin. Sign in with a buyer or dealer account.",
-            };
-          }
-          if (res.status === "suspended") {
-            await setAccessToken(null);
-            return {
-              ok: false,
-              code: "suspended",
-              message: "This account is suspended. Contact support.",
-            };
-          }
-          const next = sessionFromApiUser(res, res.accessToken);
-          persistSession(next);
-          await hydrateFromApi(next.role);
-          return {
-            ok: true,
-            role: res.role,
-            dealerAccess: dealerAccessFromRole(res.role, res.dealerAccess),
-          };
+          return await completeApiSignIn(res);
         } catch (e) {
+          const status = e instanceof ApiError ? e.status : 0;
           return {
             ok: false,
-            code: "network",
+            code: status === 401 ? "invalid" : status === 403 ? "suspended" : "network",
             message: e instanceof Error ? e.message : "Sign in failed.",
           };
         }
@@ -914,7 +1010,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return {
           ok: false,
           code: "admin_unsupported",
-          message: "Admin accounts use the web admin. Sign in with a buyer or dealer account.",
+          message: "Admin accounts sign in on the SqftGo website. Use a buyer or dealer account here.",
         };
       }
       persistSession(sessionFromAccount(account));
@@ -924,8 +1020,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         dealerAccess: dealerAccessFromRole(account.role, account.dealerAccess),
       };
     },
-    [accounts, persistSession, hydrateFromApi],
+    [accounts, persistSession, completeApiSignIn],
   );
+
+  const signInWithGoogle = useCallback(async (): Promise<
+    AuthResult & { cancelled?: boolean }
+  > => {
+    if (!isApiMode) {
+      return {
+        ok: false,
+        code: "network",
+        message: "Google sign-in isn't available in offline preview.",
+      };
+    }
+    const res = await apiGoogleSignIn();
+    if (!res.ok) {
+      return { ok: false, code: "network", message: res.message, cancelled: res.cancelled };
+    }
+    return completeApiSignIn(res.me);
+  }, [completeApiSignIn]);
 
   const signUp = useCallback(
     async (input: {
@@ -949,22 +1062,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               message: res.message || "Check your email to confirm your account before signing in.",
             };
           }
-          if (res.role === "admin") {
-            await setAccessToken(null);
-            return {
-              ok: false,
-              code: "admin_unsupported",
-              message: "Admin accounts are not supported in the app.",
-            };
-          }
-          const next = sessionFromApiUser(res, res.accessToken);
-          persistSession(next);
-          await hydrateFromApi(next.role);
-          return {
-            ok: true,
-            role: res.role === "broker" ? "broker" : "user",
-            dealerAccess: dealerAccessFromRole(res.role, res.dealerAccess),
-          };
+          return await completeApiSignIn(res);
         } catch (e) {
           const msg = e instanceof Error ? e.message : "Sign up failed.";
           return {
@@ -1000,14 +1098,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         dealerAccess: asDealer ? "approved" : "none",
       };
     },
-    [accounts, persistAccounts, persistSession, hydrateFromApi],
+    [accounts, persistAccounts, persistSession, completeApiSignIn],
   );
 
   const signOut = useCallback(() => {
     if (isApiMode) {
       apiLogout().catch(() => {});
+      setInquiries([]);
+      setVisits([]);
+      setMessageThreads([]);
+      setMessagesByThread({});
+      setProperties((prev) => prev.filter((p) => p.status === "Active"));
     }
-    setAccessToken(null);
+    clearTokens();
     persistSession(GUEST_SESSION);
   }, [persistSession]);
 
@@ -1019,7 +1122,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         signOut();
         return;
       }
-      persistSession(sessionFromApiUser(me, session.accessToken));
+      persistSession(sessionFromApiUser(me, session));
       await hydrateFromApi(me.role === "broker" ? "broker" : "user");
     } catch {
       // keep current session
@@ -1027,8 +1130,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [session, persistSession, hydrateFromApi, signOut]);
 
   const updateProfile = useCallback(
-    async (patch: { name?: string; phone?: string; bio?: string; city?: string }) => {
-      if (!session.isLoggedIn) return;
+    async (patch: {
+      name?: string;
+      phone?: string;
+      bio?: string;
+      city?: string;
+      avatarUrl?: string | null;
+    }): Promise<ActionResult> => {
+      if (!session.isLoggedIn) return { ok: false, message: "Sign in required." };
       if (isApiMode) {
         try {
           const me = await apiUpdateMe({
@@ -1036,25 +1145,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             phone: patch.phone?.trim(),
             bio: patch.bio?.trim(),
             city: patch.city?.trim(),
+            avatarUrl: patch.avatarUrl,
           });
-          persistSession(sessionFromApiUser(me, session.accessToken));
-          return;
-        } catch {
-          // fall through to local session patch
+          persistSession(sessionFromApiUser(me, session));
+          return { ok: true };
+        } catch (e) {
+          return failure(e, "Could not save your profile.");
         }
       }
       const next: Session = {
         ...session,
         name: patch.name?.trim() || session.name,
         phone: patch.phone !== undefined ? patch.phone.trim() : session.phone,
+        bio: patch.bio !== undefined ? patch.bio.trim() : session.bio,
+        city: patch.city !== undefined ? patch.city.trim() : session.city,
+        avatarUrl:
+          patch.avatarUrl !== undefined ? (patch.avatarUrl ?? undefined) : session.avatarUrl,
       };
       persistSession(next);
-      if (!isApiMode) {
-        patchAccount(session.accountId, {
-          name: next.name,
-          phone: next.phone,
-        });
-      }
+      patchAccount(session.accountId, { name: next.name, phone: next.phone });
+      return { ok: true };
     },
     [session, persistSession, patchAccount],
   );
@@ -1063,7 +1173,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!isApiMode) {
       return {
         ok: false,
-        message: "Password reset requires API mode (set EXPO_PUBLIC_API_URL).",
+        message: "Password reset isn't available in offline preview.",
       };
     }
     try {
@@ -1141,6 +1251,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     [session, persistDirectory, persistSession, patchAccount],
   );
 
+  /** Service-partner directory profile; unlike dealer registration it doesn't touch dealer access. */
+  const registerServiceProfile = useCallback(
+    async (
+      input: Omit<DirectoryProfile, "id" | "userId" | "listingsCount">,
+    ): Promise<{ ok: true; profile: DirectoryProfile } | { ok: false; message: string }> => {
+      if (!session.isLoggedIn) return { ok: false, message: "Sign in required." };
+      if (isApiMode) {
+        try {
+          const profile = await apiCreateDealer(input);
+          setDirectoryProfiles((prev) => [profile, ...prev.filter((p) => p.id !== profile.id)]);
+          return { ok: true, profile };
+        } catch (e) {
+          return { ok: false, message: e instanceof Error ? e.message : "Could not create your profile." };
+        }
+      }
+      const profile: DirectoryProfile = {
+        ...input,
+        id: `dir-${Date.now()}`,
+        userId: session.accountId,
+        listingsCount: 0,
+      };
+      setDirectoryProfiles((prev) => {
+        const next = [profile, ...prev];
+        persistDirectory(next);
+        return next;
+      });
+      return { ok: true, profile };
+    },
+    [session, persistDirectory],
+  );
+
   const updateDirectoryProfile = useCallback(
     async (id: string, patch: Partial<DirectoryProfile>) => {
       if (!session.isLoggedIn) return { ok: false, message: "Sign in required." };
@@ -1184,8 +1325,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [session, persistSession, patchAccount]);
 
   const submitKyc = useCallback(
-    async (input: { panNumber: string; aadhaarLast4: string; dealerNotes?: string }) => {
-      if (!session.isLoggedIn) return;
+    async (input: {
+      panNumber: string;
+      aadhaarLast4: string;
+      dealerNotes?: string;
+    }): Promise<ActionResult> => {
+      if (!session.isLoggedIn) return { ok: false, message: "Sign in required." };
 
       if (isApiMode) {
         try {
@@ -1196,18 +1341,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             status: "pending",
           });
           persistSession({ ...session, kyc });
-        } catch {
-          // fall through to local pending mirror on soft failure
-          const kyc: DealerKyc = {
-            status: "pending",
-            panNumber: input.panNumber.trim().toUpperCase(),
-            aadhaarLast4: input.aadhaarLast4.trim(),
-            dealerNotes: input.dealerNotes?.trim(),
-            submittedAt: new Date().toISOString(),
-          };
-          persistSession({ ...session, kyc });
+          return { ok: true };
+        } catch (e) {
+          return failure(e, "Could not submit KYC. Please try again.");
         }
-        return;
       }
 
       const kyc: DealerKyc = {
@@ -1219,25 +1356,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
       persistSession({ ...session, kyc });
       patchAccount(session.accountId, { kyc });
+      return { ok: true };
     },
     [session, persistSession, patchAccount],
   );
 
   const addProperty = useCallback(
     async (prop: PropertyInput) => {
-      if (session.role !== "broker" && session.role !== "user") return null;
-      if (session.status !== "active") return null;
-      if (session.role === "user" && session.listingStatus === "rejected") return null;
-      if (session.role === "user" && !platformSettings.allowUserListings) return null;
+      const deny = (message: string) => {
+        setLastActionError(message);
+        return null;
+      };
+      if (session.role !== "broker" && session.role !== "user") {
+        return deny("Sign in to list a property.");
+      }
+      if (session.status !== "active") return deny("Your account is not active.");
+      if (session.role === "user" && session.listingStatus === "rejected") {
+        return deny("Your listing access was declined. Contact support for help.");
+      }
+      if (session.role === "user" && !platformSettings.allowUserListings) {
+        return deny("Owner listings are paused right now.");
+      }
 
-      const ownedCount = properties.filter((p) =>
-        ownsProperty(p, { userId: session.accountId, email: session.email }),
+      const ownedCount = properties.filter(
+        (p) =>
+          p.status !== "Rejected" &&
+          ownsProperty(p, { userId: session.accountId, email: session.email }),
       ).length;
       if (
         session.role === "user" &&
         ownedCount >= platformSettings.maxListingsPerUser
       ) {
-        return null;
+        return deny(
+          `You can have up to ${platformSettings.maxListingsPerUser} listings. Remove one to add another.`,
+        );
       }
 
       const status =
@@ -1246,13 +1398,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : "Pending Review";
 
       if (isApiMode) {
-        const created = await apiCreateProperty({
-          ...prop,
-          status,
-          featured: false,
-        });
-        setProperties((prev) => [created, ...prev.filter((p) => p.id !== created.id)]);
-        return created;
+        setLastActionError(null);
+        try {
+          const created = await apiCreateProperty({
+            ...prop,
+            status,
+            featured: false,
+          });
+          setProperties((prev) => [created, ...prev.filter((p) => p.id !== created.id)]);
+          return created;
+        } catch (e) {
+          setLastActionError(failure(e, "Could not save the listing.").message);
+          return null;
+        }
       }
 
       const newProperty: Property = {
@@ -1275,7 +1433,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       return newProperty;
     },
-    [session, persistProperties, platformSettings, properties],
+    [session, persistProperties, platformSettings, properties, setLastActionError],
   );
 
   const updateProperty = useCallback(
@@ -1287,6 +1445,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         !existing ||
         !ownsProperty(existing, { userId: session.accountId, email: session.email })
       ) {
+        setLastActionError("You can only edit your own listings.");
         return null;
       }
 
@@ -1298,11 +1457,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       if (isApiMode) {
+        setLastActionError(null);
         try {
           const updated = await apiUpdateProperty(id, safePatch);
           setProperties((prev) => prev.map((p) => (p.id === id ? { ...p, ...updated } : p)));
           return updated;
-        } catch {
+        } catch (e) {
+          setLastActionError(failure(e, "Could not update the listing.").message);
           return null;
         }
       }
@@ -1319,7 +1480,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       return updated;
     },
-    [session, properties, persistProperties],
+    [session, properties, persistProperties, setLastActionError],
   );
 
   const deleteProperty = useCallback(
@@ -1363,11 +1524,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       message: string;
     }) => {
       const property = properties.find((p) => p.id === input.propertyId);
-      if (!property || property.status !== "Active") return null;
+      setLastActionError(null);
+      if (!property || property.status !== "Active") {
+        setLastActionError("This listing is not accepting inquiries.");
+        return null;
+      }
 
       if (isApiMode) {
         try {
-          const phone = input.phone?.trim() || session.phone || "0000000000";
+          const phone = input.phone?.trim() || session.phone || "";
+          if (!phone) {
+            setLastActionError("Add a phone number so the dealer can reach you.");
+            return null;
+          }
           const inquiry = await apiCreateInquiry(property.id, {
             name: input.name.trim(),
             email: input.email.trim().toLowerCase(),
@@ -1379,14 +1548,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             propertyTitle: inquiry.propertyTitle || property.title,
             brokerEmail: inquiry.brokerEmail || property.brokerEmail || "",
           };
-          setInquiries((prev) => [enriched, ...prev.filter((i) => i.id !== enriched.id)]);
+          if (session.isLoggedIn) {
+            setInquiries((prev) => [enriched, ...prev.filter((i) => i.id !== enriched.id)]);
+          }
           setProperties((prev) =>
             prev.map((p) =>
               p.id === property.id ? { ...p, inquiryCount: (p.inquiryCount ?? 0) + 1 } : p,
             ),
           );
           return enriched;
-        } catch {
+        } catch (e) {
+          setLastActionError(failure(e, "Could not send your inquiry.").message);
           return null;
         }
       }
@@ -1418,7 +1590,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       return inquiry;
     },
-    [properties, persistInquiries, persistProperties, session.phone],
+    [properties, persistInquiries, persistProperties, session.phone, session.isLoggedIn, setLastActionError],
   );
 
   const markInquiryRead = useCallback(
@@ -1454,11 +1626,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
 
   const replyInquiry = useCallback(
-    (id: string, replyMessage: string) => {
+    async (id: string, replyMessage: string): Promise<ActionResult> => {
       const trimmed = replyMessage.trim();
+      if (!trimmed) return { ok: false, message: "Write a reply first." };
+      const target = inquiries.find((i) => i.id === id);
+      if (!target) return { ok: false, message: "Inquiry not found." };
+
       if (isApiMode) {
-        apiPatchInquiry(id, { status: "read", replyMessage: trimmed }).catch(() => {});
+        if (session.role !== "broker") {
+          return {
+            ok: false,
+            message: "Reply to this buyer by phone or email from the inquiry details.",
+          };
+        }
+        try {
+          const thread = await apiCreateThread({
+            participantEmail: target.buyerEmail,
+            subject: `Re: ${target.propertyTitle || "Property inquiry"}`,
+            propertyId: target.propertyId,
+            body: trimmed,
+          });
+          setMessageThreads((prev) => [thread, ...prev.filter((t) => t.id !== thread.id)]);
+          await apiPatchInquiry(id, { status: "read" }).catch(() => {});
+          setInquiries((prev) =>
+            prev.map((inq) => (inq.id === id ? { ...inq, status: "read" as const } : inq)),
+          );
+          return { ok: true };
+        } catch (e) {
+          return failure(e, "Could not send your reply.");
+        }
       }
+
       setInquiries((prev) => {
         const next = prev.map((inq) =>
           inq.id === id
@@ -1473,9 +1671,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return next;
       });
 
-      // Also ensure a message thread exists in mock
-      const inq = inquiries.find((i) => i.id === id);
-      if (inq && !isApiMode) {
+      const inq = target;
+      {
         const existing = messageThreads.find(
           (t) =>
             t.buyerEmail.toLowerCase() === inq.buyerEmail.toLowerCase() &&
@@ -1506,6 +1703,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           persistMessages(nextThreads, nextBy);
         }
       }
+      return { ok: true };
     },
     [
       persistInquiries,
@@ -1514,6 +1712,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       messagesByThread,
       persistMessages,
       session.email,
+      session.role,
     ],
   );
 
@@ -1645,16 +1844,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       visitTime: string;
       phone?: string;
       notes?: string;
+      name?: string;
+      email?: string;
     }) => {
       const property = properties.find((p) => p.id === input.propertyId);
-      if (!property || property.status !== "Active" || !session.isLoggedIn) return null;
+      setLastActionError(null);
+      if (!property || property.status !== "Active") {
+        setLastActionError("This listing is not accepting visits.");
+        return null;
+      }
+      const name = input.name?.trim() || session.name;
+      const email = (input.email?.trim() || session.email).toLowerCase();
+      if (!name || !email) {
+        setLastActionError("Enter your name and email.");
+        return null;
+      }
 
       if (isApiMode) {
+        const phone = input.phone?.trim() || session.phone || "";
+        if (phone.length < 5) {
+          setLastActionError("Add a phone number so the dealer can confirm your visit.");
+          return null;
+        }
         try {
           const visit = await apiCreateVisit(property.id, {
-            name: session.name || "Visitor",
-            email: session.email,
-            phone: input.phone?.trim() || session.phone || "0000000000",
+            name,
+            email,
+            phone,
             date: input.visitDate,
             time: input.visitTime,
             notes: input.notes?.trim(),
@@ -1664,9 +1880,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             propertyTitle: visit.propertyTitle || property.title,
             brokerEmail: visit.brokerEmail || property.brokerEmail || "",
           };
-          setVisits((prev) => [enriched, ...prev.filter((v) => v.id !== enriched.id)]);
+          if (session.isLoggedIn) {
+            setVisits((prev) => [enriched, ...prev.filter((v) => v.id !== enriched.id)]);
+          }
           return enriched;
-        } catch {
+        } catch (e) {
+          setLastActionError(failure(e, "Could not book the visit.").message);
           return null;
         }
       }
@@ -1675,8 +1894,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         id: `visit-${Date.now()}`,
         propertyId: property.id,
         propertyTitle: property.title,
-        buyerName: session.name,
-        buyerEmail: session.email,
+        buyerName: name,
+        buyerEmail: email,
         buyerPhone: input.phone?.trim() || session.phone,
         brokerEmail: property.brokerEmail ?? "broker@sqftgo.com",
         visitDate: input.visitDate,
@@ -1693,23 +1912,119 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       return visit;
     },
-    [properties, session, persistVisits],
+    [properties, session, persistVisits, setLastActionError],
   );
 
-  const updateVisitStatus = useCallback(
-    (id: string, status: VisitStatus) => {
-      if (session.role !== "broker") return;
+  const applyVisitPatch = useCallback(
+    async (
+      id: string,
+      patch: { status?: VisitStatus; date?: string; time?: string },
+      fallback: string,
+    ): Promise<ActionResult> => {
+      if (!session.isLoggedIn) return { ok: false, message: "Sign in required." };
       if (isApiMode) {
-        apiPatchVisit(id, { status }).catch(() => {});
+        try {
+          const updated = await apiPatchVisit(id, patch);
+          setVisits((prev) =>
+            prev.map((v) =>
+              v.id === id ? { ...v, ...updated, propertyTitle: updated.propertyTitle || v.propertyTitle } : v,
+            ),
+          );
+          return { ok: true };
+        } catch (e) {
+          return failure(e, fallback);
+        }
       }
       setVisits((prev) => {
-        const next = prev.map((v) => (v.id === id ? { ...v, status } : v));
+        const next = prev.map((v) =>
+          v.id === id
+            ? {
+                ...v,
+                ...(patch.status ? { status: patch.status } : {}),
+                ...(patch.date ? { visitDate: patch.date } : {}),
+                ...(patch.time ? { visitTime: patch.time } : {}),
+              }
+            : v,
+        );
         persistVisits(next);
         return next;
       });
+      return { ok: true };
     },
-    [session.role, persistVisits],
+    [session.isLoggedIn, persistVisits],
   );
+
+  const updateVisitStatus = useCallback(
+    (id: string, status: VisitStatus) =>
+      applyVisitPatch(id, { status }, "Could not update the visit."),
+    [applyVisitPatch],
+  );
+
+  const rescheduleVisit = useCallback(
+    (id: string, input: { date: string; time: string }) =>
+      applyVisitPatch(id, input, "Could not reschedule the visit."),
+    [applyVisitPatch],
+  );
+
+  const cancelVisit = useCallback(
+    (id: string) => applyVisitPatch(id, { status: "cancelled" }, "Could not cancel the visit."),
+    [applyVisitPatch],
+  );
+
+  const refreshVisits = useCallback(async () => {
+    if (!isApiMode || !session.isLoggedIn) return;
+    try {
+      const vs = await apiListVisits();
+      setVisits(vs);
+    } catch {
+      // keep current list
+    }
+  }, [session.isLoggedIn]);
+
+  const refreshInquiries = useCallback(async () => {
+    if (!isApiMode || !session.isLoggedIn) return;
+    try {
+      const [mine, received] = await Promise.all([
+        apiListInquiries(),
+        session.role === "user" ? apiListReceivedInquiries() : Promise.resolve([] as Inquiry[]),
+      ]);
+      const byId = new Map<string, Inquiry>();
+      for (const inq of [...mine, ...received]) {
+        byId.set(inq.id, { ...inq, status: normalizeInquiryStatus(inq.status as string) });
+      }
+      setInquiries([...byId.values()]);
+    } catch {
+      // keep current list
+    }
+  }, [session.isLoggedIn, session.role]);
+
+  const mergeProperties = useCallback((items: Property[]) => {
+    if (!items.length) return;
+    setProperties((prev) => {
+      const byId = new Map(prev.map((p) => [p.id, p]));
+      for (const p of items) byId.set(p.id, { ...byId.get(p.id), ...p });
+      return [...byId.values()];
+    });
+  }, []);
+
+  const refreshMyProperties = useCallback(async () => {
+    if (!isApiMode || !session.isLoggedIn) return;
+    try {
+      mergeProperties(await apiListMyProperties());
+    } catch {
+      // keep current list
+    }
+  }, [session.isLoggedIn, mergeProperties]);
+
+  const reloadCatalog = useCallback(async () => {
+    if (!isApiMode) return;
+    try {
+      mergeProperties(await apiListProperties({ status: "Active", limit: 100 }));
+      setCatalogLoadFailed(false);
+    } catch {
+      setCatalogLoadFailed(true);
+    }
+  }, [mergeProperties]);
 
   const fetchDealerAnalytics = useCallback(async () => {
     if (isApiMode) {
@@ -1754,13 +2069,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     [session, accounts, patchAccount],
   );
 
+  const clearSessionNotice = useCallback(() => setSessionNotice(null), []);
+
   const canAccessDealerDashboard =
     session.isLoggedIn && session.role === "broker" && session.status === "active";
 
   const myListingsCount = useMemo(
     () =>
-      properties.filter((p) =>
-        ownsProperty(p, { userId: session.accountId, email: session.email }),
+      properties.filter(
+        (p) =>
+          p.status !== "Rejected" &&
+          ownsProperty(p, { userId: session.accountId, email: session.email }),
       ).length,
     [properties, session.accountId, session.email],
   );
@@ -1816,7 +2135,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       sendThreadMessage,
       loadThreadMessages,
       bookVisit,
+      lastActionError,
+      getLastActionError,
       updateVisitStatus,
+      rescheduleVisit,
+      cancelVisit,
+      refreshVisits,
+      refreshInquiries,
+      refreshMyProperties,
+      catalogLoadFailed,
+      reloadCatalog,
+      mergeProperties,
       fetchDealerAnalytics,
       updatePassword,
       notifPrefs,
@@ -1834,11 +2163,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       canPostListing,
       signIn,
       signUp,
+      signInWithGoogle,
       signOut,
       refreshSessionFromApi,
       updateProfile,
+      maintenanceMode: isApiMode && platformSettings.maintenanceMode,
+      sessionNotice,
+      clearSessionNotice,
       forgotPassword,
       registerAsDealer,
+      registerServiceProfile,
       simulateDealerApproval,
       submitKyc,
       hasCompletedOnboarding,
@@ -1853,6 +2187,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setPreferredRole,
     }),
     [
+      lastActionError,
+      getLastActionError,
+      rescheduleVisit,
+      cancelVisit,
+      refreshVisits,
+      refreshInquiries,
+      refreshMyProperties,
+      catalogLoadFailed,
+      reloadCatalog,
+      mergeProperties,
+      signInWithGoogle,
+      sessionNotice,
+      clearSessionNotice,
       selectedCity,
       setSelectedCity,
       properties,
@@ -1892,6 +2239,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updateProfile,
       forgotPassword,
       registerAsDealer,
+      registerServiceProfile,
       simulateDealerApproval,
       submitKyc,
       hasCompletedOnboarding,

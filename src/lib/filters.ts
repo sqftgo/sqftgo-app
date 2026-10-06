@@ -357,6 +357,6 @@ export function filterProperties(
       return sorted.sort((a, b) => (b.size || 0) - (a.size || 0));
     case "latest":
     default:
-      return sorted.sort((a, b) => b.id.localeCompare(a.id));
+      return sorted;
   }
 }

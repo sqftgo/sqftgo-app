@@ -1,13 +1,13 @@
 import { useEffect } from "react";
-import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
+import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
-import "@/global.css";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 
 import { useFonts, Fredoka_600SemiBold } from "@expo-google-fonts/fredoka";
 import {
@@ -17,22 +17,35 @@ import {
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
 
-import { useColorScheme } from "@/hooks/use-color-scheme";
-import { AppProvider, useApp } from "@/context/AppContext";
-import { colors } from "@/theme/tokens";
-import { AuthLoadingScreen } from "@/components/ui/auth-loading";
+import { AuthGateProvider } from "@/components/ds/AuthGate";
+import { ToastProvider } from "@/components/ds/Toast";
+import { AppAlertProvider, appAlert } from "@/components/ui/app-alert";
 import { AuthErrorScreen } from "@/components/ui/auth-error";
-import { AppAlertProvider } from "@/components/ui/app-alert";
+import { AuthLoadingScreen } from "@/components/ui/auth-loading";
+import { MaintenanceScreen } from "@/components/ui/maintenance-screen";
+import { AppProvider, useApp } from "@/context/AppContext";
+import { queryClient } from "@/lib/query-client";
+import { colors } from "@/theme/tokens";
 
-// Keep native splash screen visible until initial hydration & routing check finishes
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export const unstable_settings = {
   anchor: "(tabs)",
 };
 
+const navTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: colors.bg,
+    card: colors.surface,
+    primary: colors.accent,
+    text: colors.ink,
+    border: colors.border,
+  },
+};
+
 function RootLayoutNav() {
-  const colorScheme = useColorScheme();
   const [fontsLoaded] = useFonts({
     Fredoka_600SemiBold,
     Inter_400Regular,
@@ -48,6 +61,10 @@ function RootLayoutNav() {
     authStatus,
     authError,
     retryAuthCheck,
+    maintenanceMode,
+    platformSettings,
+    sessionNotice,
+    clearSessionNotice,
   } = useApp();
 
   useEffect(() => {
@@ -56,86 +73,89 @@ function RootLayoutNav() {
     }
   }, [isHydrating, hasCompletedOnboarding, fontsLoaded]);
 
-  // While hydration or font loading is active, keep splash screen background visible
+  useEffect(() => {
+    if (!sessionNotice) return;
+    appAlert("Signed out", sessionNotice);
+    clearSessionNotice();
+  }, [sessionNotice, clearSessionNotice]);
+
   if (isHydrating || hasCompletedOnboarding === undefined || !fontsLoaded) {
     return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
   }
 
-  // Network failure / unexpected error during initial auth check
   if (authStatus === "error") {
     return <AuthErrorScreen message={authError || undefined} onRetry={retryAuthCheck} />;
   }
 
-  // Returning user session loading state (if checking background token/session)
   if (authStatus === "checking") {
     return <AuthLoadingScreen />;
   }
 
-  const navTheme =
-    colorScheme === "dark"
-      ? DarkTheme
-      : {
-          ...DefaultTheme,
-          colors: {
-            ...DefaultTheme.colors,
-            background: colors.bg,
-            card: colors.surface,
-            primary: colors.accent,
-            text: colors.ink,
-            border: colors.border,
-          },
-        };
+  if (maintenanceMode) {
+    return <MaintenanceScreen supportEmail={platformSettings.supportEmail} onRetry={retryAuthCheck} />;
+  }
 
   return (
     <ThemeProvider value={navTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
-        {/* First-time users: onboarding only. Once completed, the guard
-            flips and the router replaces the stack — no back navigation. */}
-        <Stack.Protected guard={!hasCompletedOnboarding}>
-          <Stack.Screen name="onboarding" />
-        </Stack.Protected>
+      <AuthGateProvider>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            animation: Platform.OS === "android" ? "slide_from_right" : "default",
+            contentStyle: { backgroundColor: colors.bg },
+          }}
+        >
+          <Stack.Protected guard={!hasCompletedOnboarding}>
+            <Stack.Screen name="onboarding" />
+          </Stack.Protected>
 
-        {/* Returning but signed-out users land on auth. */}
-        <Stack.Protected guard={hasCompletedOnboarding && !isLoggedIn}>
-          <Stack.Screen name="auth/index" />
-        </Stack.Protected>
+          {/* Public marketplace: guests browse listings, dealers and services. */}
+          <Stack.Protected guard={Boolean(hasCompletedOnboarding)}>
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="property/[id]" />
+            <Stack.Screen name="broker/[id]" />
+            <Stack.Screen name="brokers" />
+            <Stack.Screen name="service/[id]" />
+            <Stack.Screen name="projects" />
+            <Stack.Screen name="project/[id]" />
+            <Stack.Screen name="destinations" />
+            <Stack.Screen name="destinations/[slug]" />
+            <Stack.Screen name="help" />
+            <Stack.Screen name="legal/[doc]" />
+            <Stack.Screen name="auth/callback" />
+          </Stack.Protected>
 
-        {/* The app itself is only reachable with a session. Signing out
-            anywhere drops the user back to auth automatically. */}
-        <Stack.Protected guard={hasCompletedOnboarding && isLoggedIn}>
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="(dealer)" />
-          <Stack.Screen name="services" />
-          <Stack.Screen name="services/[category]" />
-          <Stack.Screen name="saved" />
-          <Stack.Screen name="property/[id]" />
-          <Stack.Screen name="broker/[id]" />
-          <Stack.Screen name="post-property" options={{ presentation: "modal" }} />
-          <Stack.Screen name="edit-property/[id]" />
-          <Stack.Screen name="analytics" />
-          <Stack.Screen name="subscription" />
-          <Stack.Screen name="dealer-settings" />
-          <Stack.Screen name="dealer-register" />
-          <Stack.Screen name="dealer-pending" />
-          <Stack.Screen name="dealer-kyc" />
-          <Stack.Screen name="my-visits" />
-          <Stack.Screen name="my-inquiries" />
-          <Stack.Screen name="my-listings" />
-          <Stack.Screen name="my-service-bookings" />
-          <Stack.Screen name="projects" />
-          <Stack.Screen name="project/[id]" />
-          <Stack.Screen name="dealer-projects" />
-          <Stack.Screen name="post-project" options={{ presentation: "modal" }} />
-          <Stack.Screen name="edit-project/[id]" />
-          <Stack.Screen name="destinations" />
-          <Stack.Screen name="destinations/[slug]" />
-          <Stack.Screen name="manage-visits" />
-          <Stack.Screen
-            name="modal"
-            options={{ presentation: "modal", headerShown: true, title: "Modal" }}
-          />
-        </Stack.Protected>
-      </Stack>
+          {/* Signing in closes this modal and returns to where the guest was. */}
+          <Stack.Protected guard={Boolean(hasCompletedOnboarding) && !isLoggedIn}>
+            <Stack.Screen name="auth/index" options={{ presentation: "modal" }} />
+          </Stack.Protected>
+
+          {/* Account screens. Signing out anywhere drops these from the stack. */}
+          <Stack.Protected guard={Boolean(hasCompletedOnboarding) && isLoggedIn}>
+            <Stack.Screen name="(dealer)" />
+            <Stack.Screen name="post-property" options={{ presentation: "fullScreenModal" }} />
+            <Stack.Screen name="edit-property/[id]" />
+            <Stack.Screen name="subscription" />
+            <Stack.Screen name="dealer-settings" />
+            <Stack.Screen name="dealer-register" />
+            <Stack.Screen name="dealer-pending" />
+            <Stack.Screen name="dealer-kyc" />
+            <Stack.Screen name="my-visits" />
+            <Stack.Screen name="my-inquiries" />
+            <Stack.Screen name="my-listings" />
+            <Stack.Screen name="my-service-bookings" />
+            <Stack.Screen name="dealer-projects" />
+            <Stack.Screen name="post-project" options={{ presentation: "fullScreenModal" }} />
+            <Stack.Screen name="edit-project/[id]" />
+            <Stack.Screen name="manage-visits" />
+            <Stack.Screen name="settings/index" />
+            <Stack.Screen name="settings/profile" />
+            <Stack.Screen name="settings/password" />
+            <Stack.Screen name="services/register" />
+            <Stack.Screen name="services/manage" />
+          </Stack.Protected>
+        </Stack>
+      </AuthGateProvider>
       <StatusBar style="dark" />
     </ThemeProvider>
   );
@@ -145,13 +165,16 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <AppAlertProvider>
-          <AppProvider>
-            <RootLayoutNav />
-          </AppProvider>
-        </AppAlertProvider>
+        <QueryClientProvider client={queryClient}>
+          <AppAlertProvider>
+            <ToastProvider>
+              <AppProvider>
+                <RootLayoutNav />
+              </AppProvider>
+            </ToastProvider>
+          </AppAlertProvider>
+        </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }
-

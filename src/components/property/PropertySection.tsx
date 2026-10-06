@@ -24,7 +24,7 @@ export function PropertySection({ title, actionLabel, onAction, children }: Prop
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
         <Text style={{ ...type.heading, fontSize: 17, color: colors.ink }}>{title}</Text>
         {actionLabel && onAction ? (
-          <Pressable onPress={onAction} hitSlop={8}>
+          <Pressable onPress={onAction} hitSlop={8} accessibilityRole="button">
             <Text style={{ ...type.label, fontWeight: "600", color: colors.accent }}>
               {actionLabel}
             </Text>

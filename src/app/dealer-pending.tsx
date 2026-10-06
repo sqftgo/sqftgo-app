@@ -1,12 +1,12 @@
-import React from "react";
-import { Pressable, Text, View } from "react-native";
 import { useRouter, type Href } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Clock, FileCheck, LayoutDashboard, Shield } from "@/components/ui/icons";
+import React, { useState } from "react";
+import { StyleSheet, Text, View } from "react-native";
 
+import { Button, ListRow, ListSection, Screen, toast } from "@/components/ds";
+import { CheckCircle2, Clock, FileCheck, LayoutDashboard, Shield } from "@/components/ui/icons";
 import { useApp } from "@/context/AppContext";
 import { KYC_STATUS_LABEL } from "@/lib/status-labels";
-import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
+import { colors, radius, spacing, type } from "@/theme/tokens";
 
 export default function DealerPendingScreen() {
   const router = useRouter();
@@ -19,181 +19,94 @@ export default function DealerPendingScreen() {
     isApiMode,
     refreshSessionFromApi,
   } = useApp();
+  const [checking, setChecking] = useState(false);
 
   if (canAccessDealerDashboard) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg, padding: spacing.xl }}>
-        <Text style={{ ...type.title, color: colors.ink }}>Dealer access approved</Text>
-        <Text style={{ ...type.body, color: colors.inkMuted, marginTop: spacing.sm }}>
-          Your role is broker. Open the dashboard to manage listings and leads.
-        </Text>
-        <Pressable
-          onPress={() => router.replace("/(dealer)" as Href)}
-          style={{
-            marginTop: spacing.xl,
-            height: 48,
-            backgroundColor: colors.accent,
-            borderRadius: radius.md,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Text style={{ ...type.emphasis, color: colors.onAccent }}>Go to dashboard</Text>
-        </Pressable>
-      </SafeAreaView>
+      <Screen title="Dealer access" fallbackHref={"/" as Href}>
+        <View style={[styles.hero, { backgroundColor: colors.successSoft }]}>
+          <CheckCircle2 size={28} color={colors.success} />
+          <Text style={styles.title}>You&apos;re approved</Text>
+          <Text style={styles.body}>Your dealer tools are ready. Manage listings, leads and visits from the dashboard.</Text>
+        </View>
+        <Button label="Go to dashboard" onPress={() => router.replace("/(dealer)" as Href)} fullWidth />
+      </Screen>
     );
   }
 
   const kycStatus = profile?.kyc?.status;
-  const steps = [
-    {
-      Icon: FileCheck,
-      title: "Directory card",
-      detail:
-        dealerAccess === "pending" || dealerAccess === "approved"
-          ? "Submitted — visible in public directory"
-          : "Not submitted yet",
-      done: dealerAccess === "pending" || dealerAccess === "approved",
-    },
-    {
-      Icon: Shield,
-      title: "KYC (optional)",
-      detail: kycStatus
-        ? KYC_STATUS_LABEL[kycStatus]
-        : "You can submit documents while waiting",
-      done: kycStatus === "pending" || kycStatus === "approved",
-    },
-    {
-      Icon: LayoutDashboard,
-      title: "Broker role",
-      detail:
-        userRole === "broker"
-          ? "Approved — full dealer tools unlocked"
-          : "Waiting for web admin promotion (not available in-app)",
-      done: userRole === "broker",
-    },
-  ];
+  const cardDone = dealerAccess === "pending" || dealerAccess === "approved";
+
+  const checkStatus = async () => {
+    setChecking(true);
+    await refreshSessionFromApi();
+    setChecking(false);
+    toast("Status updated");
+  };
 
   return (
-    <SafeAreaView edges={["top", "bottom"]} style={{ flex: 1, backgroundColor: colors.bg }}>
-      <View style={{ padding: spacing.xl, gap: spacing.lg, flex: 1 }}>
-        <View
-          style={{
-            width: 56,
-            height: 56,
-            borderRadius: radius.lg,
-            backgroundColor: "rgba(255, 184, 0, 0.15)",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Clock size={28} color="#B45309" />
-        </View>
+    <Screen title="Dealer access" fallbackHref={"/" as Href}>
+      <View style={styles.hero}>
+        <Clock size={28} color={colors.warning} />
+        <Text style={styles.title}>Your application is in review</Text>
+        <Text style={styles.body}>
+          The SqftGo team checks every dealer before unlocking the dashboard. Until then you can browse, save homes and
+          contact sellers as usual.
+        </Text>
+      </View>
 
-        <View style={{ gap: spacing.xs }}>
-          <Text style={{ ...type.title, color: colors.ink }}>Pending dealer access</Text>
-          <Text style={{ ...type.body, color: colors.inkMuted }}>
-            A directory card alone is not enough. Until web admin sets your profile role to{" "}
-            <Text style={{ fontWeight: "700", color: colors.ink }}>broker</Text>, the dealer
-            dashboard stays locked. You can keep browsing as a buyer.
-          </Text>
-        </View>
-
-        <View style={{ gap: spacing.md }}>
-          {steps.map((step) => (
-            <View
-              key={step.title}
-              style={{
-                flexDirection: "row",
-                gap: spacing.md,
-                backgroundColor: colors.surface,
-                borderWidth: 1,
-                borderColor: colors.border,
-                borderRadius: radius.lg,
-                padding: spacing.md,
-                boxShadow: shadow.card,
-              }}
-            >
-              <View
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: radius.md,
-                  backgroundColor: step.done ? colors.successSoft : colors.surfaceSubtle,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <step.Icon size={18} color={step.done ? colors.success : colors.inkMuted} />
-              </View>
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={{ ...type.emphasis, color: colors.ink }}>{step.title}</Text>
-                <Text style={{ ...type.caption, color: colors.inkMuted }}>{step.detail}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-
-        <Pressable
+      <ListSection title="Your progress">
+        <ListRow
+          icon={FileCheck}
+          iconTint={cardDone ? colors.success : undefined}
+          title="Business details"
+          subtitle={cardDone ? "Submitted" : "Not submitted yet"}
+          onPress={cardDone ? undefined : () => router.push("/dealer-register" as Href)}
+        />
+        <ListRow
+          icon={Shield}
+          iconTint={kycStatus === "approved" ? colors.success : undefined}
+          title="Identity documents (KYC)"
+          subtitle={kycStatus ? KYC_STATUS_LABEL[kycStatus] : "Optional, but speeds up review"}
           onPress={() => router.push("/dealer-kyc" as Href)}
-          style={({ pressed }) => ({
-            height: 48,
-            borderRadius: radius.md,
-            borderWidth: 1,
-            borderColor: colors.border,
-            backgroundColor: colors.surface,
-            alignItems: "center",
-            justifyContent: "center",
-            opacity: pressed ? 0.85 : 1,
-          })}
-        >
-          <Text style={{ ...type.emphasis, color: colors.ink }}>
-            {kycStatus ? "View KYC status" : "Submit KYC"}
-          </Text>
-        </Pressable>
+        />
+        <ListRow
+          icon={LayoutDashboard}
+          iconTint={userRole === "broker" ? colors.success : undefined}
+          title="Team approval"
+          subtitle={userRole === "broker" ? "Approved" : "Waiting for the SqftGo team"}
+        />
+      </ListSection>
 
-        <Pressable
-          onPress={() => router.replace("/(tabs)/index" as Href)}
-          style={({ pressed }) => ({
-            height: 48,
-            borderRadius: radius.md,
-            backgroundColor: colors.accent,
-            alignItems: "center",
-            justifyContent: "center",
-            opacity: pressed ? 0.85 : 1,
-            boxShadow: shadow.accent,
-          })}
-        >
-          <Text style={{ ...type.emphasis, color: colors.onAccent }}>Continue as customer</Text>
-        </Pressable>
-
-        {/* Local demo only — stands in for web admin role promotion */}
+      <View style={{ gap: spacing.sm }}>
+        {isApiMode && dealerAccess === "pending" ? (
+          <Button label="Check status" variant="secondary" onPress={() => void checkStatus()} loading={checking} fullWidth />
+        ) : null}
+        <Button label="Continue browsing" variant="tertiary" onPress={() => router.replace("/(tabs)" as Href)} fullWidth />
         {!isApiMode && dealerAccess === "pending" ? (
-          <Pressable
+          <Button
+            label="Approve this device (offline preview)"
+            variant="tertiary"
+            size="sm"
             onPress={() => {
               simulateDealerApproval();
               router.replace("/(dealer)" as Href);
             }}
-            style={{ alignItems: "center", paddingVertical: spacing.sm }}
-          >
-            <Text style={{ ...type.caption, color: colors.inkMuted, textAlign: "center" }}>
-              Demo: simulate web admin approval → broker
-            </Text>
-          </Pressable>
-        ) : null}
-        {isApiMode && dealerAccess === "pending" ? (
-          <Pressable
-            onPress={() => {
-              void refreshSessionFromApi();
-            }}
-            style={{ alignItems: "center", paddingVertical: spacing.sm }}
-          >
-            <Text style={{ ...type.caption, color: colors.inkMuted, textAlign: "center" }}>
-              Refresh status after web admin approval
-            </Text>
-          </Pressable>
+          />
         ) : null}
       </View>
-    </SafeAreaView>
+    </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  hero: {
+    backgroundColor: colors.warningSoft,
+    borderRadius: radius.lg,
+    borderCurve: "continuous",
+    padding: spacing.xl,
+    gap: spacing.sm,
+  },
+  title: { ...type.heading, color: colors.ink },
+  body: { ...type.body, color: colors.inkSecondary },
+});

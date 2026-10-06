@@ -1,5 +1,8 @@
+import type { Href } from "expo-router";
+
 import { apiFetch } from "@/lib/api/client";
 import type { AppNotification } from "@/data/notifications";
+import { formatRelativeTime } from "@/lib/format";
 
 type ApiNotification = {
   id: string;
@@ -8,8 +11,26 @@ type ApiNotification = {
   type?: string;
   read: boolean;
   date: string;
+  createdAt?: string;
   forRole?: string;
+  entityType?: string;
+  entityId?: string;
 };
+
+function hrefFor(raw: ApiNotification): Href | undefined {
+  const dealer = raw.forRole === "broker";
+  switch (raw.entityType) {
+    case "message_thread":
+    case "property_inquiry":
+      return dealer ? "/(dealer)/inquiries" : raw.entityType === "property_inquiry" ? "/my-listings" : "/my-inquiries";
+    case "site_visit":
+      return dealer ? "/manage-visits" : "/my-visits";
+    case "property":
+      return raw.entityId ? { pathname: "/edit-property/[id]", params: { id: raw.entityId } } : undefined;
+    default:
+      return undefined;
+  }
+}
 
 function mapNotification(raw: ApiNotification): AppNotification {
   const tag =
@@ -24,22 +45,11 @@ function mapNotification(raw: ApiNotification): AppNotification {
     id: raw.id,
     title: raw.title,
     message: raw.message,
-    time: formatRelative(raw.date),
+    time: formatRelativeTime(raw.createdAt ?? raw.date) || raw.date,
     read: raw.read,
     tag,
+    href: hrefFor(raw),
   };
-}
-
-function formatRelative(iso: string): string {
-  const t = Date.parse(iso);
-  if (Number.isNaN(t)) return iso;
-  const diffMs = Date.now() - t;
-  const mins = Math.floor(diffMs / 60000);
-  if (mins < 60) return `${Math.max(1, mins)} min ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs} hr${hrs === 1 ? "" : "s"} ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days} day${days === 1 ? "" : "s"} ago`;
 }
 
 export async function apiListNotifications(): Promise<AppNotification[]> {

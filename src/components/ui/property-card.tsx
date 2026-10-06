@@ -1,4 +1,5 @@
-import { Bed, Heart, MapPin, Maximize2, ShieldCheck } from "@/components/ui/icons";
+import { useRequireAuth } from "@/components/ds/AuthGate";
+import { Bed, Heart, Home, MapPin, Maximize2, ShieldCheck } from "@/components/ui/icons";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
@@ -16,10 +17,6 @@ interface PropertyCardProps {
   variant?: "full" | "compact";
 }
 
-const FALLBACK_IMAGE = {
-  uri: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80",
-};
-
 const FavoriteButton = memo(function FavoriteButton({
   isFav,
   onPress,
@@ -34,10 +31,17 @@ const FavoriteButton = memo(function FavoriteButton({
       accessibilityRole="button"
       accessibilityLabel={isFav ? "Remove from saved" : "Save property"}
       style={({ pressed }) => ({
+        width: 36,
+        height: 36,
+        borderRadius: radius.full,
+        backgroundColor: colors.surface,
+        alignItems: "center",
+        justifyContent: "center",
+        borderWidth: 1,
+        borderColor: colors.border,
         boxShadow: shadow.card,
         transform: [{ scale: pressed ? 0.92 : 1 }],
       })}
-      className="w-[34px] h-[34px] rounded-md bg-white items-center justify-center border border-black/5"
     >
       <Heart
         size={16}
@@ -51,6 +55,7 @@ const FavoriteButton = memo(function FavoriteButton({
 function PropertyCardBase({ property, variant = "full" }: PropertyCardProps) {
   const router = useRouter();
   const { favorites, toggleFavorite } = useApp();
+  const requireAuth = useRequireAuth();
   const isFav = favorites.includes(property.id);
   const compact = variant === "compact";
 
@@ -59,17 +64,18 @@ function PropertyCardBase({ property, variant = "full" }: PropertyCardProps) {
   }, [router, property.id]);
 
   const handleFavorite = useCallback(() => {
+    if (!requireAuth("Sign in to save homes and see them on all your devices.")) return;
     if (process.env.EXPO_OS === "ios") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
     toggleFavorite(property.id);
-  }, [toggleFavorite, property.id]);
+  }, [requireAuth, toggleFavorite, property.id]);
 
   const priceLabel = useMemo(() => formatIndianPrice(property.price), [property.price]);
   const sizeLabel = useMemo(() => formatSize(property.size), [property.size]);
   const purposeText = useMemo(() => purposeLabel(property.purpose), [property.purpose]);
   const showPerMonth = property.purpose === "rent" || property.purpose === "lease";
-  const imageSource = property.images?.[0] ? { uri: property.images[0] } : FALLBACK_IMAGE;
+  const cover = property.images?.[0];
 
   return (
     <Pressable
@@ -97,14 +103,20 @@ function PropertyCardBase({ property, variant = "full" }: PropertyCardProps) {
           position: "relative",
         }}
       >
-        <Image
-          source={imageSource}
-          style={{ width: "100%", height: "100%" }}
-          contentFit="cover"
-          transition={200}
-          cachePolicy="memory-disk"
-          recyclingKey={property.id}
-        />
+        {cover ? (
+          <Image
+            source={{ uri: cover }}
+            style={{ width: "100%", height: "100%" }}
+            contentFit="cover"
+            transition={200}
+            cachePolicy="memory-disk"
+            recyclingKey={property.id}
+          />
+        ) : (
+          <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+            <Home size={28} color={colors.inkMuted} />
+          </View>
+        )}
 
         {/* Floating Badges and Save Button */}
         <View

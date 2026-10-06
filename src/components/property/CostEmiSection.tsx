@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
-import { Info } from "@/components/ui/icons";
+import { ChevronDown, ChevronUp, Info } from "@/components/ui/icons";
 import type { Property } from "@/data/types";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 
@@ -92,6 +92,7 @@ export function CostEmiSection({ property }: { property: Property }) {
   const [downPaymentPercent, setDownPaymentPercent] = useState(20);
   const [loanTermYears, setLoanTermYears] = useState(15);
   const [interestRate, setInterestRate] = useState(8.5);
+  const [emiOpen, setEmiOpen] = useState(false);
 
   const loanAmount = property.price * (1 - downPaymentPercent / 100);
   const emi = calculateEmi(loanAmount, interestRate, loanTermYears);
@@ -106,10 +107,14 @@ export function CostEmiSection({ property }: { property: Property }) {
           },
         ]
       : []),
-    {
-      label: "Monthly maintenance",
-      value: `₹${(property.priceBreakdown?.maintenance || 2500).toLocaleString("en-IN")}/mo`,
-    },
+    ...(property.priceBreakdown?.maintenance
+      ? [
+          {
+            label: "Monthly maintenance",
+            value: `₹${property.priceBreakdown.maintenance.toLocaleString("en-IN")}/mo`,
+          },
+        ]
+      : []),
     ...(rental
       ? []
       : [
@@ -141,35 +146,53 @@ export function CostEmiSection({ property }: { property: Property }) {
             backgroundColor: colors.surfaceSubtle,
           }}
         >
-          <View style={{ gap: 2 }}>
-            <Text style={{ ...type.caption, color: colors.inkMuted }}>Estimated monthly EMI</Text>
-            <Text
-              selectable
-              style={{ ...type.hero, color: colors.accent, fontVariant: ["tabular-nums"] }}
+          <View style={{ flexDirection: "row", alignItems: "flex-end", gap: spacing.md }}>
+            <View style={{ gap: 2, flex: 1 }}>
+              <Text style={{ ...type.caption, color: colors.inkMuted }}>Estimated monthly EMI</Text>
+              <Text
+                selectable
+                style={{ ...type.hero, color: colors.accent, fontVariant: ["tabular-nums"] }}
+              >
+                {formatIndianCurrency(emi)}
+                <Text style={{ ...type.label, color: colors.inkMuted }}> / month</Text>
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => setEmiOpen((v) => !v)}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: emiOpen }}
+              style={{ flexDirection: "row", alignItems: "center", gap: 2, paddingVertical: spacing.xs }}
             >
-              {formatIndianCurrency(emi)}
-              <Text style={{ ...type.label, color: colors.inkMuted }}> / month</Text>
-            </Text>
+              <Text style={{ ...type.label, fontFamily: "Inter_600SemiBold", fontWeight: "600", color: colors.accent }}>
+                {emiOpen ? "Done" : "Adjust loan"}
+              </Text>
+              {emiOpen ? <ChevronUp size={16} color={colors.accent} /> : <ChevronDown size={16} color={colors.accent} />}
+            </Pressable>
           </View>
 
-          <Stepper
-            label={`Down payment (${downPaymentPercent}%)`}
-            value={formatIndianCurrency(property.price * (downPaymentPercent / 100))}
-            onDecrement={() => setDownPaymentPercent((v) => Math.max(10, v - 5))}
-            onIncrement={() => setDownPaymentPercent((v) => Math.min(80, v + 5))}
-          />
-          <Stepper
-            label="Interest rate"
-            value={`${interestRate}%`}
-            onDecrement={() => setInterestRate((v) => parseFloat(Math.max(6.5, v - 0.25).toFixed(2)))}
-            onIncrement={() => setInterestRate((v) => parseFloat(Math.min(15, v + 0.25).toFixed(2)))}
-          />
-          <Stepper
-            label="Tenure"
-            value={`${loanTermYears} yrs`}
-            onDecrement={() => setLoanTermYears((v) => Math.max(5, v - 5))}
-            onIncrement={() => setLoanTermYears((v) => Math.min(30, v + 5))}
-          />
+          {emiOpen ? (
+            <>
+              <Stepper
+                label={`Down payment (${downPaymentPercent}%)`}
+                value={formatIndianCurrency(property.price * (downPaymentPercent / 100))}
+                onDecrement={() => setDownPaymentPercent((v) => Math.max(10, v - 5))}
+                onIncrement={() => setDownPaymentPercent((v) => Math.min(80, v + 5))}
+              />
+              <Stepper
+                label="Interest rate"
+                value={`${interestRate}%`}
+                onDecrement={() => setInterestRate((v) => parseFloat(Math.max(6.5, v - 0.25).toFixed(2)))}
+                onIncrement={() => setInterestRate((v) => parseFloat(Math.min(15, v + 0.25).toFixed(2)))}
+              />
+              <Stepper
+                label="Tenure"
+                value={`${loanTermYears} yrs`}
+                onDecrement={() => setLoanTermYears((v) => Math.max(5, v - 5))}
+                onIncrement={() => setLoanTermYears((v) => Math.min(30, v + 5))}
+              />
+            </>
+          ) : null}
 
           <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
             <Info size={13} color={colors.inkMuted} />

@@ -1,14 +1,14 @@
-/** Formats a rupee amount using Indian conventions (Lakh / Crore). */
-export function formatIndianPrice(amount: number): string {
+/** Formats a rupee amount using Indian conventions (Lakh / Crore); `long` spells the unit out. */
+export function formatIndianPrice(amount: number, opts: { long?: boolean } = {}): string {
   if (amount >= 10000000) {
     const crore = amount / 10000000;
-    return `₹${crore % 1 === 0 ? crore.toFixed(0) : crore.toFixed(2)} Cr`;
+    return `₹${crore % 1 === 0 ? crore.toFixed(0) : crore.toFixed(2)} ${opts.long ? "Crore" : "Cr"}`;
   }
   if (amount >= 100000) {
     const lakh = amount / 100000;
-    return `₹${lakh % 1 === 0 ? lakh.toFixed(0) : lakh.toFixed(1)} L`;
+    return `₹${lakh % 1 === 0 ? lakh.toFixed(0) : lakh.toFixed(1)} ${opts.long ? "Lakh" : "L"}`;
   }
-  return `₹${amount.toLocaleString("en-IN")}`;
+  return `₹${Math.round(amount).toLocaleString("en-IN")}`;
 }
 
 /** Price with a "/mo" suffix for rentals and leases. */
@@ -31,6 +31,20 @@ export function purposeLabel(purpose: string): string {
     default:
       return "For Sale";
   }
+}
+
+/** "5 min ago", "3 hrs ago", "2 days ago"; falls back to a short date after a week. */
+export function formatRelativeTime(iso: string): string {
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return "";
+  const mins = Math.floor((Date.now() - t) / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} hr${hrs === 1 ? "" : "s"} ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days} day${days === 1 ? "" : "s"} ago`;
+  return new Date(t).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 }
 
 export function greetingForHour(hour: number): string {

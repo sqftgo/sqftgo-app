@@ -88,7 +88,8 @@ function FilterGroup({
 interface FilterSheetProps {
   visible: boolean;
   filters: PropertyFilters;
-  countResults: (filters: PropertyFilters) => number;
+  /** Return null when the count isn't known locally (server-side search). */
+  countResults: (filters: PropertyFilters) => number | null;
   onApply: (filters: PropertyFilters) => void;
   onClose: () => void;
   listingFilters?: ListingFilter[];
@@ -472,7 +473,11 @@ export function FilterSheet({
           })}
         >
           <Text style={{ ...type.emphasis, color: colors.onAccent }}>
-            {resultCount === 1 ? "Show 1 property" : `Show ${resultCount} properties`}
+            {resultCount == null
+              ? "Show results"
+              : resultCount === 1
+                ? "Show 1 property"
+                : `Show ${resultCount} properties`}
           </Text>
         </Pressable>
       </View>
