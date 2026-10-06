@@ -24,8 +24,8 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { CITIES, City } from "@/constants/cities";
 import { useApp } from "@/context/AppContext";
+import { useCities } from "@/hooks/use-cities";
 import { colors, fonts, radius, shadow, spacing, type } from "@/theme/tokens";
 
 const UserIcon = User as any;
@@ -40,23 +40,6 @@ const CheckIcon = Check as any;
 const ZapIcon = Zap as any;
 const PhoneCallIcon = PhoneCall as any;
 
-
-// Real photo city list for onboarding selection grid
-const ACTIVE_CITIES: City[] = CITIES.slice(0, 6);
-
-// Intentional disabled / coming soon cities (Rule 5)
-const COMING_SOON_CITIES: (City & { comingSoon: true })[] = [
-  {
-    name: "Delhi NCR",
-    image: "https://images.unsplash.com/photo-1587474260584-136574528ed5?auto=format&fit=crop&w=400&q=80",
-    comingSoon: true,
-  },
-  {
-    name: "Mumbai",
-    image: "https://images.unsplash.com/photo-1570168007204-dfb528c6958f?auto=format&fit=crop&w=400&q=80",
-    comingSoon: true,
-  },
-];
 
 const INTENT_OPTIONS = {
   user: [
@@ -81,6 +64,7 @@ export default function OnboardingScreen() {
   } = useApp();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const { cities } = useCities();
 
   const [currentSlide, setCurrentSlide] = useState(onboardingStep || 0);
   const [selectedRole, setSelectedRole] = useState<"user" | "broker">("user");
@@ -164,7 +148,13 @@ export default function OnboardingScreen() {
       {/* Top Header Bar: Wordmark logo + Segmented progress bar & step text (Rule 1, Rule 2 & Rule 4) */}
       <View style={styles.topHeader}>
         {currentSlide > 0 ? (
-          <Pressable onPress={handlePrev} style={styles.headerIconBtn} hitSlop={8}>
+          <Pressable
+            onPress={handlePrev}
+            style={styles.headerIconBtn}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Previous step"
+          >
             <ChevronLeftIcon size={18} color={colors.ink} />
           </Pressable>
         ) : (
@@ -188,7 +178,7 @@ export default function OnboardingScreen() {
         </View>
 
         {currentSlide < 3 ? (
-          <Pressable onPress={handleSkip} style={styles.skipBtn} hitSlop={8}>
+          <Pressable onPress={handleSkip} style={styles.skipBtn} hitSlop={8} accessibilityRole="button">
             <Text style={styles.skipText}>Skip</Text>
           </Pressable>
         ) : (
@@ -257,8 +247,7 @@ export default function OnboardingScreen() {
             </View>
 
             <View style={styles.citiesGridContainer}>
-              {/* Active Cities with real photos */}
-              {ACTIVE_CITIES.map((city: City) => {
+              {cities.slice(0, 8).map((city) => {
                 const isSelected = chosenCity.toLowerCase() === city.name.toLowerCase();
                 return (
                   <Pressable
@@ -280,18 +269,6 @@ export default function OnboardingScreen() {
                   </Pressable>
                 );
               })}
-
-              {/* Disabled / Coming Soon Cities with visible label & reduced opacity (Rule 5) */}
-              {COMING_SOON_CITIES.map((city) => (
-                <View key={city.name} style={[styles.cityCard, styles.cityCardDisabled]}>
-                  <Image source={{ uri: city.image }} style={styles.cityImg} contentFit="cover" />
-                  <View style={styles.cityDisabledOverlay} />
-                  <Text style={styles.cityNameTextDisabled}>{city.name}</Text>
-                  <View style={styles.comingSoonBadge}>
-                    <Text style={styles.comingSoonText}>Coming Soon</Text>
-                  </View>
-                </View>
-              ))}
             </View>
           </View>
         </View>
@@ -861,7 +838,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   roleBadgePillActive: {
-    backgroundColor: "rgba(224, 90, 54, 0.12)",
+    backgroundColor: colors.accentSoft,
     borderColor: colors.accentBorder,
   },
   roleBadgeText: {
@@ -926,7 +903,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   intentIconCircleSelected: {
-    backgroundColor: "rgba(224, 90, 54, 0.15)",
+    backgroundColor: colors.accentSoft,
   },
   intentCardTextWrapper: {
     flex: 1,

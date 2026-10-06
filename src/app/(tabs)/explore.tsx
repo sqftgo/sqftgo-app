@@ -1,11 +1,15 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { FlatList, Pressable, Text, View } from "react-native";
+import React, { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { SearchX } from "@/components/ui/icons";
 
+import { Chip } from "@/components/ds/Chip";
+import { ErrorState } from "@/components/ds/ErrorState";
+import { PropertyCardSkeleton } from "@/components/ds/Skeleton";
 import CitySelectionModal from "@/components/ui/CitySelectionModal";
+import { usePropertySearch } from "@/hooks/use-property-search";
 import { RemovableFilterChip } from "@/components/ui/chip";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ExploreNavbar } from "@/components/ui/explore-navbar";
@@ -13,6 +17,7 @@ import { FilterSheet } from "@/components/ui/filter-sheet";
 import { PropertyCard } from "@/components/ui/property-card";
 import { useApp } from "@/context/AppContext";
 import {
+  BHK_OPTIONS,
   countActiveFilters,
   defaultFilters,
   filterProperties,
@@ -39,6 +44,51 @@ const SORT_LABELS: Record<PropertyFilters["sort"], string> = {
   "size-desc": "Largest first",
 };
 
+const QUICK_PURPOSES: PurposeFilter[] = ["buy", "rent"];
+
+/** One-tap purpose and BHK toggles; everything else lives in the filter sheet. */
+function QuickFilters({
+  filters,
+  onChange,
+}: {
+  filters: PropertyFilters;
+  onChange: (next: PropertyFilters) => void;
+}) {
+  const tap = (next: PropertyFilters) => {
+    if (process.env.EXPO_OS === "ios") Haptics.selectionAsync();
+    onChange(next);
+  };
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ gap: spacing.sm, paddingHorizontal: spacing.lg }}
+      style={{ marginHorizontal: -spacing.lg }}
+    >
+      {QUICK_PURPOSES.map((p) => (
+        <Chip
+          key={p}
+          label={PURPOSE_LABELS[p as Exclude<PurposeFilter, "all">]}
+          selected={filters.purpose === p}
+          onPress={() => tap({ ...filters, purpose: filters.purpose === p ? "all" : p })}
+        />
+      ))}
+      {BHK_OPTIONS.map((b) => {
+        const on = filters.bhk.includes(b);
+        return (
+          <Chip
+            key={b}
+            label={`${b} BHK`}
+            selected={on}
+            showCheck
+            onPress={() => tap({ ...filters, bhk: on ? filters.bhk.filter((x) => x !== b) : [...filters.bhk, b] })}
+          />
+        );
+      })}
+    </ScrollView>
+  );
+}
+
 /** Removable chips for active filters, shown under the search bar. */
 function ActiveFilterChips({
   filters,
@@ -57,7 +107,7 @@ function ActiveFilterChips({
     });
   }
 
-  if (filters.purpose !== "all") {
+  if (filters.purpose !== "all" && !QUICK_PURPOSES.includes(filters.purpose)) {
     chips.push({
       key: `purpose-${filters.purpose}`,
       label: PURPOSE_LABELS[filters.purpose],
@@ -74,7 +124,7 @@ function ActiveFilterChips({
   }
 
   if (filters.bhk.length > 0) {
-    filters.bhk.forEach((b) => {
+    filters.bhk.filter((b) => !(BHK_OPTIONS as readonly string[]).includes(b)).forEach((b) => {
       chips.push({
         key: `bhk-${b}`,
         label: `${b} BHK`,
@@ -155,7 +205,18 @@ function ActiveFilterChips({
   }
 
   if (chips.length === 0) return null;
+  return <ChipRow chips={chips} filters={filters} onChange={onChange} />;
+}
 
+function ChipRow({
+  chips,
+  filters,
+  onChange,
+}: {
+  chips: { key: string; label: string; clear: () => void }[];
+  filters: PropertyFilters;
+  onChange: (next: PropertyFilters) => void;
+}) {
   const handleResetAll = () => {
     if (process.env.EXPO_OS === "ios") {
       Haptics.selectionAsync();
@@ -176,7 +237,7 @@ function ActiveFilterChips({
 }
 
 export default function ExploreScreen() {
-  const { properties, selectedCity } = useApp();
+  const { properties, selectedCity, isApiMode } = useApp();
   const { filters: listingFilters } = useListingFilters();
   const params = useLocalSearchParams<{ purpose?: string; type?: string }>();
 
@@ -204,15 +265,13 @@ export default function ExploreScreen() {
     }
   }, [params.purpose, params.type]);
 
-  const results = useMemo(
-    () => filterProperties(properties, selectedCity, filters, listingFilters),
-    [properties, selectedCity, filters, listingFilters],
-  );
+  const search = usePropertySearch(filters, listingFilters);
+  const { results } = search;
 
   const countResults = useCallback(
     (draft: PropertyFilters) =>
-      filterProperties(properties, selectedCity, draft, listingFilters).length,
-    [properties, selectedCity, listingFilters],
+      isApiMode ? null : filterProperties(properties, selectedCity, draft, listingFilters).length,
+    [isApiMode, properties, selectedCity, listingFilters],
   );
 
   const activeCount = countActiveFilters(filters);
@@ -237,6 +296,18 @@ export default function ExploreScreen() {
         data={results}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => <PropertyCard property={item} />}
+        onEndReached={search.loadMore}
+        onEndReachedThreshold={0.6}
+        refreshControl={
+          isApiMode ? (
+            <RefreshControl refreshing={search.isRefreshing} onRefresh={search.refresh} tintColor={colors.accent} />
+          ) : undefined
+        }
+        ListFooterComponent={
+          search.isFetchingMore ? (
+            <ActivityIndicator color={colors.accent} style={{ paddingVertical: spacing.lg }} />
+          ) : null
+        }
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         contentInsetAdjustmentBehavior="automatic"
@@ -255,9 +326,12 @@ export default function ExploreScreen() {
               onPressCity={openCityPicker}
               onPressFilters={openFilters}
               activeFilterCount={activeCount}
-              resultCount={results.length}
+              resultCount={
+                search.isError ? null : search.isLoading ? undefined : search.hasMore ? search.total : results.length
+              }
               sortLabel={SORT_LABELS[filters.sort]}
             />
+            <QuickFilters filters={filters} onChange={setFilters} />
             {activeCount > 0 ? (
               <ActiveFilterChips filters={filters} onChange={setFilters} />
             ) : null}
@@ -265,6 +339,16 @@ export default function ExploreScreen() {
         }
 
         ListEmptyComponent={
+          search.isLoading ? (
+            <View style={{ gap: spacing.md }}>
+              <PropertyCardSkeleton />
+              <PropertyCardSkeleton />
+            </View>
+          ) : search.isError ? (
+            <ErrorState message="Check your connection and try again." onRetry={search.refresh} />
+          ) : search.hasMore ? (
+            <ActivityIndicator color={colors.accent} style={{ paddingVertical: spacing.xl }} />
+          ) : (
           <EmptyState
             icon={SearchX}
             title="No properties found"
@@ -285,6 +369,7 @@ export default function ExploreScreen() {
                 : undefined
             }
           />
+          )
         }
       />
 

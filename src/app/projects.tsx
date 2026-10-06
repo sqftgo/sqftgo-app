@@ -1,136 +1,53 @@
-import React, { useCallback, useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  Image,
-  Pressable,
-  Text,
-  View,
-} from "react-native";
-import { useRouter, type Href } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Building2 } from "@/components/ui/icons";
+import { useQuery } from "@tanstack/react-query";
+import { type Href } from "expo-router";
+import React from "react";
+import { FlatList, RefreshControl } from "react-native";
 
+import { ErrorState, ListSkeleton, Screen } from "@/components/ds";
 import { EmptyState } from "@/components/ui/empty-state";
-import { ScreenNavbar } from "@/components/ui/screen-navbar";
-import type { Project } from "@/data/project";
+import { Building2 } from "@/components/ui/icons";
+import { ProjectCard } from "@/components/ui/project-card";
+import { useApp } from "@/context/AppContext";
 import { isApiMode } from "@/lib/api/config";
 import { apiListProjects } from "@/lib/api/services/projects";
-import { formatPriceWithPeriod } from "@/lib/format";
-import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
-
-function formatRange(from?: number, to?: number) {
-  if (from == null && to == null) return "Price on request";
-  if (from != null && to != null) {
-    return `${formatPriceWithPeriod(from, "buy")} – ${formatPriceWithPeriod(to, "buy")}`;
-  }
-  return formatPriceWithPeriod(from ?? to ?? 0, "buy");
-}
+import { colors, spacing } from "@/theme/tokens";
 
 export default function ProjectsBrowseScreen() {
-  const router = useRouter();
-  const [items, setItems] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      if (!isApiMode) {
-        setItems([]);
-        return;
-      }
-      const list = await apiListProjects({ limit: 50 });
-      setItems(list.filter((p) => p.status === "Active" || !p.status));
-    } catch {
-      setItems([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const { selectedCity } = useApp();
+  const city = selectedCity && selectedCity.toLowerCase() !== "all india" ? selectedCity : undefined;
+  const query = useQuery({
+    queryKey: ["projects", "browse", city ?? "all"],
+    queryFn: async () => (await apiListProjects({ city, limit: 50 })).filter((p) => p.status === "Active" || !p.status),
+    enabled: isApiMode,
+  });
 
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.bg }}>
-      <View style={{ paddingHorizontal: spacing.lg }}>
-        <ScreenNavbar
-          title="Projects"
-          subtitle="Builder & developer launches"
-          onBack={() => router.back()}
-        />
-      </View>
-
-      {loading ? (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator color={colors.accent} />
-        </View>
+    <Screen title="Projects" subtitle={city ? `Builder launches in ${city}` : "Builder launches"} scroll={false} contentStyle={{ paddingHorizontal: spacing.lg }} fallbackHref={"/" as Href}>
+      {query.isPending && isApiMode ? (
+        <ListSkeleton rows={3} />
+      ) : query.isError ? (
+        <ErrorState message="Check your connection and try again." onRetry={() => void query.refetch()} />
       ) : (
         <FlatList
-          data={items}
+          data={query.data ?? []}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{
-            padding: spacing.lg,
-            gap: spacing.md,
-            flexGrow: 1,
-            paddingBottom: spacing.xxl,
-          }}
+          renderItem={({ item }) => <ProjectCard project={item} />}
+          refreshControl={
+            isApiMode ? (
+              <RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} tintColor={colors.accent} />
+            ) : undefined
+          }
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ gap: spacing.md, flexGrow: 1, paddingTop: spacing.sm, paddingBottom: spacing.xxl }}
           ListEmptyComponent={
             <EmptyState
               icon={Building2}
-              title={isApiMode ? "No active projects" : "API mode required"}
-              message={
-                isApiMode
-                  ? "Check back soon for new launches."
-                  : "Set EXPO_PUBLIC_API_URL to load live projects."
-              }
+              title={isApiMode ? (city ? `No projects in ${city} yet` : "No active projects") : "Needs a connection"}
+              message={isApiMode ? "New launches appear here as soon as they're approved." : "Connect the app to SqftGo to see live projects."}
             />
           }
-          renderItem={({ item }) => {
-            const cover = item.images?.[0];
-            return (
-              <Pressable
-                onPress={() => router.push(`/project/${item.id}` as Href)}
-                style={{
-                  backgroundColor: colors.surface,
-                  borderRadius: radius.lg,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  overflow: "hidden",
-                  boxShadow: shadow.card,
-                }}
-              >
-                {cover ? (
-                  <Image source={{ uri: cover }} style={{ width: "100%", height: 160 }} />
-                ) : (
-                  <View
-                    style={{
-                      height: 120,
-                      backgroundColor: colors.surfaceSubtle,
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Building2 size={28} color={colors.inkMuted} />
-                  </View>
-                )}
-                <View style={{ padding: spacing.md, gap: 4 }}>
-                  <Text style={{ ...type.emphasis, color: colors.ink }} numberOfLines={2}>
-                    {item.title}
-                  </Text>
-                  <Text style={{ ...type.caption, color: colors.inkMuted }}>
-                    {item.locality}, {item.city} · {item.lifecycle}
-                  </Text>
-                  <Text style={{ ...type.label, color: colors.accent }}>
-                    {formatRange(item.priceFrom, item.priceTo)}
-                  </Text>
-                </View>
-              </Pressable>
-            );
-          }}
         />
       )}
-    </SafeAreaView>
+    </Screen>
   );
 }

@@ -1,18 +1,20 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   BarChart3,
+  Bell,
   Calendar,
   CheckCircle2,
   Inbox,
   Plus,
 } from "@/components/ui/icons";
 
+import { StatusBadge, toneForStatus } from "@/components/ds/StatusBadge";
+import { NotificationsSheet, useNotifications } from "@/components/ui/notifications-sheet";
 import { ScreenNavbar } from "@/components/ui/screen-navbar";
 import { useApp } from "@/context/AppContext";
-import type { Property } from "@/data/types";
 import { formatPriceWithPeriod } from "@/lib/format";
 import {
   ownedPropertyIds,
@@ -22,15 +24,6 @@ import {
 } from "@/lib/ownership";
 import { PROPERTY_STATUS_LABEL, VISIT_STATUS_LABEL } from "@/lib/status-labels";
 import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
-
-const STATUS_TONE: Record<Property["status"], { bg: string; color: string }> = {
-  Draft: { bg: colors.surfaceSubtle, color: colors.inkMuted },
-  "Pending Review": { bg: "rgba(255, 184, 0, 0.12)", color: "#B45309" },
-  Active: { bg: colors.successSoft, color: colors.success },
-  Sold: { bg: colors.infoSoft, color: colors.info },
-  Rented: { bg: colors.infoSoft, color: colors.info },
-  Rejected: { bg: colors.dangerSoft, color: colors.danger },
-};
 
 function SectionHeader({
   title,
@@ -71,6 +64,8 @@ export default function DealerDashboardScreen() {
     profile,
     updateVisitStatus,
   } = useApp();
+  const [notificationsVisible, setNotificationsVisible] = useState(false);
+  const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
 
   const ownerOpts = useMemo(
     () => ({ userId: profile?.id, email: userEmail }),
@@ -129,6 +124,14 @@ export default function DealerDashboardScreen() {
             eyebrow="Dealer portal"
             title={userName ? `Hi, ${userName.split(" ")[0]}` : "Dashboard"}
             subtitle="Listings go live after admin approval"
+            actions={[
+              {
+                icon: Bell,
+                label: "Notifications",
+                badge: unreadCount > 0,
+                onPress: () => setNotificationsVisible(true),
+              },
+            ]}
           />
         </View>
 
@@ -234,7 +237,6 @@ export default function DealerDashboardScreen() {
             contentContainerStyle={{ paddingHorizontal: spacing.lg, gap: spacing.md }}
           >
             {recentListings.map((item) => {
-              const tone = STATUS_TONE[item.status];
               return (
                 <Pressable
                   key={item.id}
@@ -260,19 +262,8 @@ export default function DealerDashboardScreen() {
                   <Text style={{ ...type.caption, color: colors.ink, fontWeight: "600" }}>
                     {formatPriceWithPeriod(item.price, item.purpose)}
                   </Text>
-                  <View
-                    style={{
-                      alignSelf: "flex-start",
-                      backgroundColor: tone.bg,
-                      paddingHorizontal: spacing.sm,
-                      paddingVertical: 2,
-                      borderRadius: radius.sm,
-                      marginTop: 4,
-                    }}
-                  >
-                    <Text style={{ ...type.micro, color: tone.color }}>
-                      {PROPERTY_STATUS_LABEL[item.status]}
-                    </Text>
+                  <View style={{ marginTop: 4 }}>
+                    <StatusBadge label={PROPERTY_STATUS_LABEL[item.status]} tone={toneForStatus(item.status)} />
                   </View>
                 </Pressable>
               );
@@ -367,6 +358,14 @@ export default function DealerDashboardScreen() {
           )}
         </View>
       </ScrollView>
+      <NotificationsSheet
+        visible={notificationsVisible}
+        onClose={() => setNotificationsVisible(false)}
+        notifications={notifications}
+        unreadCount={unreadCount}
+        onMarkRead={markRead}
+        onMarkAllRead={markAllRead}
+      />
     </SafeAreaView>
   );
 }

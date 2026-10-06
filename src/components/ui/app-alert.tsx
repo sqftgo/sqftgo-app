@@ -46,7 +46,7 @@ function buttonVisual(style: AppAlertButtonStyle | undefined, alone: boolean) {
     return {
       container: {
         backgroundColor: colors.dangerSoft,
-        borderColor: "rgba(220, 38, 38, 0.22)",
+        borderColor: colors.dangerSoft,
       },
       label: { color: colors.danger },
     };

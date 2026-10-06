@@ -1,40 +1,16 @@
-import React, { useState } from "react";
-import {
-  KeyboardAvoidingView,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import { appAlert } from "@/components/ui/app-alert";
 import { useRouter, type Href } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { ChevronLeft } from "@/components/ui/icons";
+import React, { useState } from "react";
+import { StyleSheet, Text, View } from "react-native";
 
+import { Button, ChipGroup, CityField, ListRow, ListSection, Screen, TextField } from "@/components/ds";
+import { appAlert } from "@/components/ui/app-alert";
+import { Briefcase, Clock } from "@/components/ui/icons";
 import { useApp } from "@/context/AppContext";
 import type { DirectoryCategory } from "@/data/types";
-import { isDealerCategory } from "@/lib/is-dealer-category";
-import { CITIES } from "@/constants/cities";
-import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
+import { colors, radius, spacing, type } from "@/theme/tokens";
 
-const CATEGORIES: DirectoryCategory[] = [
-  "Agent & Broker",
-  "Builder & Developer",
-  "Property Consultant",
-  "Interior Decorator",
-  "Architect",
-  "Building Contractor",
-  "Vastu Consultant",
-  "Home Valuation/Inspection",
-  "Home Shifting/Deep Cleaning",
-  "Architect & Interior Designer",
-  "House Services",
-  "Movers & Packers",
-  "Contractors",
-  "Event Managers",
-  "Wedding Planners",
-];
+const DEALER_CATEGORIES = ["Agent & Broker", "Builder & Developer", "Property Consultant"] as const satisfies readonly DirectoryCategory[];
+type DealerCategory = (typeof DEALER_CATEGORIES)[number];
 
 export default function DealerRegisterScreen() {
   const router = useRouter();
@@ -42,64 +18,51 @@ export default function DealerRegisterScreen() {
 
   const [firmName, setFirmName] = useState("");
   const [ownerName, setOwnerName] = useState(userName);
-  const [category, setCategory] = useState<DirectoryCategory>("Agent & Broker");
-  const [city, setCity] = useState(selectedCity || "Udaipur");
+  const [category, setCategory] = useState<DealerCategory>("Agent & Broker");
+  const [city, setCity] = useState(selectedCity && selectedCity.toLowerCase() !== "all india" ? selectedCity : "");
   const [address, setAddress] = useState("");
   const [mobile, setMobile] = useState("");
   const [website, setWebsite] = useState("");
   const [description, setDescription] = useState("");
   const [reraId, setReraId] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [touched, setTouched] = useState(false);
 
   if (userRole === "broker" || dealerAccess === "approved") {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg, padding: spacing.xl }}>
-        <Text style={{ ...type.heading, color: colors.ink }}>You’re already a dealer</Text>
-        <Pressable
-          onPress={() => router.replace("/(dealer)" as Href)}
-          style={{
-            marginTop: spacing.lg,
-            height: 48,
-            backgroundColor: colors.accent,
-            borderRadius: radius.md,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Text style={{ ...type.emphasis, color: colors.onAccent }}>Open dashboard</Text>
-        </Pressable>
-      </SafeAreaView>
+      <Screen title="Become a dealer">
+        <Text style={styles.body}>Your dealer account is already active.</Text>
+        <Button label="Open dashboard" onPress={() => router.replace("/(dealer)" as Href)} fullWidth />
+      </Screen>
     );
   }
 
   if (dealerAccess === "pending") {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg, padding: spacing.xl }}>
-        <Text style={{ ...type.heading, color: colors.ink }}>Registration submitted</Text>
-        <Text style={{ ...type.body, color: colors.inkMuted, marginTop: spacing.sm }}>
-          Your directory card is waiting for web admin to promote your role to broker.
-        </Text>
-        <Pressable
-          onPress={() => router.replace("/dealer-pending" as Href)}
-          style={{
-            marginTop: spacing.lg,
-            height: 48,
-            backgroundColor: colors.accent,
-            borderRadius: radius.md,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Text style={{ ...type.emphasis, color: colors.onAccent }}>View status</Text>
-        </Pressable>
-      </SafeAreaView>
+      <Screen title="Become a dealer">
+        <View style={styles.notice}>
+          <Clock size={24} color={colors.warning} />
+          <Text style={styles.noticeTitle}>Application in review</Text>
+          <Text style={styles.body}>We&apos;ll unlock your dealer dashboard as soon as the SqftGo team approves it.</Text>
+        </View>
+        <Button label="View status" onPress={() => router.replace("/dealer-pending" as Href)} fullWidth />
+      </Screen>
     );
   }
 
+  const errors = {
+    firmName: !firmName.trim() ? "Enter your firm name" : null,
+    ownerName: !ownerName.trim() ? "Enter the owner's name" : null,
+    city: !city.trim() ? "Choose a city" : null,
+    address: !address.trim() ? "Enter your office address" : null,
+    mobile: mobile.replace(/\D/g, "").length < 10 ? "Enter a 10-digit mobile number" : null,
+  };
+  const show = (e: string | null) => (touched ? e : null);
+
   const handleSubmit = async () => {
-    if (!firmName.trim() || !ownerName.trim() || !address.trim() || !mobile.trim()) {
-      appAlert("Missing details", "Firm name, owner, address, and mobile are required.");
-      return;
-    }
+    setTouched(true);
+    if (Object.values(errors).some(Boolean)) return;
+    setBusy(true);
     const result = await registerAsDealer({
       firmName: firmName.trim(),
       ownerName: ownerName.trim(),
@@ -112,216 +75,86 @@ export default function DealerRegisterScreen() {
       description: description.trim() || `${firmName.trim()} on SqftGo`,
       reraId: reraId.trim() || undefined,
     });
+    setBusy(false);
     if (!result.ok) {
-      appAlert("Could not register", result.message ?? "Try again.");
+      appAlert("Couldn't submit", result.message ?? "Please try again.");
       return;
     }
-    appAlert(
-      "Directory submitted",
-      isDealerCategory(category)
-        ? "Your dealer card is live in the directory. Full dashboard unlocks after web admin sets your role to broker."
-        : "Your service profile is submitted. Dealer listing tools require an Agent/Broker-style category and broker role.",
-      [{ text: "OK", onPress: () => router.replace("/dealer-pending" as Href) }],
-    );
-  };
-
-  const inputStyle = {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    ...type.body,
-    color: colors.ink,
+    router.replace("/dealer-pending" as Href);
   };
 
   return (
-    <SafeAreaView edges={["top", "bottom"]} style={{ flex: 1, backgroundColor: colors.bg }}>
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          paddingHorizontal: spacing.lg,
-          paddingVertical: spacing.md,
-          borderBottomWidth: 1,
-          borderBottomColor: colors.border,
-          gap: spacing.sm,
-        }}
-      >
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <ChevronLeft size={22} color={colors.ink} />
-        </Pressable>
-        <Text style={{ ...type.heading, color: colors.ink, flex: 1 }}>Become a dealer</Text>
+    <Screen
+      title="Become a dealer"
+      footer={<Button label="Submit for review" onPress={() => void handleSubmit()} loading={busy} fullWidth />}
+    >
+      <Text style={styles.body}>
+        Tell us about your business. The SqftGo team reviews every dealer before listing tools unlock, usually within
+        a few working days.
+      </Text>
+
+      <View style={styles.group}>
+        <Text style={styles.label}>Business type</Text>
+        <ChipGroup options={DEALER_CATEGORIES} value={category} onChange={setCategory} />
       </View>
 
-      <KeyboardAvoidingView
-        behavior={process.env.EXPO_OS === "ios" ? "padding" : undefined}
-        style={{ flex: 1 }}
-      >
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{
-            padding: spacing.xl,
-            gap: spacing.md,
-            paddingBottom: spacing.xxl,
-          }}
-        >
-          <Text style={{ ...type.body, color: colors.inkMuted }}>
-            Create your public directory card. Dealer signup with intent{" "}
-            <Text style={{ fontWeight: "700", color: colors.ink }}>dealer</Text> already grants{" "}
-            <Text style={{ fontWeight: "700", color: colors.ink }}>broker</Text> (same as web).
-            Existing buyers use this form to apply; dashboard unlock still needs broker role from
-            the BFF / admin.
-          </Text>
+      <View style={styles.group}>
+        <TextField label="Firm name" required value={firmName} onChangeText={setFirmName} placeholder="e.g. Lakeside Realty" error={show(errors.firmName)} />
+        <TextField label="Owner name" required value={ownerName} onChangeText={setOwnerName} autoComplete="name" error={show(errors.ownerName)} />
+        <TextField
+          label="Mobile"
+          required
+          value={mobile}
+          onChangeText={setMobile}
+          placeholder="98xxxxxxxx"
+          keyboardType="phone-pad"
+          autoComplete="tel"
+          prefix="+91"
+          error={show(errors.mobile)}
+        />
+      </View>
 
-          <Text style={{ ...type.label, color: colors.inkMuted }}>FIRM NAME *</Text>
-          <TextInput
-            value={firmName}
-            onChangeText={setFirmName}
-            placeholder="e.g. Lakeside Realty"
-            placeholderTextColor={colors.inkMuted}
-            style={inputStyle}
-          />
+      <View style={styles.group}>
+        <CityField value={city} onChange={(c) => setCity(c)} required />
+        {show(errors.city) ? <Text style={styles.error}>{errors.city}</Text> : null}
+        <TextField label="Office address" required value={address} onChangeText={setAddress} error={show(errors.address)} />
+      </View>
 
-          <Text style={{ ...type.label, color: colors.inkMuted }}>OWNER NAME *</Text>
-          <TextInput
-            value={ownerName}
-            onChangeText={setOwnerName}
-            placeholder="Your name"
-            placeholderTextColor={colors.inkMuted}
-            style={inputStyle}
-          />
+      <View style={styles.group}>
+        <TextField label="RERA ID" value={reraId} onChangeText={setReraId} hint="Optional. Shown on your profile when provided." />
+        <TextField label="Website" value={website} onChangeText={setWebsite} placeholder="https://" autoCapitalize="none" keyboardType="url" />
+        <TextField
+          label="About your firm"
+          value={description}
+          onChangeText={setDescription}
+          placeholder="What you specialise in, areas you cover"
+          multiline
+        />
+      </View>
 
-          <Text style={{ ...type.label, color: colors.inkMuted }}>CATEGORY</Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
-            {CATEGORIES.map((c) => {
-              const active = category === c;
-              return (
-                <Pressable
-                  key={c}
-                  onPress={() => setCategory(c)}
-                  style={{
-                    paddingHorizontal: spacing.md,
-                    paddingVertical: spacing.sm,
-                    borderRadius: radius.md,
-                    borderWidth: 1,
-                    borderColor: active ? colors.accent : colors.border,
-                    backgroundColor: active ? colors.accentSoft : colors.surface,
-                  }}
-                >
-                  <Text
-                    style={{
-                      ...type.micro,
-                      fontWeight: "700",
-                      color: active ? colors.accent : colors.inkMuted,
-                    }}
-                  >
-                    {c}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          <Text style={{ ...type.label, color: colors.inkMuted }}>CITY</Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
-            {CITIES.slice(0, 6).map((c) => {
-              const active = city === c.name;
-              return (
-                <Pressable
-                  key={c.name}
-                  onPress={() => setCity(c.name)}
-                  style={{
-                    paddingHorizontal: spacing.md,
-                    paddingVertical: spacing.sm,
-                    borderRadius: radius.md,
-                    borderWidth: 1,
-                    borderColor: active ? colors.accent : colors.border,
-                    backgroundColor: active ? colors.accentSoft : colors.surface,
-                  }}
-                >
-                  <Text
-                    style={{
-                      ...type.micro,
-                      fontWeight: "700",
-                      color: active ? colors.accent : colors.inkMuted,
-                    }}
-                  >
-                    {c.name}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          <Text style={{ ...type.label, color: colors.inkMuted }}>ADDRESS *</Text>
-          <TextInput
-            value={address}
-            onChangeText={setAddress}
-            placeholder="Office address"
-            placeholderTextColor={colors.inkMuted}
-            style={inputStyle}
-          />
-
-          <Text style={{ ...type.label, color: colors.inkMuted }}>MOBILE *</Text>
-          <TextInput
-            value={mobile}
-            onChangeText={setMobile}
-            placeholder="+91 ..."
-            placeholderTextColor={colors.inkMuted}
-            keyboardType="phone-pad"
-            style={inputStyle}
-          />
-
-          <Text style={{ ...type.label, color: colors.inkMuted }}>WEBSITE</Text>
-          <TextInput
-            value={website}
-            onChangeText={setWebsite}
-            placeholder="https://"
-            placeholderTextColor={colors.inkMuted}
-            autoCapitalize="none"
-            style={inputStyle}
-          />
-
-          <Text style={{ ...type.label, color: colors.inkMuted }}>RERA ID</Text>
-          <TextInput
-            value={reraId}
-            onChangeText={setReraId}
-            placeholder="Optional"
-            placeholderTextColor={colors.inkMuted}
-            style={inputStyle}
-          />
-
-          <Text style={{ ...type.label, color: colors.inkMuted }}>DESCRIPTION</Text>
-          <TextInput
-            value={description}
-            onChangeText={setDescription}
-            placeholder="Tell buyers about your firm"
-            placeholderTextColor={colors.inkMuted}
-            multiline
-            style={{ ...inputStyle, minHeight: 88, textAlignVertical: "top" as const }}
-          />
-
-          <Pressable
-            onPress={handleSubmit}
-            style={({ pressed }) => ({
-              height: 50,
-              marginTop: spacing.sm,
-              borderRadius: radius.md,
-              backgroundColor: colors.accent,
-              alignItems: "center",
-              justifyContent: "center",
-              opacity: pressed ? 0.85 : 1,
-              boxShadow: shadow.accent,
-            })}
-          >
-            <Text style={{ ...type.emphasis, color: colors.onAccent }}>
-              Submit directory card
-            </Text>
-          </Pressable>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      <ListSection>
+        <ListRow
+          icon={Briefcase}
+          title="Run a service business?"
+          subtitle="Interiors, movers, architects and other trades list here instead"
+          onPress={() => router.push("/services/register" as Href)}
+        />
+      </ListSection>
+    </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  body: { ...type.body, color: colors.inkSecondary },
+  group: { gap: spacing.md },
+  label: { ...type.label, color: colors.inkSecondary },
+  error: { ...type.caption, color: colors.danger },
+  notice: {
+    backgroundColor: colors.warningSoft,
+    borderRadius: radius.lg,
+    borderCurve: "continuous",
+    padding: spacing.xl,
+    gap: spacing.sm,
+  },
+  noticeTitle: { ...type.heading, color: colors.ink },
+});

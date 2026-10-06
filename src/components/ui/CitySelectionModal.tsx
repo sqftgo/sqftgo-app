@@ -11,7 +11,8 @@ import {
 } from "react-native";
 import { Search, Check, MapPin, X } from "@/components/ui/icons";
 import Svg, { Defs, LinearGradient as SvgLinearGradient, Rect, Stop } from "react-native-svg";
-import { CITIES, City } from "@/constants/cities";
+import type { City } from "@/constants/cities";
+import { useCities } from "@/hooks/use-cities";
 import { useApp } from "@/context/AppContext";
 import { ModalSheet, ModalSheetHeader } from "@/components/ui/modal-sheet";
 import { colors, radius, spacing, type } from "@/theme/tokens";
@@ -23,6 +24,9 @@ const CITY_LIST_HEIGHT = Math.round(SCREEN_HEIGHT * 0.46);
 interface CitySelectionModalProps {
   visible: boolean;
   onClose: () => void;
+  /** Controlled mode for forms; defaults to the app-wide browsing city. */
+  value?: string;
+  onSelect?: (city: string) => void;
 }
 
 const CardGradient = () => (
@@ -38,16 +42,19 @@ const CardGradient = () => (
   </Svg>
 );
 
-export default function CitySelectionModal({ visible, onClose }: CitySelectionModalProps) {
-  const { selectedCity, setSelectedCity } = useApp();
+export default function CitySelectionModal({ visible, onClose, value, onSelect }: CitySelectionModalProps) {
+  const app = useApp();
+  const selectedCity = onSelect ? (value ?? "") : app.selectedCity;
   const [searchQuery, setSearchQuery] = useState("");
+  const { cities } = useCities();
 
-  const filteredCities = CITIES.filter((city) =>
+  const filteredCities = cities.filter((city) =>
     city.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleSelectCity = (city: City) => {
-    setSelectedCity(city.name);
+    if (onSelect) onSelect(city.name);
+    else app.setSelectedCity(city.name);
     setTimeout(() => {
       onClose();
       setSearchQuery("");
@@ -64,6 +71,9 @@ export default function CitySelectionModal({ visible, onClose }: CitySelectionMo
     return (
       <Pressable
         onPress={() => handleSelectCity(item)}
+        accessibilityRole="button"
+        accessibilityLabel={item.name}
+        accessibilityState={{ selected: isSelected }}
         style={({ pressed }) => [
           styles.card,
           { width: cardSize, height: cardSize },
@@ -111,7 +121,12 @@ export default function CitySelectionModal({ visible, onClose }: CitySelectionMo
             clearButtonMode="while-editing"
           />
           {searchQuery !== "" && (
-            <Pressable onPress={() => setSearchQuery("")} style={styles.clearBtn}>
+            <Pressable
+              onPress={() => setSearchQuery("")}
+              style={styles.clearBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+            >
               <X size={14} color={colors.inkMuted} />
             </Pressable>
           )}

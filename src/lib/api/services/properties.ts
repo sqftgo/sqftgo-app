@@ -27,7 +27,7 @@ function toQuery(filters: PropertyListFilters = {}): string {
   if (filters.type) params.set("type", filters.type);
   if (filters.purpose) params.set("purpose", filters.purpose);
   if (filters.status) params.set("status", filters.status);
-  if (filters.featured) params.set("featured", "1");
+  if (filters.featured) params.set("featured", "true");
   if (filters.search) params.set("search", filters.search);
   if (filters.minPrice != null) params.set("minPrice", String(filters.minPrice));
   if (filters.maxPrice != null) params.set("maxPrice", String(filters.maxPrice));
@@ -45,6 +45,18 @@ export async function apiListProperties(
     { public: true },
   );
   return Array.isArray(res) ? res : res.items ?? [];
+}
+
+export type PropertyPage = { items: Property[]; total: number; offset: number };
+
+export async function apiListPropertiesPage(filters: PropertyListFilters = {}): Promise<PropertyPage> {
+  const res = await apiFetch<ListResponse<Property> | Property[]>(
+    `/api/properties${toQuery(filters)}`,
+    { public: true },
+  );
+  if (Array.isArray(res)) return { items: res, total: res.length, offset: filters.offset ?? 0 };
+  const items = res.items ?? [];
+  return { items, total: res.total ?? items.length, offset: res.offset ?? filters.offset ?? 0 };
 }
 
 export async function apiGetProperty(id: string): Promise<Property> {

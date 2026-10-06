@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Image,
+  Linking,
   Pressable,
   ScrollView,
   Text,
@@ -10,7 +11,6 @@ import {
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Building2, Phone } from "@/components/ui/icons";
-import { Linking } from "react-native";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import type { Project } from "@/data/project";

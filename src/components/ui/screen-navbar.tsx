@@ -180,12 +180,11 @@ export function ScreenNavbar({
       <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
         <Text
           style={{
-            ...type.hero,
-            fontSize: onBack ? 20 : 24,
-            lineHeight: onBack ? 26 : 30,
+            ...(onBack ? type.title : type.hero),
             color: colors.ink,
             flexShrink: 1,
           }}
+          accessibilityRole="header"
           numberOfLines={1}
         >
           {title}

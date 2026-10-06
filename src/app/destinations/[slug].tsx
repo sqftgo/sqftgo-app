@@ -1,163 +1,191 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  Image,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
+import { useQuery } from "@tanstack/react-query";
+import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Building2, MapPin } from "@/components/ui/icons";
+import React, { useMemo, useState } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { EmptyState } from "@/components/ui/empty-state";
+import { Button, EmptyState, ErrorState, ListRow, ListSection, PropertyCardSkeleton, Screen } from "@/components/ds";
+import { WeddingEnquirySheet, type WeddingItem } from "@/components/destinations/WeddingEnquirySheet";
+import { Building2, MapPin, Sparkles, Users } from "@/components/ui/icons";
 import { PropertyCard } from "@/components/ui/property-card";
-import { getDestinationBySlug } from "@/data/destinations";
 import { useApp } from "@/context/AppContext";
+import { getDestinationBySlug } from "@/data/destinations";
+import { weddingCatalogFor } from "@/data/wedding-venues";
 import { isApiMode } from "@/lib/api/config";
 import { apiListProperties } from "@/lib/api/services/properties";
-import type { Property } from "@/data/types";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 
 export default function DestinationDetailScreen() {
   const router = useRouter();
   const { slug } = useLocalSearchParams<{ slug: string }>();
-  const { properties: localProperties, setSelectedCity } = useApp();
-  const destination = useMemo(
-    () => (slug ? getDestinationBySlug(slug) : undefined),
-    [slug],
-  );
+  const { properties, setSelectedCity, mergeProperties } = useApp();
+  const destination = useMemo(() => (slug ? getDestinationBySlug(slug) : undefined), [slug]);
+  const [enquiry, setEnquiry] = useState<WeddingItem | null>(null);
+  const [aboutOpen, setAboutOpen] = useState(false);
 
-  const [live, setLive] = useState<Property[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(async () => {
-    if (!destination) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      if (isApiMode) {
-        setLive(await apiListProperties({ city: destination.name, status: "Active", limit: 40 }));
-      } else {
-        setLive(
-          localProperties.filter(
-            (p) =>
-              p.status === "Active" &&
-              p.city.trim().toLowerCase() === destination.name.toLowerCase(),
-          ),
-        );
-      }
-    } catch {
-      setLive([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [destination, localProperties]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const live = useQuery({
+    queryKey: ["properties", "destination", destination?.name],
+    queryFn: async () => {
+      const items = await apiListProperties({ city: destination!.name, status: "Active", limit: 20 });
+      mergeProperties(items);
+      return items;
+    },
+    enabled: isApiMode && Boolean(destination),
+  });
 
   if (!destination) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
+      <Screen title="Destination" fallbackHref={"/destinations" as Href}>
         <EmptyState
           icon={MapPin}
           title="Destination not found"
-          message="Pick another city from the hub."
-          actionLabel="Destinations"
+          message="Pick another city from the destinations list."
+          actionLabel="All destinations"
           onAction={() => router.replace("/destinations" as Href)}
         />
-      </SafeAreaView>
+      </Screen>
     );
   }
 
+  const listings = isApiMode
+    ? (live.data ?? [])
+    : properties.filter(
+        (p) => p.status === "Active" && p.city.trim().toLowerCase() === destination.name.toLowerCase(),
+      );
+  const wedding = weddingCatalogFor(destination.name);
+
+  const exploreCity = () => {
+    setSelectedCity(destination.name);
+    router.push({ pathname: "/(tabs)/explore", params: { city: destination.name } } as Href);
+  };
+
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.bg }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: spacing.xxl }}>
-        <Image source={{ uri: destination.image }} style={{ width: "100%", height: 200 }} />
-        <View style={{ padding: spacing.xl, gap: spacing.md }}>
-          <Pressable onPress={() => router.back()}>
-            <Text style={{ ...type.label, color: colors.accent }}>← Back</Text>
+    <Screen title={destination.name} subtitle={destination.title} fallbackHref={"/destinations" as Href}>
+      <Image source={{ uri: destination.image }} style={styles.hero} contentFit="cover" transition={200} />
+      <View style={{ gap: spacing.xs }}>
+        <Text style={styles.body} numberOfLines={aboutOpen ? undefined : 3}>
+          {destination.desc}
+        </Text>
+        {destination.desc.length > 160 ? (
+          <Pressable onPress={() => setAboutOpen((v) => !v)} hitSlop={8} accessibilityRole="button">
+            <Text style={styles.link}>{aboutOpen ? "Show less" : "Read more"}</Text>
           </Pressable>
-          <Text style={{ ...type.title, color: colors.ink }}>{destination.name}</Text>
-          <Text style={{ ...type.caption, color: colors.accent }}>{destination.title}</Text>
-          <Text style={{ ...type.body, color: colors.inkSecondary, lineHeight: 22 }}>
-            {destination.desc}
-          </Text>
+        ) : null}
+      </View>
 
-          <View
-            style={{
-              backgroundColor: colors.surface,
-              borderRadius: radius.lg,
-              borderWidth: 1,
-              borderColor: colors.border,
-              padding: spacing.md,
-              gap: spacing.xs,
-            }}
-          >
-            <Text style={{ ...type.label, color: colors.inkMuted }}>MARKET SNAPSHOT</Text>
-            <Text style={{ ...type.body, color: colors.ink }}>
-              Vibe: {destination.vibe}
-            </Text>
-            <Text style={{ ...type.body, color: colors.ink }}>
-              Investment index: {destination.investmentIndex}
-            </Text>
-            <Text style={{ ...type.body, color: colors.ink }}>
-              Typical prices: {destination.averagePrice}
-            </Text>
-            <Text style={{ ...type.body, color: colors.ink }}>
-              Top localities: {destination.topLocalities.join(", ")}
-            </Text>
+      <ListSection title="Market snapshot">
+        <ListRow title="Vibe" value={destination.vibe} />
+        <ListRow title="Investment index" value={destination.investmentIndex} />
+        <ListRow title="Typical prices" value={destination.averagePrice} />
+        <ListRow title="Top localities" subtitle={destination.topLocalities.join(", ")} />
+      </ListSection>
+
+      {wedding.venues.length > 0 ? (
+        <View style={styles.section}>
+          <View style={styles.sectionHead}>
+            <Sparkles size={18} color={colors.accent} />
+            <Text style={styles.sectionTitle}>Wedding venues</Text>
           </View>
-
-          <Pressable
-            onPress={() => {
-              setSelectedCity(destination.name);
-              router.push({
-                pathname: "/(tabs)/explore",
-                params: { city: destination.name },
-              } as Href);
-            }}
-            style={{
-              height: 48,
-              borderRadius: radius.md,
-              backgroundColor: colors.accent,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.rail}
+            contentContainerStyle={styles.railContent}
           >
-            <Text style={{ ...type.emphasis, color: colors.onAccent }}>
-              Explore listings in {destination.name}
-            </Text>
-          </Pressable>
-
-          <Text style={{ ...type.heading, color: colors.ink, marginTop: spacing.sm }}>
-            Live listings
-          </Text>
-          {loading ? (
-            <ActivityIndicator color={colors.accent} />
-          ) : live.length === 0 ? (
-            <EmptyState
-              icon={Building2}
-              title="No active listings"
-              message={`Nothing live in ${destination.name} right now.`}
-            />
-          ) : (
-            <FlatList
-              data={live}
-              keyExtractor={(item) => item.id}
-              scrollEnabled={false}
-              contentContainerStyle={{ gap: spacing.md }}
-              renderItem={({ item }) => <PropertyCard property={item} />}
-            />
-          )}
+            {wedding.venues.map((v) => (
+              <Pressable
+                key={v.id}
+                onPress={() => setEnquiry({ kind: "venue", item: v })}
+                accessibilityRole="button"
+                accessibilityLabel={`${v.name}, ${v.type}. Send enquiry`}
+                style={({ pressed }) => [styles.venue, pressed && styles.pressed]}
+              >
+                {v.image ? <Image source={{ uri: v.image }} style={styles.venueImage} contentFit="cover" /> : null}
+                <View style={styles.venueBody}>
+                  <Text style={styles.venueType}>{v.type}</Text>
+                  <Text style={styles.venueName} numberOfLines={1}>
+                    {v.name}
+                  </Text>
+                  <View style={styles.metaRow}>
+                    <Users size={13} color={colors.inkMuted} />
+                    <Text style={styles.meta} numberOfLines={1}>
+                      {v.capacity}
+                    </Text>
+                  </View>
+                  <Text style={styles.price}>{v.pricePerEvent}</Text>
+                  <Text style={styles.link}>Send enquiry</Text>
+                </View>
+              </Pressable>
+            ))}
+          </ScrollView>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      ) : null}
+
+      {wedding.properties.length > 0 ? (
+        <ListSection title="Unique wedding properties">
+          {wedding.properties.map((p) => (
+            <ListRow
+              key={p.id}
+              title={p.title}
+              subtitle={`${p.propertyType} · ${p.location}`}
+              value={p.price}
+              onPress={() => setEnquiry({ kind: "property", item: p })}
+            />
+          ))}
+        </ListSection>
+      ) : null}
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Homes for sale and rent</Text>
+        {isApiMode && live.isLoading ? (
+          <PropertyCardSkeleton />
+        ) : isApiMode && live.isError ? (
+          <ErrorState onRetry={() => void live.refetch()} />
+        ) : listings.length === 0 ? (
+          <EmptyState icon={Building2} title="No live listings yet" message={`Nothing is listed in ${destination.name} right now.`} />
+        ) : (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.rail}
+            contentContainerStyle={styles.railContent}
+          >
+            {listings.slice(0, 10).map((p) => (
+              <PropertyCard key={p.id} property={p} variant="compact" />
+            ))}
+          </ScrollView>
+        )}
+        <Button label={`Explore all homes in ${destination.name}`} variant="secondary" onPress={exploreCity} />
+      </View>
+
+      <WeddingEnquirySheet target={enquiry} destination={destination.name} onClose={() => setEnquiry(null)} />
+    </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  hero: { width: "100%", height: 200, borderRadius: radius.lg },
+  body: { ...type.body, color: colors.inkSecondary },
+  section: { gap: spacing.md },
+  sectionHead: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  sectionTitle: { ...type.heading, color: colors.ink },
+  rail: { marginHorizontal: -spacing.lg },
+  railContent: { paddingHorizontal: spacing.lg, gap: spacing.md },
+  venue: {
+    width: 240,
+    borderRadius: radius.lg,
+    overflow: "hidden",
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  pressed: { opacity: 0.85 },
+  venueImage: { width: "100%", height: 130 },
+  venueBody: { padding: spacing.md, gap: spacing.xxs },
+  venueType: { ...type.caption, color: colors.accent },
+  venueName: { ...type.emphasis, color: colors.ink },
+  metaRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  meta: { ...type.caption, color: colors.inkMuted, flex: 1 },
+  price: { ...type.label, color: colors.ink, marginTop: spacing.xs },
+  link: { ...type.label, color: colors.accent, marginTop: spacing.xs },
+});

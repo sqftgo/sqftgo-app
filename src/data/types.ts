@@ -69,6 +69,10 @@ export interface Property {
   ownerEmail?: string;
   inquiryCount: number;
   status: PropertyStatus;
+  /** Admin feedback when Rejected; cleared on approve / resubmit. */
+  rejectionReason?: string | null;
+  seoTitle?: string;
+  seoDescription?: string;
   /** Dealer who owns this listing (inbox routing). */
   brokerEmail?: string;
   brokerId?: string;
@@ -131,7 +135,9 @@ export type DirectoryCategory =
   | "Movers & Packers"
   | "Contractors"
   | "Event Managers"
-  | "Wedding Planners";
+  | "Wedding Planners"
+  // Service trades are admin-managed on the web, so any name is valid.
+  | (string & {});
 
 export interface DirectoryProfile {
   id: string;
@@ -164,9 +170,16 @@ export interface DirectoryProfile {
   /** Links card to profiles when claimed */
   userId?: string;
   /** When profile is a service partner */
-  serviceTypeId?: string;
+  serviceTypeId?: string | null;
   verificationStatus?: string;
   listingActive?: boolean;
+  /** Web field names for the directory images (mirrored into avatarUrl / coverUrl). */
+  logoUrl?: string | null;
+  coverImageUrl?: string | null;
+  servicesOffered?: string[];
+  businessHours?: Record<string, string> | null;
+  lat?: number | null;
+  lng?: number | null;
 }
 
 export type KycStatus = "draft" | "pending" | "approved" | "rejected";

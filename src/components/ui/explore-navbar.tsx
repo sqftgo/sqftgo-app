@@ -12,7 +12,8 @@ interface ExploreNavbarProps {
   onPressCity: () => void;
   onPressFilters: () => void;
   activeFilterCount: number;
-  resultCount: number;
+  /** Undefined while the first page loads; null when the search failed. */
+  resultCount?: number | null;
   sortLabel: string;
 }
 
@@ -168,7 +169,11 @@ export function ExploreNavbar({
         }}
       >
         <Text style={{ ...type.caption, color: colors.inkMuted }}>
-          {resultCount === 1 ? "1 property" : `${resultCount} properties`}
+          {resultCount === null
+            ? "Results unavailable"
+            : resultCount === undefined
+              ? "Searching…"
+              : resultCount === 1 ? "1 property" : `${resultCount} properties`}
           {activeFilterCount > 0
             ? ` · ${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"}`
             : ""}

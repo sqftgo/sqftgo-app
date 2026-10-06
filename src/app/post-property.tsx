@@ -1,907 +1,146 @@
-import React, { useEffect, useState } from "react";
-import {
-  StyleSheet,
-  View,
-  Text,
-  TextInput,
-  ScrollView,
-  Pressable,
-  Switch,
-} from "react-native";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter, type Href } from "expo-router";
+import React, { useMemo } from "react";
+import { StyleSheet, Text, View } from "react-native";
+
+import { Button, EmptyState, Screen, toast } from "@/components/ds";
+import { ListingForm, type ListingPayload, type ListingSaveStatus } from "@/components/listing/ListingForm";
+import { emptyDraft } from "@/components/listing/listing-draft";
 import { appAlert } from "@/components/ui/app-alert";
-import { useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Lock } from "@/components/ui/icons";
 import { useApp } from "@/context/AppContext";
-import { ApiError, isApiMode } from "@/lib/api";
-import {
-  apiGetListingQuota,
-  type DealerListingQuota,
-} from "@/lib/api/services/listing-plans";
-import type { Property } from "@/data/types";
-import { CITIES as CITIES_LIST } from "@/constants/cities";
-import { pickAndUploadPropertyImage } from "@/lib/media-upload";
-import { ChevronLeft, ChevronDown, ChevronUp, Check } from "@/components/ui/icons";
-import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
-import { colors, radius, spacing, type as typography } from "@/theme/tokens";
-
-
-const CITIES = CITIES_LIST.map((c) => c.name);
-const PROPERTY_TYPES: Property["type"][] = [
-  "Villa", 
-  "Apartment", 
-  "Home", 
-  "Industrial Plot", 
-  "Commercial Space", 
-  "Office Space", 
-  "Shop", 
-  "Hotel", 
-  "Agricultural Land"
-];
-const FURNISHING_OPTIONS: Property["furnished"][] = ["Furnished", "Semi-Furnished", "Unfurnished"];
-
-const AMENITIES_LIST = [
-  "Swimming Pool",
-  "Gymnasium",
-  "Power Backup",
-  "Club House",
-  "Elevator Lift",
-  "Security Guard",
-  "Reserved Parking",
-  "Kids Playground"
-];
-
-// Reusable Custom Dropdown Component
-interface DropdownSelectProps {
-  label: string;
-  value: string;
-  options: string[];
-  isOpen: boolean;
-  onToggle: () => void;
-  onSelect: (opt: string) => void;
-}
-
-const DropdownSelect: React.FC<DropdownSelectProps> = ({
-  label,
-  value,
-  options,
-  isOpen,
-  onToggle,
-  onSelect
-}) => {
-  return (
-    <View style={styles.dropdownGroup}>
-      <Text style={styles.label}>{label}</Text>
-      <Pressable onPress={onToggle} style={[styles.dropdownHeader, isOpen && styles.dropdownHeaderActive]}>
-        <Text style={styles.dropdownValue}>{value}</Text>
-        {isOpen ? (
-          <ChevronUp size={16} color="#6B7280" />
-        ) : (
-          <ChevronDown size={16} color="#6B7280" />
-        )}
-      </Pressable>
-      
-      {isOpen && (
-        <Animated.View 
-          entering={FadeIn.duration(200)}
-          exiting={FadeOut.duration(200)}
-          style={styles.dropdownList}
-        >
-          <ScrollView nestedScrollEnabled style={styles.dropdownScroll}>
-            {options.map((opt) => (
-              <Pressable
-                key={opt}
-                onPress={() => onSelect(opt)}
-                style={[styles.dropdownItem, value === opt && styles.dropdownItemActive]}
-              >
-                <Text style={[styles.dropdownItemText, value === opt && styles.dropdownItemTextActive]}>
-                  {opt}
-                </Text>
-                {value === opt && <Check size={14} color={colors.accent} />}
-              </Pressable>
-            ))}
-          </ScrollView>
-        </Animated.View>
-      )}
-    </View>
-  );
-};
+import { apiGetListingQuota } from "@/lib/api/services/listing-plans";
+import { colors, radius, spacing, type } from "@/theme/tokens";
 
 export default function PostPropertyScreen() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const {
+    isApiMode,
+    isLoggedIn,
     addProperty,
+    getLastActionError,
     selectedCity,
     canAccessDealerDashboard,
     profile,
     userRole,
-    canPostListing,
     platformSettings,
     myListingsCount,
   } = useApp();
-  const canList =
-    (canAccessDealerDashboard || userRole === "user") &&
-    profile?.status === "active" &&
-    profile?.listingStatus !== "rejected" &&
-    (canAccessDealerDashboard || canPostListing);
-  const [quota, setQuota] = useState<DealerListingQuota | null>(null);
 
-  useEffect(() => {
-    if (!isApiMode || !canAccessDealerDashboard) return;
-    let cancelled = false;
-    apiGetListingQuota()
-      .then((next) => {
-        if (!cancelled) setQuota(next);
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [canAccessDealerDashboard]);
+  const isDealer = canAccessDealerDashboard;
+  const quotaQuery = useQuery({
+    queryKey: ["dealer", "listing-quota"],
+    queryFn: apiGetListingQuota,
+    enabled: isApiMode && isDealer,
+  });
+  const quota = quotaQuery.data;
 
-  const listingSaveError = (err: unknown, fallback: string) => {
-    if (err instanceof ApiError) return err.message;
-    if (err instanceof Error && err.message) return err.message;
-    return fallback;
-  };
+  const initial = useMemo(
+    () => emptyDraft(selectedCity === "All India" ? "" : selectedCity),
+    [selectedCity],
+  );
 
-  // Dropdown states
-  const [activeDropdown, setActiveDropdown] = useState<"city" | "type" | "furnished" | null>(null);
-
-  // Form states
-  const [title, setTitle] = useState("");
-  const [price, setPrice] = useState("");
-  const [type, setType] = useState<Property["type"]>("Apartment");
-  const [purpose, setPurpose] = useState<Property["purpose"]>("buy");
-  const [bhk, setBhk] = useState("");
-  const [city, setCity] = useState(selectedCity);
-  const [locality, setLocality] = useState("");
-  const [nearbyHospital, setNearbyHospital] = useState("");
-  const [nearbySchool, setNearbySchool] = useState("");
-  const [nearbyTransportation, setNearbyTransportation] = useState("");
-  const [size, setSize] = useState("");
-  const [furnished, setFurnished] = useState<Property["furnished"]>("Semi-Furnished");
-  const [description, setDescription] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
-  const [uploadingImage, setUploadingImage] = useState(false);
-
-  // Advanced Price Breakdown states
-  const [securityDeposit, setSecurityDeposit] = useState("");
-  const [maintenance, setMaintenance] = useState("");
-  const [registrationFees, setRegistrationFees] = useState("");
-
-  // RERA states
-  const [isReraApproved, setIsReraApproved] = useState(true);
-  const [reraId, setReraId] = useState("");
-
-  // Amenities states
-  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
-
-  const handleToggleAmenity = (amenity: string) => {
-    if (selectedAmenities.includes(amenity)) {
-      setSelectedAmenities(selectedAmenities.filter(item => item !== amenity));
-    } else {
-      setSelectedAmenities([...selectedAmenities, amenity]);
+  const blockedReason = (() => {
+    if (!isLoggedIn) return null;
+    if (profile?.status !== "active") return "Your account is not active, so you can't add listings.";
+    if (isDealer) return null;
+    if (userRole !== "user") return "Only owners and approved dealers can list property.";
+    if (profile?.listingStatus === "rejected") return "Your listing access was declined. Contact support for help.";
+    if (!platformSettings.allowUserListings) return "New owner listings are paused right now.";
+    if (myListingsCount >= platformSettings.maxListingsPerUser) {
+      return `You've used all ${platformSettings.maxListingsPerUser} listing slots. Remove a listing to add another.`;
     }
-  };
+    return null;
+  })();
 
-  const handleToggleDropdown = (dropdown: "city" | "type" | "furnished") => {
-    setActiveDropdown(activeDropdown === dropdown ? null : dropdown);
-  };
+  if (!isLoggedIn) {
+    return (
+      <Screen title="List a property">
+        <EmptyState
+          icon={Lock}
+          title="Sign in to list"
+          message="Create a free account to list your property and get enquiries from buyers."
+          actionLabel="Sign in"
+          onAction={() => router.push({ pathname: "/auth", params: { mode: "sign-in" } } as unknown as Href)}
+        />
+      </Screen>
+    );
+  }
 
-  const buildPayload = () => {
-    const priceNum = parseFloat(price);
-    const sizeNum = parseFloat(size);
-    const finalImage = imageUrl.trim() || "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80";
+  if (blockedReason) {
+    return (
+      <Screen title="List a property">
+        <EmptyState
+          icon={Lock}
+          title="Can't add a listing"
+          message={blockedReason}
+          actionLabel="My listings"
+          onAction={() => router.replace("/my-listings")}
+        />
+      </Screen>
+    );
+  }
 
-    const breakdown = {
-      basePrice: priceNum,
-      securityDeposit: securityDeposit ? parseFloat(securityDeposit) : undefined,
-      maintenance: maintenance ? parseFloat(maintenance) : 0,
-      registrationFees: registrationFees ? parseFloat(registrationFees) : undefined
-    };
+  const dealerAtCap = Boolean(quota?.atCap && !quota.unlimited);
 
-    return {
-      title,
-      price: priceNum,
-      type,
-      purpose,
-      bhk: bhk ? parseInt(bhk) : undefined,
-      city,
-      locality,
-      nearbyHospital: nearbyHospital.trim(),
-      nearbySchool: nearbySchool.trim(),
-      nearbyTransportation: nearbyTransportation.trim(),
-      size: sizeNum,
-      furnished,
-      description,
-      amenities: selectedAmenities.length > 0 ? selectedAmenities : ["Power Backup", "Security", "Parking"],
-      images: [finalImage],
-      reraApproved: isReraApproved,
-      reraId: isReraApproved ? (reraId.trim() || `RAJ/RERA/PR/${Math.floor(1000 + Math.random() * 9000)}`) : undefined,
-      priceBreakdown: breakdown
-    };
-  };
+  const banner = isDealer ? (
+    quota && !quota.unlimited ? (
+      <View style={[styles.banner, dealerAtCap && styles.bannerWarn]}>
+        <Text style={styles.bannerTitle}>
+          {dealerAtCap ? "No listing slots left" : `${quota.remaining} of ${quota.quota} listing slots left`}
+        </Text>
+        {dealerAtCap ? (
+          <>
+            <Text style={styles.bannerText}>Buy a listing pack to add more properties.</Text>
+            <Button label="View listing packs" variant="secondary" onPress={() => router.push("/subscription")} />
+          </>
+        ) : null}
+      </View>
+    ) : null
+  ) : (
+    <View style={styles.banner}>
+      <Text style={styles.bannerTitle}>
+        {platformSettings.maxListingsPerUser - myListingsCount} of {platformSettings.maxListingsPerUser} listing
+        slots left
+      </Text>
+      <Text style={styles.bannerText}>Rejected listings don&apos;t count toward your limit.</Text>
+    </View>
+  );
 
-  const validate = () => {
-    if (!title || !price || !locality || !size || !description || !nearbyHospital.trim() || !nearbySchool.trim() || !nearbyTransportation.trim()) {
-      appAlert("Error", "Please fill in all mandatory fields, including hospital, school, and transportation.");
+  const onSave = async (payload: ListingPayload, status: ListingSaveStatus) => {
+    const created = await addProperty({ ...payload, status: status ?? "Pending Review" });
+    if (!created) {
+      appAlert("Couldn't save listing", getLastActionError() ?? "Please try again.");
       return false;
     }
-    if (isNaN(parseFloat(price)) || isNaN(parseFloat(size))) {
-      appAlert("Error", "Price and size must be valid numeric values.");
-      return false;
-    }
+    void queryClient.invalidateQueries({ queryKey: ["properties", "mine"] });
+    void queryClient.invalidateQueries({ queryKey: ["dealer", "listing-quota"] });
+    toast(status === "Draft" ? "Draft saved" : "Submitted for review", "success");
+    router.replace(isDealer ? "/(dealer)/properties" : "/my-listings");
     return true;
   };
 
-  const handlePickImage = async () => {
-    setUploadingImage(true);
-    const url = await pickAndUploadPropertyImage();
-    setUploadingImage(false);
-    if (url) setImageUrl(url);
-  };
-
-  const handleSaveDraft = async () => {
-    if (!validate()) return;
-    if (quota?.atCap) {
-      appAlert("Listing slots used", "Buy a listing pack to add more properties.", [
-        { text: "View packs", onPress: () => router.push("/subscription" as never) },
-        { text: "Cancel" },
-      ]);
-      return;
-    }
-    if (!canList) {
-      appAlert(
-        "Cannot list",
-        profile?.listingStatus === "rejected"
-          ? "Admin declined listing access for this account."
-          : !platformSettings.allowUserListings && userRole === "user"
-            ? "User listings are currently disabled by the platform."
-            : userRole === "user" && myListingsCount >= platformSettings.maxListingsPerUser
-              ? `You already have ${myListingsCount} listing(s). Cap is ${platformSettings.maxListingsPerUser}.`
-              : "Sign in as a client or approved dealer to save a listing.",
-      );
-      return;
-    }
-    try {
-      const created = await addProperty({ ...buildPayload(), status: "Draft" });
-      if (!created) {
-        appAlert(
-          "Could not save",
-          `Listing limit is ${platformSettings.maxListingsPerUser}, or listing access is off.`,
-        );
-        return;
-      }
-    } catch (err) {
-      appAlert("Could not save", listingSaveError(err, "You may have reached the listing limit."));
-      return;
-    }
-    appAlert("Draft saved", "Open this draft later from your dashboard and submit when ready.", [
-      { text: "OK", onPress: () => router.back() }
-    ]);
-  };
-
-  const handleSubmitForReview = async () => {
-    if (!validate()) return;
-    if (quota?.atCap) {
-      appAlert("Listing slots used", "Buy a listing pack to add more properties.", [
-        { text: "View packs", onPress: () => router.push("/subscription" as never) },
-        { text: "Cancel" },
-      ]);
-      return;
-    }
-    if (!canList) {
-      appAlert(
-        "Cannot list",
-        profile?.listingStatus === "rejected"
-          ? "Admin declined listing access for this account."
-          : !platformSettings.allowUserListings && userRole === "user"
-            ? "User listings are currently disabled by the platform."
-            : userRole === "user" && myListingsCount >= platformSettings.maxListingsPerUser
-              ? `You already have ${myListingsCount} listing(s). Cap is ${platformSettings.maxListingsPerUser}.`
-              : "Sign in as a client or approved dealer to submit a listing.",
-      );
-      return;
-    }
-    try {
-      const created = await addProperty({ ...buildPayload(), status: "Pending Review" });
-      if (!created) {
-        appAlert(
-          "Could not submit",
-          `Listing limit is ${platformSettings.maxListingsPerUser}, or listing access is off.`,
-        );
-        return;
-      }
-    } catch (err) {
-      appAlert("Could not submit", listingSaveError(err, "You may have reached the listing limit."));
-      return;
-    }
-    appAlert(
-      "Submitted for review",
-      "Your listing is pending web admin approval. It will appear to buyers once Active.",
-      [{ text: "OK", onPress: () => router.back() }],
-    );
-  };
-
   return (
-    <SafeAreaView style={styles.safeArea}>
-      {/* Header Bar */}
-      <View style={styles.headerBar}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <ChevronLeft size={22} color={colors.ink} />
-        </Pressable>
-        <Text style={styles.headerTitle}>{canAccessDealerDashboard ? "Add Property" : "Post Property"}</Text>
-        <View style={styles.placeholder} />
-      </View>
-
-      <ScrollView 
-        showsVerticalScrollIndicator={false} 
-        contentContainerStyle={styles.scrollContainer}
-        keyboardShouldPersistTaps="handled"
-      >
-        {quota ? (
-          <View style={{ marginBottom: spacing.md, gap: 8 }}>
-            <Text style={styles.label}>
-              Slots left: {quota.remaining} of {quota.quota}
-            </Text>
-            {quota.atCap ? (
-              <Pressable
-                onPress={() => router.push("/subscription" as never)}
-                style={{
-                  height: 44,
-                  borderRadius: radius.md,
-                  backgroundColor: colors.accent,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Text style={{ ...typography.label, color: colors.onAccent }}>Buy listing packs</Text>
-              </Pressable>
-            ) : null}
-          </View>
-        ) : null}
-
-        {/* Section 1: Basic Info */}
-        <View style={styles.formSection}>
-          <Text style={styles.sectionTitle}>Basic Info</Text>
-          
-          <Text style={styles.label}>Listing Title *</Text>
-          <TextInput
-            value={title}
-            onChangeText={setTitle}
-            placeholder="e.g. Modern 3 BHK Penthouse"
-            placeholderTextColor="#9CA3AF"
-            style={styles.input}
-          />
-
-          <Text style={styles.label}>Base Price (INR) *</Text>
-          <TextInput
-            value={price}
-            onChangeText={setPrice}
-            placeholder="e.g. 7500000 (75 Lakhs) or 25000 for rent"
-            placeholderTextColor="#9CA3AF"
-            keyboardType="numeric"
-            style={styles.input}
-          />
-
-          <Text style={styles.label}>Purpose</Text>
-          <View style={styles.selectorRow}>
-            {(["buy", "rent"] as const).map((p) => {
-              const active = purpose === p;
-              return (
-                <Pressable
-                  key={p}
-                  onPress={() => setPurpose(p)}
-                  style={[styles.selectorBtn, active && styles.selectorBtnActive]}
-                >
-                  <Text style={[styles.selectorText, active && styles.selectorTextActive]}>
-                    For {p.toUpperCase()}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* Section 2: Location & Specifications */}
-        <View style={styles.formSection}>
-          <Text style={styles.sectionTitle}>Location & Specifications</Text>
-
-          {/* Custom Dropdown for City */}
-          <DropdownSelect
-            label="Select City"
-            value={city}
-            options={CITIES}
-            isOpen={activeDropdown === "city"}
-            onToggle={() => handleToggleDropdown("city")}
-            onSelect={(opt) => {
-              setCity(opt);
-              setActiveDropdown(null);
-            }}
-          />
-
-          <Text style={styles.label}>Locality / Area *</Text>
-          <TextInput
-            value={locality}
-            onChangeText={setLocality}
-            placeholder="e.g. C-Scheme or Panchwati"
-            placeholderTextColor="#9CA3AF"
-            style={styles.input}
-          />
-
-          <Text style={styles.label}>Nearby hospital *</Text>
-          <TextInput
-            value={nearbyHospital}
-            onChangeText={setNearbyHospital}
-            placeholder="e.g. GBH American Hospital, 2 km"
-            placeholderTextColor="#9CA3AF"
-            style={styles.input}
-          />
-
-          <Text style={styles.label}>Nearby school *</Text>
-          <TextInput
-            value={nearbySchool}
-            onChangeText={setNearbySchool}
-            placeholder="e.g. Seedling Public School, 1 km"
-            placeholderTextColor="#9CA3AF"
-            style={styles.input}
-          />
-
-          <Text style={styles.label}>Nearby transportation *</Text>
-          <TextInput
-            value={nearbyTransportation}
-            onChangeText={setNearbyTransportation}
-            placeholder="e.g. City Bus Stand, 3 km"
-            placeholderTextColor="#9CA3AF"
-            style={styles.input}
-          />
-
-          {/* Custom Dropdown for Property Type */}
-          <DropdownSelect
-            label="Property Type"
-            value={type}
-            options={PROPERTY_TYPES}
-            isOpen={activeDropdown === "type"}
-            onToggle={() => handleToggleDropdown("type")}
-            onSelect={(opt) => {
-              setType(opt as Property["type"]);
-              setActiveDropdown(null);
-            }}
-          />
-
-          <Text style={styles.label}>Total Area Size (sq.ft.) *</Text>
-          <TextInput
-            value={size}
-            onChangeText={setSize}
-            placeholder="e.g. 1800"
-            placeholderTextColor="#9CA3AF"
-            keyboardType="numeric"
-            style={styles.input}
-          />
-
-          {type !== "Industrial Plot" && (
-            <>
-              <Text style={styles.label}>BHK Configuration</Text>
-              <TextInput
-                value={bhk}
-                onChangeText={setBhk}
-                placeholder="e.g. 3 (leave empty for plots)"
-                placeholderTextColor="#9CA3AF"
-                keyboardType="numeric"
-                style={styles.input}
-              />
-            </>
-          )}
-
-          {/* Custom Dropdown for Furnishing Status */}
-          <DropdownSelect
-            label="Furnishing Status"
-            value={furnished}
-            options={FURNISHING_OPTIONS}
-            isOpen={activeDropdown === "furnished"}
-            onToggle={() => handleToggleDropdown("furnished")}
-            onSelect={(opt) => {
-              setFurnished(opt as Property["furnished"]);
-              setActiveDropdown(null);
-            }}
-          />
-        </View>
-
-        {/* Section 3: Advanced Pricing Breakdown */}
-        <View style={styles.formSection}>
-          <Text style={styles.sectionTitle}>Advanced Pricing Breakdown</Text>
-
-          <Text style={styles.label}>Security Deposit (Optional)</Text>
-          <TextInput
-            value={securityDeposit}
-            onChangeText={setSecurityDeposit}
-            placeholder="e.g. 50000"
-            placeholderTextColor="#9CA3AF"
-            keyboardType="numeric"
-            style={styles.input}
-          />
-
-          <Text style={styles.label}>Monthly Maintenance (Optional)</Text>
-          <TextInput
-            value={maintenance}
-            onChangeText={setMaintenance}
-            placeholder="e.g. 2500"
-            placeholderTextColor="#9CA3AF"
-            keyboardType="numeric"
-            style={styles.input}
-          />
-
-          <Text style={styles.label}>Registration & Stamp Duty (Optional)</Text>
-          <TextInput
-            value={registrationFees}
-            onChangeText={setRegistrationFees}
-            placeholder="e.g. 150000"
-            placeholderTextColor="#9CA3AF"
-            keyboardType="numeric"
-            style={styles.input}
-          />
-        </View>
-
-        {/* Section 4: Amenities Checklist */}
-        <View style={styles.formSection}>
-          <Text style={styles.sectionTitle}>Amenities</Text>
-          <View style={styles.amenitiesGrid}>
-            {AMENITIES_LIST.map((item) => {
-              const active = selectedAmenities.includes(item);
-              return (
-                <Pressable
-                  key={item}
-                  onPress={() => handleToggleAmenity(item)}
-                  style={[styles.amenityItem, active && styles.amenityItemActive]}
-                >
-                  <Text style={[styles.amenityText, active && styles.amenityTextActive]}>
-                    {item}
-                  </Text>
-                  {active && <Check size={12} color="#FFFFFF" />}
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* Section 5: RERA Status Onboarding */}
-        <View style={styles.formSection}>
-          <Text style={styles.sectionTitle}>RERA Certification</Text>
-          
-          <View style={styles.toggleRow}>
-            <View>
-              <Text style={styles.toggleLabel}>Is RERA Approved?</Text>
-              <Text style={styles.toggleDesc}>Increases visibility and listing trust score</Text>
-            </View>
-            <Switch
-              value={isReraApproved}
-              onValueChange={setIsReraApproved}
-              trackColor={{ false: "#D1D5DB", true: "#E05A36" }}
-            />
-          </View>
-
-          {isReraApproved && (
-            <View style={styles.reraInputBox}>
-              <Text style={styles.label}>RERA Registration ID</Text>
-              <TextInput
-                value={reraId}
-                onChangeText={setReraId}
-                placeholder="e.g. RAJ/RERA/PR/2026/8940"
-                placeholderTextColor="#9CA3AF"
-                style={styles.input}
-              />
-            </View>
-          )}
-        </View>
-
-        {/* Section 6: Details & Media */}
-        <View style={styles.formSection}>
-          <Text style={styles.sectionTitle}>Details & Media</Text>
-
-          <Text style={styles.label}>Description *</Text>
-          <TextInput
-            value={description}
-            onChangeText={setDescription}
-            placeholder="Detailed description of the property features, landmarks..."
-            placeholderTextColor="#9CA3AF"
-            multiline
-            style={[styles.input, styles.textArea]}
-          />
-
-          <Text style={styles.label}>Property image</Text>
-          <TextInput
-            value={imageUrl}
-            onChangeText={setImageUrl}
-            placeholder="Paste URL or upload from gallery"
-            placeholderTextColor="#9CA3AF"
-            style={styles.input}
-          />
-          <Pressable
-            onPress={() => void handlePickImage()}
-            disabled={uploadingImage}
-            style={[styles.draftBtn, { marginTop: 8, alignSelf: "flex-start", paddingHorizontal: 14 }]}
-          >
-            <Text style={styles.draftBtnText}>
-              {uploadingImage ? "Uploading…" : "Upload from gallery"}
-            </Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.submitRow}>
-          {canList ? (
-            <>
-              <Pressable onPress={handleSaveDraft} style={styles.draftBtn}>
-                <Text style={styles.draftBtnText}>Save draft</Text>
-              </Pressable>
-              <Pressable onPress={handleSubmitForReview} style={styles.submitBtn}>
-                <Text style={styles.submitBtnText}>Submit for review</Text>
-              </Pressable>
-            </>
-          ) : (
-            <Pressable onPress={handleSubmitForReview} style={[styles.submitBtn, { flex: 1 }]}>
-              <Text style={styles.submitBtnText}>Submit for review</Text>
-            </Pressable>
-          )}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+    <ListingForm
+      mode="create"
+      screenTitle="List a property"
+      initial={initial}
+      banner={banner}
+      blocked={dealerAtCap}
+      onSave={onSave}
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#FAF9F6", // Unified off-white cream background
+  banner: {
+    gap: spacing.sm,
+    padding: spacing.lg,
+    borderRadius: radius.lg,
+    backgroundColor: colors.infoSoft,
   },
-  headerBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 15,
-    height: 56,
-    borderBottomWidth: 1,
-    borderBottomColor: "#EAE9E4",
-    backgroundColor: "#FFFFFF",
-  },
-  backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#FAF9F6",
-    borderWidth: 1,
-    borderColor: "#EAE9E4",
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#0F1E36", // Slate Blue
-  },
-  placeholder: {
-    width: 36,
-  },
-  scrollContainer: {
-    padding: 20,
-    paddingBottom: 60,
-  },
-  formSection: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: "#EAE9E4",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.02,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: "#0F1E36",
-    textTransform: "uppercase",
-    letterSpacing: 0.3,
-    marginBottom: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
-    paddingBottom: 8,
-  },
-  label: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#374151",
-    marginBottom: 6,
-    textTransform: "uppercase",
-    letterSpacing: 0.3,
-  },
-  input: {
-    backgroundColor: "#F9FAFB",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    paddingHorizontal: 12,
-    height: 44,
-    fontSize: 13,
-    color: "#1F2937",
-    fontWeight: "600",
-    marginBottom: 16,
-  },
-  textArea: {
-    height: 80,
-    textAlignVertical: "top",
-    paddingVertical: 10,
-  },
-  selectorRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 8,
-  },
-  selectorBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: "#F3F4F6",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-  },
-  selectorBtnActive: {
-    backgroundColor: "#0F1E36", // Slate Blue for active selector
-    borderColor: "#0F1E36",
-  },
-  selectorText: {
-    fontSize: 11.5,
-    fontWeight: "700",
-    color: "#6B7280",
-  },
-  selectorTextActive: {
-    color: "#FFFFFF",
-    fontWeight: "800",
-  },
-  dropdownGroup: {
-    marginBottom: 16,
-    gap: 8,
-  },
-  dropdownHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#F9FAFB",
-    borderRadius: 12,
-    borderCurve: "continuous",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    paddingHorizontal: 12,
-    height: 44,
-  },
-  dropdownHeaderActive: {
-    borderColor: "#0F1E36",
-  },
-  dropdownValue: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#1F2937",
-  },
-  dropdownList: {
-    marginTop: 4,
-    borderRadius: 12,
-    borderCurve: "continuous",
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    maxHeight: 180,
-    overflow: "hidden",
-    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
-  },
-  dropdownScroll: {
-    paddingVertical: 4,
-  },
-  dropdownItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
-  },
-  dropdownItemActive: {
-    backgroundColor: "#FAF9F6",
-  },
-  dropdownItemText: {
-    fontSize: 12.5,
-    fontWeight: "600",
-    color: "#4B5563",
-  },
-  dropdownItemTextActive: {
-    color: "#E05A36",
-    fontWeight: "700",
-  },
-  amenitiesGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  amenityItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#F3F4F6",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-  },
-  amenityItemActive: {
-    backgroundColor: "#0F1E36",
-    borderColor: "#0F1E36",
-  },
-  amenityText: {
-    fontSize: 11,
-    color: "#4B5563",
-    fontWeight: "700",
-  },
-  amenityTextActive: {
-    color: "#FFFFFF",
-  },
-  toggleRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  toggleLabel: {
-    fontSize: 12.5,
-    fontWeight: "800",
-    color: "#0F1E36",
-  },
-  toggleDesc: {
-    fontSize: 10,
-    color: "#9CA3AF",
-    fontWeight: "600",
-    marginTop: 1,
-  },
-  reraInputBox: {
-    marginTop: 6,
-  },
-  submitBtn: {
-    flex: 1,
-    backgroundColor: "#E05A36", // Primary Warm Orange
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
-    shadowColor: "#E05A36",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  submitBtnText: {
-    color: "#FFFFFF",
-    fontWeight: "800",
-    fontSize: 14,
-  },
-  submitRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 10,
-  },
-  draftBtn: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#EAE9E4",
-  },
-  draftBtnText: {
-    color: "#0F1E36",
-    fontWeight: "800",
-    fontSize: 14,
-  },
+  bannerWarn: { backgroundColor: colors.warningSoft, borderWidth: 1, borderColor: colors.warningBorder },
+  bannerTitle: { ...type.emphasis, color: colors.ink },
+  bannerText: { ...type.caption, color: colors.inkSecondary },
 });

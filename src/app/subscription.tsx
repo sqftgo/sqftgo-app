@@ -1,93 +1,118 @@
-import React, { useCallback, useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { CreditCard, Sparkles } from "@/components/ui/icons";
+import { useQuery } from "@tanstack/react-query";
+import React, { useState } from "react";
+import { StyleSheet, Text, View } from "react-native";
 
-import { appAlert } from "@/components/ui/app-alert";
 import {
-  RazorpayCheckoutModal,
-  type RazorpayCheckoutSuccess,
-} from "@/components/ui/razorpay-checkout-modal";
-import { ScreenNavbar } from "@/components/ui/screen-navbar";
+  Accordion,
+  Button,
+  ErrorState,
+  ListRow,
+  ListSection,
+  ListSkeleton,
+  Screen,
+  StatusBadge,
+  toast,
+} from "@/components/ds";
+import { appAlert } from "@/components/ui/app-alert";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Check, CreditCard } from "@/components/ui/icons";
+import { RazorpayCheckoutModal, type RazorpayCheckoutSuccess } from "@/components/ui/razorpay-checkout-modal";
+import { formatPlanPrice, getPartnerPlan, PARTNER_PLANS, type PartnerPlanId } from "@/constants/partner-plans";
 import { useApp } from "@/context/AppContext";
-import { formatPlanPrice, PARTNER_PLANS, type PartnerPlanId } from "@/constants/partner-plans";
+import { ListingPacksPanel } from "@/features/listing-packs/ListingPacksPanel";
 import { isApiMode } from "@/lib/api/config";
 import {
   apiCreateSubscriptionOrder,
   apiGetSubscriptionOverview,
   apiVerifySubscriptionPayment,
   type SubscriptionOrder,
-  type SubscriptionOverview,
 } from "@/lib/api/services/billing";
-import { ListingPacksPanel } from "@/features/listing-packs/ListingPacksPanel";
 import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
 
-function formatDate(iso: string | null): string {
+const FAQS = [
+  {
+    key: "monthly",
+    title: "Is this monthly or a one-time payment?",
+    body: "It's a monthly subscription. Your plan renews every 30 days, and you can cancel any time before renewal.",
+  },
+  {
+    key: "what",
+    title: "What happens when I subscribe?",
+    body: "Everything in the plan switches on as soon as your payment is verified.",
+  },
+  {
+    key: "payment",
+    title: "How do I pay?",
+    body: "Payments go through Razorpay. You can use UPI, a credit or debit card, or net banking.",
+  },
+  {
+    key: "packs",
+    title: "Can I buy extra listing packs?",
+    body: "Yes. When packs are offered, they add one-time listing slots on top of your plan.",
+  },
+  {
+    key: "cancel",
+    title: "How do I cancel?",
+    body: "Email support@sqftgo.com before your next billing date. Your plan stays active until the current period ends.",
+  },
+];
+
+const HISTORY_PREVIEW = 3;
+
+function formatDate(iso: string | null | undefined): string {
   if (!iso) return "—";
-  return new Intl.DateTimeFormat("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(iso));
+  return new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" }).format(new Date(iso));
 }
 
 export default function DealerSubscriptionScreen() {
   const { userName, userEmail, canAccessDealerDashboard } = useApp();
-  const [overview, setOverview] = useState<SubscriptionOverview | null>(null);
-  const [loading, setLoading] = useState(true);
   const [busyPlan, setBusyPlan] = useState<PartnerPlanId | null>(null);
   const [checkout, setCheckout] = useState<SubscriptionOrder | null>(null);
+  const [showAllHistory, setShowAllHistory] = useState(false);
 
-  const load = useCallback(async () => {
-    if (!isApiMode || !canAccessDealerDashboard) {
-      setOverview(null);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      setOverview(await apiGetSubscriptionOverview());
-    } catch (e) {
-      appAlert("Could not load billing", e instanceof Error ? e.message : "Try again.");
-      setOverview(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [canAccessDealerDashboard]);
+  const query = useQuery({
+    queryKey: ["dealer", "subscription"],
+    queryFn: apiGetSubscriptionOverview,
+    enabled: isApiMode && canAccessDealerDashboard,
+  });
+  const overview = query.data;
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  if (!canAccessDealerDashboard || !isApiMode) {
+    return (
+      <Screen title="Plans & billing">
+        <EmptyState
+          icon={CreditCard}
+          title={canAccessDealerDashboard ? "Needs a connection" : "For approved dealers"}
+          message={
+            canAccessDealerDashboard
+              ? "Billing runs on SqftGo servers. Connect the app to manage your plan."
+              : "Plans and listing packs are available once your dealer account is approved."
+          }
+        />
+      </Screen>
+    );
+  }
 
-  const activePlanId =
-    overview?.subscription?.status === "active" ? overview.subscription.planId : null;
+  const sub = overview?.subscription;
+  const active = sub?.status === "active";
+  const activePlan = active ? getPartnerPlan(sub.planId) : undefined;
+  const unlimited = Boolean(activePlan && activePlan.listingLimit == null);
+  const payments = overview?.recentPayments ?? [];
+  const visiblePayments = showAllHistory ? payments : payments.slice(0, HISTORY_PREVIEW);
 
   const startCheckout = async (planId: PartnerPlanId) => {
-    if (!isApiMode) {
-      appAlert("API required", "Set EXPO_PUBLIC_API_URL to enable billing.");
-      return;
-    }
     if (!overview?.billingEnabled) {
-      appAlert(
-        "Billing offline",
-        "Razorpay keys are not configured on the server yet.",
-      );
+      appAlert("Payments are paused", "Online payments aren't available right now. Please try again later.");
       return;
     }
     setBusyPlan(planId);
     try {
       const order = await apiCreateSubscriptionOrder(planId);
-      if (!order.keyId) throw new Error("Razorpay key missing from server");
+      if (!order.keyId) throw new Error("Payment setup is incomplete. Please try again later.");
       setCheckout(order);
     } catch (e) {
       setBusyPlan(null);
-      appAlert("Checkout failed", e instanceof Error ? e.message : "Try again.");
+      appAlert("Couldn't start checkout", e instanceof Error ? e.message : "Please try again.");
     }
   };
 
@@ -99,14 +124,12 @@ export default function DealerSubscriptionScreen() {
         razorpayPaymentId: response.razorpay_payment_id,
         razorpaySignature: response.razorpay_signature,
       });
-      appAlert("Payment verified", "Your partner plan is now active.");
-      await load();
+      toast("Plan active");
+      await query.refetch();
     } catch (e) {
       appAlert(
-        "Verification issue",
-        e instanceof Error
-          ? e.message
-          : "Payment received but verification failed. Refresh in a moment.",
+        "Payment received, verification pending",
+        e instanceof Error ? e.message : "Pull to refresh in a moment to see your plan.",
       );
     } finally {
       setBusyPlan(null);
@@ -114,136 +137,93 @@ export default function DealerSubscriptionScreen() {
   };
 
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.bg }}>
-      <View style={{ paddingHorizontal: spacing.lg }}>
-        <ScreenNavbar title="Plans & billing" subtitle="Listing packs and partner plans" />
-      </View>
-
-      {loading ? (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator color={colors.accent} />
-        </View>
+    <Screen
+      title="Plans & billing"
+      refreshing={query.isRefetching}
+      onRefresh={() => void query.refetch()}
+      contentStyle={{ gap: spacing.xl }}
+    >
+      {query.isPending ? (
+        <ListSkeleton rows={3} />
+      ) : query.isError ? (
+        <ErrorState message="Check your connection and try again." onRetry={() => void query.refetch()} />
       ) : (
-        <ScrollView
-          contentContainerStyle={{
-            paddingHorizontal: spacing.lg,
-            paddingBottom: spacing["3xl"],
-            gap: spacing.md,
-          }}
-        >
-          <View
-            style={{
-              backgroundColor: colors.accentSoft,
-              borderRadius: radius.lg,
-              padding: spacing.lg,
-              gap: spacing.sm,
-            }}
-          >
-            <CreditCard size={20} color={colors.accent} />
-            <Text style={{ ...type.emphasis, color: colors.ink }}>
-              {overview?.subscription?.status === "active"
-                ? `Active · ${overview.subscription.planId}`
-                : "No active paid plan"}
-            </Text>
-            <Text style={{ ...type.body, color: colors.inkSecondary }}>
-              {overview?.subscription?.status === "active"
-                ? `Renews / ends ${formatDate(overview.subscription.currentPeriodEnd)}`
+        <>
+          <View style={[styles.status, active && styles.statusActive]}>
+            <View style={styles.statusTop}>
+              <Text style={styles.statusTitle}>{activePlan ? `${activePlan.name} plan` : "No active plan"}</Text>
+              <StatusBadge label={active ? "Active" : "Inactive"} tone={active ? "success" : "neutral"} />
+            </View>
+            <Text style={styles.statusText}>
+              {active
+                ? `Renews on ${formatDate(sub?.currentPeriodEnd)}`
                 : overview?.billingEnabled
-                  ? "Choose a plan below. Checkout opens Razorpay securely in-app."
-                  : "Billing is disabled until Razorpay is configured on the BFF."}
+                  ? "Subscribe to unlock unlimited listings and dealer tools."
+                  : "Online payments are paused right now."}
             </Text>
           </View>
 
-          <ListingPacksPanel canBuy={canAccessDealerDashboard} />
-
           {PARTNER_PLANS.map((plan) => {
-            const isActive = activePlanId === plan.id;
-            const busy = busyPlan === plan.id;
+            const isCurrent = activePlan?.id === plan.id;
             return (
-              <View
-                key={plan.id}
-                style={{
-                  backgroundColor: colors.surface,
-                  borderWidth: plan.highlighted ? 2 : 1,
-                  borderColor: plan.highlighted ? colors.accent : colors.border,
-                  borderRadius: radius.lg,
-                  padding: spacing.lg,
-                  gap: spacing.sm,
-                  boxShadow: shadow.card,
-                }}
-              >
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                  <Text style={{ ...type.heading, color: colors.ink }}>{plan.name}</Text>
-                  {plan.badge ? (
-                    <View style={{ backgroundColor: colors.accentSoft, paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.sm }}>
-                      <Text style={{ ...type.micro, fontWeight: "800", color: colors.accent }}>{plan.badge}</Text>
-                    </View>
-                  ) : null}
+              <View key={plan.id} style={[styles.plan, plan.highlighted && styles.planHighlighted]}>
+                <View style={styles.statusTop}>
+                  <Text style={styles.planName}>{plan.name}</Text>
+                  {plan.badge ? <StatusBadge label={plan.badge} tone="accent" /> : null}
                 </View>
-                <Text style={{ ...type.emphasis, color: colors.accent }}>
+                <Text style={styles.planPrice}>
                   {formatPlanPrice(plan.amountPaise)}
-                  <Text style={{ ...type.caption, color: colors.inkMuted }}> {plan.periodLabel}</Text>
+                  <Text style={styles.planPeriod}> {plan.periodLabel}</Text>
                 </Text>
-                <Text style={{ ...type.body, color: colors.inkSecondary }}>{plan.tagline}</Text>
-                {plan.features.map((f) => (
-                  <Text key={f} style={{ ...type.caption, color: colors.inkMuted }}>
-                    · {f}
-                  </Text>
-                ))}
-                <Pressable
-                  disabled={isActive || busy || !overview?.billingEnabled}
-                  onPress={() => startCheckout(plan.id)}
-                  style={{
-                    marginTop: spacing.sm,
-                    height: 44,
-                    borderRadius: radius.md,
-                    backgroundColor: isActive ? colors.surfaceSubtle : colors.accent,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    opacity: !overview?.billingEnabled && !isActive ? 0.55 : 1,
-                  }}
-                >
-                  <Text
-                    style={{
-                      ...type.label,
-                      color: isActive ? colors.inkMuted : colors.onAccent,
-                    }}
-                  >
-                    {isActive ? "Current plan" : busy ? "Opening…" : "Subscribe"}
-                  </Text>
-                </Pressable>
+                <Text style={styles.statusText}>{plan.tagline}</Text>
+                <View style={{ gap: spacing.sm, marginTop: spacing.xs }}>
+                  {plan.features.map((f) => (
+                    <View key={f} style={styles.feature}>
+                      <Check size={16} color={colors.success} />
+                      <Text style={styles.featureText}>{f}</Text>
+                    </View>
+                  ))}
+                </View>
+                <Button
+                  label={isCurrent ? "Current plan" : "Subscribe"}
+                  onPress={() => void startCheckout(plan.id)}
+                  loading={busyPlan === plan.id}
+                  disabled={isCurrent || !overview?.billingEnabled}
+                  variant={isCurrent ? "secondary" : "primary"}
+                  fullWidth
+                  style={{ marginTop: spacing.sm }}
+                />
               </View>
             );
           })}
 
-          {overview?.recentPayments?.length ? (
-            <View style={{ gap: spacing.sm, marginTop: spacing.sm }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
-                <Sparkles size={16} color={colors.inkMuted} />
-                <Text style={{ ...type.label, color: colors.inkMuted }}>RECENT PAYMENTS</Text>
-              </View>
-              {overview.recentPayments.slice(0, 5).map((p) => (
-                <View
-                  key={p.id}
-                  style={{
-                    backgroundColor: colors.surface,
-                    borderRadius: radius.md,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                    padding: spacing.md,
-                  }}
-                >
-                  <Text style={{ ...type.emphasis, color: colors.ink }}>
-                    {p.planId} · {formatPlanPrice(p.amountPaise)}
-                  </Text>
-                  <Text style={{ ...type.caption, color: colors.inkMuted }}>
-                    {p.status} · {formatDate(p.paidAt ?? p.createdAt)}
-                  </Text>
-                </View>
-              ))}
+          {unlimited ? null : <ListingPacksPanel canBuy={canAccessDealerDashboard} />}
+
+          {payments.length > 0 ? (
+            <View style={{ gap: spacing.sm }}>
+              <ListSection title="Payment history">
+                {visiblePayments.map((p) => (
+                  <ListRow
+                    key={p.id}
+                    title={`${getPartnerPlan(p.planId)?.name ?? "Plan"} · ${formatPlanPrice(p.amountPaise)}`}
+                    subtitle={formatDate(p.paidAt ?? p.createdAt)}
+                    value={p.status}
+                  />
+                ))}
+              </ListSection>
+              {payments.length > HISTORY_PREVIEW ? (
+                <Button
+                  label={showAllHistory ? "Show less" : `Show all ${payments.length}`}
+                  variant="tertiary"
+                  size="sm"
+                  onPress={() => setShowAllHistory((v) => !v)}
+                />
+              ) : null}
             </View>
           ) : null}
-        </ScrollView>
+
+          <Accordion title="Questions" items={FAQS} />
+        </>
       )}
 
       {checkout ? (
@@ -268,6 +248,36 @@ export default function DealerSubscriptionScreen() {
           }}
         />
       ) : null}
-    </SafeAreaView>
+    </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  status: {
+    backgroundColor: colors.surfaceSubtle,
+    borderRadius: radius.lg,
+    borderCurve: "continuous",
+    padding: spacing.lg,
+    gap: spacing.xs,
+  },
+  statusActive: { backgroundColor: colors.successSoft },
+  statusTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
+  statusTitle: { ...type.heading, color: colors.ink, flex: 1 },
+  statusText: { ...type.body, color: colors.inkSecondary },
+  plan: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    borderCurve: "continuous",
+    padding: spacing.lg,
+    gap: spacing.xs,
+    boxShadow: shadow.card,
+  },
+  planHighlighted: { borderColor: colors.accentBorder, borderWidth: 1.5 },
+  planName: { ...type.heading, color: colors.ink, flex: 1 },
+  planPrice: { ...type.title, color: colors.ink, fontVariant: ["tabular-nums"] },
+  planPeriod: { ...type.body, color: colors.inkMuted },
+  feature: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  featureText: { ...type.body, color: colors.ink, flex: 1 },
+});

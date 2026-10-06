@@ -1,279 +1,129 @@
-import React, { useMemo, useState } from "react";
-import {
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import { appAlert } from "@/components/ui/app-alert";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { ChevronLeft } from "@/components/ui/icons";
+import React, { useEffect, useMemo } from "react";
+import { StyleSheet, Text, View } from "react-native";
 
+import { EmptyState, ErrorState, ListSkeleton, Screen, StatusBadge, toast } from "@/components/ds";
+import { ListingForm, type ListingPayload, type ListingSaveStatus } from "@/components/listing/ListingForm";
+import { draftFromProperty } from "@/components/listing/listing-draft";
+import { appAlert } from "@/components/ui/app-alert";
+import { Lock } from "@/components/ui/icons";
 import { useApp } from "@/context/AppContext";
-import type { Property } from "@/data/types";
+import { ApiError } from "@/lib/api/client";
+import { apiGetProperty } from "@/lib/api/services/properties";
 import { ownsProperty } from "@/lib/ownership";
-import { pickAndUploadPropertyImage } from "@/lib/media-upload";
 import { colors, radius, spacing, type } from "@/theme/tokens";
+
+const STATUS_NOTE: Partial<Record<string, string>> = {
+  "Pending Review": "Our team is reviewing this listing. You can still make changes.",
+  Active: "This listing is live. Changes are visible to buyers right away.",
+  Sold: "This listing is marked sold.",
+  Rented: "This listing is marked rented.",
+  Draft: "Drafts stay private until you submit them for review.",
+};
 
 export default function EditPropertyScreen() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const {
-    properties,
-    updateProperty,
-    profile,
-    userEmail,
-    canAccessDealerDashboard,
-  } = useApp();
+  const { isApiMode, properties, updateProperty, getLastActionError, profile, userEmail, mergeProperties } =
+    useApp();
 
-  const existing = useMemo(
-    () => properties.find((p) => p.id === id),
-    [properties, id],
-  );
+  const local = useMemo(() => properties.find((p) => p.id === id), [properties, id]);
+  const remote = useQuery({
+    queryKey: ["property", id],
+    queryFn: () => apiGetProperty(id),
+    enabled: isApiMode && Boolean(id),
+  });
+  useEffect(() => {
+    if (remote.data) mergeProperties([remote.data]);
+  }, [remote.data, mergeProperties]);
 
-  const canEdit =
-    Boolean(existing) &&
-    ownsProperty(existing!, { userId: profile?.id, email: userEmail }) &&
-    (canAccessDealerDashboard || profile?.role === "user");
+  const property = local ?? remote.data;
 
-  const [title, setTitle] = useState(existing?.title ?? "");
-  const [price, setPrice] = useState(existing ? String(existing.price) : "");
-  const [locality, setLocality] = useState(existing?.locality ?? "");
-  const [nearbyHospital, setNearbyHospital] = useState(existing?.nearbyHospital ?? "");
-  const [nearbySchool, setNearbySchool] = useState(existing?.nearbySchool ?? "");
-  const [nearbyTransportation, setNearbyTransportation] = useState(existing?.nearbyTransportation ?? "");
-  const [size, setSize] = useState(existing ? String(existing.size) : "");
-  const [description, setDescription] = useState(existing?.description ?? "");
-  const [imageUrl, setImageUrl] = useState(existing?.images?.[0] ?? "");
-  const [saving, setSaving] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
-
-  if (!existing || !canEdit) {
+  if (!property) {
+    if (remote.isLoading) {
+      return (
+        <Screen title="Edit listing" fallbackHref="/my-listings">
+          <ListSkeleton rows={6} />
+        </Screen>
+      );
+    }
+    const notFound = !isApiMode || (remote.error instanceof ApiError && remote.error.status === 404);
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg, padding: spacing.xl }}>
-        <Text style={{ ...type.title, color: colors.ink }}>Cannot edit</Text>
-        <Text style={{ ...type.body, color: colors.inkMuted, marginTop: spacing.sm }}>
-          Listing not found or you do not own it.
-        </Text>
-        <Pressable onPress={() => router.back()} style={{ marginTop: spacing.xl }}>
-          <Text style={{ ...type.label, color: colors.accent }}>Go back</Text>
-        </Pressable>
-      </SafeAreaView>
+      <Screen title="Edit listing" fallbackHref="/my-listings">
+        <ErrorState
+          title={notFound ? "Listing not found" : "Couldn't load listing"}
+          message={notFound ? "It may have been removed." : undefined}
+          onRetry={notFound ? undefined : () => void remote.refetch()}
+        />
+      </Screen>
     );
   }
 
-  const handleSave = async (submitForReview: boolean) => {
-    if (
-      !title.trim() ||
-      !price ||
-      !locality.trim() ||
-      !size ||
-      !description.trim() ||
-      !nearbyHospital.trim() ||
-      !nearbySchool.trim() ||
-      !nearbyTransportation.trim()
-    ) {
-      appAlert(
-        "Missing fields",
-        "Title, price, locality, size, description, hospital, school, and transportation are required.",
-      );
-      return;
-    }
-    setSaving(true);
-    const patch: Partial<Property> = {
-      title: title.trim(),
-      price: parseFloat(price),
-      locality: locality.trim(),
-      nearbyHospital: nearbyHospital.trim(),
-      nearbySchool: nearbySchool.trim(),
-      nearbyTransportation: nearbyTransportation.trim(),
-      size: parseFloat(size),
-      description: description.trim(),
-      images: imageUrl.trim() ? [imageUrl.trim()] : existing.images,
-    };
-    if (submitForReview && existing.status === "Draft") {
-      patch.status = "Pending Review";
-    }
-    const updated = await updateProperty(existing.id, patch);
-    setSaving(false);
-    if (!updated) {
-      appAlert("Save failed", "Could not update listing. Brokers cannot set Active.");
-      return;
-    }
-    appAlert(
-      "Saved",
-      submitForReview
-        ? "Listing submitted for review."
-        : "Listing updated.",
-      [{ text: "OK", onPress: () => router.back() }],
+  if (!ownsProperty(property, { userId: profile?.id, email: userEmail })) {
+    return (
+      <Screen title="Edit listing" fallbackHref="/my-listings">
+        <EmptyState
+          icon={Lock}
+          title="You can't edit this listing"
+          message="Only the owner or listing dealer can make changes."
+          actionLabel="My listings"
+          onAction={() => router.replace("/my-listings")}
+        />
+      </Screen>
     );
+  }
+
+  const onSave = async (payload: ListingPayload, status: ListingSaveStatus) => {
+    const updated = await updateProperty(property.id, status ? { ...payload, status } : payload);
+    if (!updated) {
+      appAlert("Couldn't save changes", getLastActionError() ?? "Please try again.");
+      return false;
+    }
+    void queryClient.invalidateQueries({ queryKey: ["properties", "mine"] });
+    void queryClient.invalidateQueries({ queryKey: ["property", property.id] });
+    toast(status === "Pending Review" ? "Submitted for review" : "Changes saved", "success");
+    if (router.canGoBack()) router.back();
+    else router.replace("/my-listings");
+    return true;
   };
 
-  const inputStyle = {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    ...type.body,
-    color: colors.ink,
-    marginBottom: spacing.md,
-  };
+  const rejected = property.status === "Rejected";
+  const banner = (
+    <View style={[styles.banner, rejected && styles.bannerWarn]}>
+      <StatusBadge label={property.status} />
+      <Text style={styles.bannerText}>
+        {rejected
+          ? property.rejectionReason
+            ? `Not approved: ${property.rejectionReason}. Fix the details and resubmit.`
+            : "Not approved. Update the details and resubmit for review."
+          : STATUS_NOTE[property.status]}
+      </Text>
+    </View>
+  );
 
   return (
-    <SafeAreaView edges={["top", "bottom"]} style={{ flex: 1, backgroundColor: colors.bg }}>
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          paddingHorizontal: spacing.lg,
-          paddingVertical: spacing.md,
-          gap: spacing.sm,
-          borderBottomWidth: 1,
-          borderBottomColor: colors.border,
-        }}
-      >
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <ChevronLeft size={22} color={colors.ink} />
-        </Pressable>
-        <Text style={{ ...type.heading, color: colors.ink, flex: 1 }}>Edit property</Text>
-      </View>
-
-      <ScrollView contentContainerStyle={{ padding: spacing.xl }}>
-        <Text style={{ ...type.caption, color: colors.inkMuted, marginBottom: spacing.lg }}>
-          Status: {existing.status}. You cannot set Active or featured — web admin activates
-          listings.
-        </Text>
-
-        <Text style={{ ...type.label, color: colors.inkMuted, marginBottom: 6 }}>Title</Text>
-        <TextInput value={title} onChangeText={setTitle} style={inputStyle} />
-
-        <Text style={{ ...type.label, color: colors.inkMuted, marginBottom: 6 }}>Price (₹)</Text>
-        <TextInput
-          value={price}
-          onChangeText={setPrice}
-          keyboardType="numeric"
-          style={inputStyle}
-        />
-
-        <Text style={{ ...type.label, color: colors.inkMuted, marginBottom: 6 }}>Locality</Text>
-        <TextInput value={locality} onChangeText={setLocality} style={inputStyle} />
-
-        <Text style={{ ...type.label, color: colors.inkMuted, marginBottom: 6 }}>Nearby hospital</Text>
-        <TextInput
-          value={nearbyHospital}
-          onChangeText={setNearbyHospital}
-          placeholder="e.g. GBH American Hospital, 2 km"
-          style={inputStyle}
-        />
-
-        <Text style={{ ...type.label, color: colors.inkMuted, marginBottom: 6 }}>Nearby school</Text>
-        <TextInput
-          value={nearbySchool}
-          onChangeText={setNearbySchool}
-          placeholder="e.g. Seedling Public School, 1 km"
-          style={inputStyle}
-        />
-
-        <Text style={{ ...type.label, color: colors.inkMuted, marginBottom: 6 }}>
-          Nearby transportation
-        </Text>
-        <TextInput
-          value={nearbyTransportation}
-          onChangeText={setNearbyTransportation}
-          placeholder="e.g. City Bus Stand, 3 km"
-          style={inputStyle}
-        />
-
-        <Text style={{ ...type.label, color: colors.inkMuted, marginBottom: 6 }}>Size (sq.ft)</Text>
-        <TextInput
-          value={size}
-          onChangeText={setSize}
-          keyboardType="numeric"
-          style={inputStyle}
-        />
-
-        <Text style={{ ...type.label, color: colors.inkMuted, marginBottom: 6 }}>Description</Text>
-        <TextInput
-          value={description}
-          onChangeText={setDescription}
-          multiline
-          style={{ ...inputStyle, minHeight: 100, textAlignVertical: "top" }}
-        />
-
-        <Text style={{ ...type.label, color: colors.inkMuted, marginBottom: 6 }}>
-          Image URL
-        </Text>
-        <TextInput
-          value={imageUrl}
-          onChangeText={setImageUrl}
-          autoCapitalize="none"
-          style={inputStyle}
-        />
-        <Pressable
-          disabled={uploadingImage}
-          onPress={() => {
-            void (async () => {
-              setUploadingImage(true);
-              const url = await pickAndUploadPropertyImage();
-              setUploadingImage(false);
-              if (url) setImageUrl(url);
-            })();
-          }}
-          style={{
-            height: 40,
-            marginBottom: spacing.md,
-            borderRadius: radius.md,
-            borderWidth: 1,
-            borderColor: colors.border,
-            alignItems: "center",
-            justifyContent: "center",
-            opacity: uploadingImage ? 0.6 : 1,
-          }}
-        >
-          <Text style={{ ...type.label, color: colors.ink }}>
-            {uploadingImage ? "Uploading…" : "Upload from gallery"}
-          </Text>
-        </Pressable>
-
-        <Pressable
-          disabled={saving}
-          onPress={() => void handleSave(false)}
-          style={{
-            height: 48,
-            borderRadius: radius.md,
-            backgroundColor: colors.accent,
-            alignItems: "center",
-            justifyContent: "center",
-            marginTop: spacing.sm,
-            opacity: saving ? 0.7 : 1,
-          }}
-        >
-          <Text style={{ ...type.emphasis, color: colors.onAccent }}>Save changes</Text>
-        </Pressable>
-
-        {existing.status === "Draft" ? (
-          <Pressable
-            disabled={saving}
-            onPress={() => void handleSave(true)}
-            style={{
-              height: 48,
-              borderRadius: radius.md,
-              backgroundColor: colors.surface,
-              borderWidth: 1,
-              borderColor: colors.border,
-              alignItems: "center",
-              justifyContent: "center",
-              marginTop: spacing.sm,
-            }}
-          >
-            <Text style={{ ...type.emphasis, color: colors.ink }}>Save & submit for review</Text>
-          </Pressable>
-        ) : null}
-      </ScrollView>
-    </SafeAreaView>
+    <ListingForm
+      key={property.id}
+      mode="edit"
+      screenTitle="Edit listing"
+      initial={draftFromProperty(property)}
+      status={property.status}
+      banner={banner}
+      onSave={onSave}
+    />
   );
 }
+
+const styles = StyleSheet.create({
+  banner: {
+    gap: spacing.sm,
+    padding: spacing.lg,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surfaceSubtle,
+    alignItems: "flex-start",
+  },
+  bannerWarn: { backgroundColor: colors.warningSoft, borderWidth: 1, borderColor: colors.warningBorder },
+  bannerText: { ...type.body, color: colors.inkSecondary },
+});

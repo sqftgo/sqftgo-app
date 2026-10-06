@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/icons";
 import type { DirectoryProfile } from "@/data/types";
 import { initialsFromName } from "@/lib/format";
+import { isServiceDirectoryCategory } from "@/lib/is-dealer-category";
 import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
 
 /** Contact and profile card for brokers, consultants, and service partners. */
@@ -28,13 +29,14 @@ export function ExpertCard({
       Haptics.selectionAsync();
     }
     router.push({
-      pathname: "/broker/[id]",
+      pathname: isServiceDirectoryCategory(profile.category) ? "/service/[id]" : "/broker/[id]",
       params: { id: profile.id },
     });
   };
 
   const initials = initialsFromName(profile.ownerName || profile.firmName);
-  const exp = profile.experience || "5+ Years";
+  const place = [profile.city, profile.experience].filter(Boolean).join(" · ");
+  const verified = Boolean(profile.reraId) || profile.verificationStatus === "verified";
 
   if (variant === "compact") {
     return (
@@ -82,7 +84,7 @@ export function ExpertCard({
               <Text numberOfLines={1} style={{ ...type.emphasis, color: colors.ink, flexShrink: 1 }}>
                 {profile.ownerName}
               </Text>
-              {profile.reraId ? <ShieldCheck size={13} color={colors.success} strokeWidth={2.5} /> : null}
+              {verified ? <ShieldCheck size={13} color={colors.success} strokeWidth={2.5} /> : null}
             </View>
             <Text numberOfLines={1} style={{ ...type.caption, color: colors.inkSecondary }}>
               {profile.firmName}
@@ -107,7 +109,7 @@ export function ExpertCard({
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
           <MapPin size={12} color={colors.inkMuted} />
           <Text numberOfLines={1} style={{ ...type.caption, color: colors.inkMuted, flex: 1 }}>
-            {profile.city} · {exp}
+            {place}
           </Text>
           <ChevronRight size={14} color={colors.inkMuted} />
         </View>
@@ -166,7 +168,7 @@ export function ExpertCard({
             <Text numberOfLines={1} style={{ ...type.emphasis, color: colors.ink, fontSize: 15, flex: 1 }}>
               {profile.ownerName}
             </Text>
-            {profile.reraId ? (
+            {verified ? (
               <ShieldCheck size={15} color={colors.success} strokeWidth={2.5} />
             ) : null}
           </View>
@@ -178,7 +180,7 @@ export function ExpertCard({
           <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs, marginTop: 1 }}>
             <MapPin size={11} color={colors.inkMuted} />
             <Text numberOfLines={1} style={{ ...type.micro, color: colors.inkMuted, flex: 1 }}>
-              {profile.address ? `${profile.address}, ` : ""}{profile.city} · {exp}
+              {profile.address ? `${profile.address}, ` : ""}{place}
             </Text>
           </View>
         </View>

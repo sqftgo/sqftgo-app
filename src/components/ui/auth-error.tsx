@@ -23,7 +23,7 @@ export function AuthErrorScreen({ message, onRetry }: AuthErrorScreenProps) {
           "Unable to verify your session or retrieve account data. Please check your internet connection and try again."}
       </Text>
 
-      <Pressable style={styles.retryBtn} onPress={onRetry}>
+      <Pressable style={styles.retryBtn} onPress={onRetry} accessibilityRole="button">
         <RefreshCwIcon size={18} color={colors.onAccent} />
         <Text style={styles.retryText}>Retry Connection</Text>
       </Pressable>

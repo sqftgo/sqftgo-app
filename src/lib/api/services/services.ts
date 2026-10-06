@@ -74,8 +74,44 @@ export async function apiListMyServiceBookings(): Promise<ServiceBooking[]> {
 }
 
 export async function apiCancelServiceBooking(id: string): Promise<ServiceBooking> {
-  return apiFetch<ServiceBooking>(`/api/service-bookings/${id}`, {
-    method: "PATCH",
-    body: { status: "cancelled" },
-  });
+  return apiUpdateServiceBooking(id, { status: "cancelled" });
+}
+
+export async function apiUpdateServiceBooking(
+  id: string,
+  body: Partial<{ status: ServiceBookingStatus; ownerNotes: string }>,
+): Promise<ServiceBooking> {
+  return apiFetch<ServiceBooking>(`/api/service-bookings/${id}`, { method: "PATCH", body });
+}
+
+/** Booking requests received by the signed-in service owner. */
+export async function apiListOwnerServiceBookings(directoryProfileId: string): Promise<ServiceBooking[]> {
+  const res = await apiFetch<ListResponse<ServiceBooking> | ServiceBooking[]>(
+    `/api/services/${directoryProfileId}/bookings`,
+  );
+  return Array.isArray(res) ? res : res.items ?? [];
+}
+
+export type ServiceVerificationStatus = "draft" | "pending" | "approved" | "rejected";
+
+export type ServiceVerification = {
+  id: string;
+  directoryProfileId: string;
+  status: ServiceVerificationStatus;
+  businessRegistrationId?: string | null;
+  ownerNotes: string;
+  rejectionReason?: string | null;
+  submittedAt?: string | null;
+  reviewedAt?: string | null;
+};
+
+export async function apiGetMyServiceVerification(): Promise<ServiceVerification | null> {
+  return apiFetch<ServiceVerification | null>("/api/service-verifications");
+}
+
+export async function apiSubmitServiceVerification(body: {
+  businessRegistrationId?: string | null;
+  ownerNotes?: string;
+}): Promise<ServiceVerification> {
+  return apiFetch<ServiceVerification>("/api/service-verifications", { method: "POST", body });
 }
