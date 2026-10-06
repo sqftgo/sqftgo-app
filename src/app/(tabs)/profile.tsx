@@ -873,6 +873,31 @@ export default function ProfileScreen() {
                 />
               </MenuGroup>
             </View>
+
+            <View style={{ alignItems: "center", gap: spacing.xs, paddingTop: spacing.sm }}>
+              <Pressable
+                onPress={handleLogout}
+                accessibilityRole="button"
+                hitSlop={8}
+                style={({ pressed }) => ({
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: spacing.xs + 2,
+                  paddingHorizontal: spacing.lg,
+                  paddingVertical: spacing.sm,
+                  borderRadius: radius.full,
+                  backgroundColor: pressed ? colors.dangerSoft : "transparent",
+                })}
+              >
+                <LogOut size={16} color={colors.danger} />
+                <Text style={{ ...type.label, fontWeight: "600", color: colors.danger }}>
+                  Sign out
+                </Text>
+              </Pressable>
+              <Text style={{ ...type.caption, color: colors.inkMuted }}>
+                SqftGo v{Constants.expoConfig?.version ?? "1.0.0"}
+              </Text>
+            </View>
           </>
         ) : (
           /* ========================================================================= */

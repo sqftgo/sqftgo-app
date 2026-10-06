@@ -158,8 +158,10 @@ export default function AuthScreen() {
     if (!EMAIL_RE.test(email.trim())) {
       next.email = "Enter a valid email address.";
     }
-    if (password.length < 8) {
+    if (isSignUp && password.length < 8) {
       next.password = "Password must be at least 8 characters.";
+    } else if (!isSignUp && password.length === 0) {
+      next.password = "Enter your password.";
     }
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -172,13 +174,8 @@ export default function AuthScreen() {
   }) => {
     const isDealerAccount = result.role === "broker" || result.dealerAccess === "pending";
 
-    if (loginType === "user" && result.role === "broker") {
-      signOut();
-      appAlert(
-        "Dealer account",
-        "This email is registered as a Dealer. Switch to Dealer login and try again.",
-      );
-      return;
+    if (result.role === "broker") {
+      setPreferredRole("broker");
     }
 
     if (loginType === "dealer" && !isDealerAccount) {
