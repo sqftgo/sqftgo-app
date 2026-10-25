@@ -2,14 +2,13 @@ import { Tabs } from "expo-router";
 import React from "react";
 
 import { AppTabBar, type TabDef } from "@/components/navigation/AppTabBar";
-import { Briefcase, Heart, Home, Search, User } from "@/components/ui/icons";
+import { Briefcase, Home, Search, User } from "@/components/ui/icons";
 import { colors } from "@/theme/tokens";
 
 const BUYER_TABS: TabDef[] = [
   { name: "index", label: "Home", Icon: Home },
   { name: "explore", label: "Explore", Icon: Search },
   { name: "services", label: "Services", Icon: Briefcase },
-  { name: "saved", label: "Saved", Icon: Heart },
   { name: "profile", label: "Profile", Icon: User },
 ];
 

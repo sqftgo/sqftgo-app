@@ -49,7 +49,6 @@ export default function ProfileScreen() {
     userEmail,
     userName,
     profile,
-    favorites,
     inquiries,
     visits,
     dealerAccess,
@@ -156,7 +155,7 @@ export default function ProfileScreen() {
           </View>
           <Text style={styles.guestTitle}>Your home search, in one place</Text>
           <Text style={styles.guestBody}>
-            Sign in to save homes, book site visits, message dealers and list your property.
+            Sign in to book site visits, message dealers and list your property.
           </Text>
           <View style={styles.guestActions}>
             <Button
@@ -281,7 +280,6 @@ export default function ProfileScreen() {
   }
 
   const stats = [
-    { label: "Saved", value: favorites.length, href: "/(tabs)/saved" },
     { label: "Inquiries", value: myInquiries, href: "/my-inquiries" },
     { label: "Visits", value: myVisits, href: "/my-visits" },
   ];
@@ -326,12 +324,6 @@ export default function ProfileScreen() {
       ) : null}
 
       <ListSection title="Activity" footer="Track visits, messages and anything you’ve listed.">
-        <ListRow
-          icon={Heart}
-          title="Saved homes"
-          value={favorites.length > 0 ? String(favorites.length) : undefined}
-          onPress={() => go("/(tabs)/saved")}
-        />
         <ListRow
           icon={Calendar}
           title="My visits"

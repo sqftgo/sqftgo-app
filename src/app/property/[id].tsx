@@ -54,8 +54,6 @@ export default function PropertyDetailsScreen() {
   const requireAuth = useRequireAuth();
   const {
     properties,
-    favorites,
-    toggleFavorite,
     directoryProfiles,
     mergeProperties,
     profile,
@@ -133,7 +131,6 @@ export default function PropertyDetailsScreen() {
   }
 
   const rental = isRentalPurpose(property.purpose);
-  const isFav = favorites.includes(property.id);
   const isOwner = ownsProperty(property, { userId: profile?.id, email: userEmail });
   const isActive = property.status === "Active";
   const hasPhone = Boolean(property.ownerPhone?.trim());
@@ -200,11 +197,6 @@ export default function PropertyDetailsScreen() {
     }
   };
 
-  const toggleSave = () => {
-    requireAuth("Sign in to save homes and see them on all your devices.", () => {
-      toggleFavorite(property.id);
-    });
-  };
 
   const priceLabel = formatIndianCurrency(property.price);
   const period = rental ? "per month" : undefined;
@@ -349,10 +341,8 @@ export default function PropertyDetailsScreen() {
       <PropertyTopBar
         scrollY={scrollY}
         title={property.title}
-        isFavorite={isFav}
         onBack={back}
         onShare={share}
-        onToggleFavorite={toggleSave}
       />
 
       {isOwner ? (

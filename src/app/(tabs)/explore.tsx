@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -267,7 +267,7 @@ function ActiveFilterChips({
 }
 
 export default function ExploreScreen() {
-  const { properties, selectedCity, setSelectedCity, isApiMode } = useApp();
+  const { properties, selectedCity, setSelectedCity, isApiMode, preferredPurpose } = useApp();
   const { filters: listingFilters } = useListingFilters();
   const params = useLocalSearchParams<{
     purpose?: string;
@@ -276,9 +276,13 @@ export default function ExploreScreen() {
     locality?: string;
   }>();
 
-  const [filters, setFilters] = useState<PropertyFilters>(defaultFilters);
+  const [filters, setFilters] = useState<PropertyFilters>(() => ({
+    ...defaultFilters,
+    purpose: preferredPurpose === "buy" || preferredPurpose === "rent" ? preferredPurpose : "all",
+  }));
   const [sheetVisible, setSheetVisible] = useState(false);
   const [cityModalVisible, setCityModalVisible] = useState(false);
+  const seededFromParams = useRef(false);
 
   // Home / Destinations → Explore handoff
   useEffect(() => {
@@ -292,6 +296,7 @@ export default function ExploreScreen() {
     setFilters((prev) => {
       let next: PropertyFilters = { ...prev };
       if (type) {
+        seededFromParams.current = true;
         next = {
           ...next,
           type,
@@ -302,11 +307,16 @@ export default function ExploreScreen() {
           bhk: NON_RESIDENTIAL_TYPES.has(type) ? [] : next.bhk,
         };
       } else if (purpose === "buy" || purpose === "sell" || purpose === "rent" || purpose === "lease") {
+        seededFromParams.current = true;
         next = { ...next, purpose, type: "any" };
       } else if (purpose === "commercial") {
+        seededFromParams.current = true;
         next = { ...next, purpose: "all", type: "commercial", bhk: [] };
       } else if (purpose === "plot") {
+        seededFromParams.current = true;
         next = { ...next, purpose: "all", type: "Industrial Plot", bhk: [] };
+      } else if (!seededFromParams.current && (preferredPurpose === "buy" || preferredPurpose === "rent")) {
+        next = { ...next, purpose: preferredPurpose };
       }
       // Destination / deep-link handoff: city alone clears locality; locality sets search area.
       if (city || locality) {
@@ -314,7 +324,7 @@ export default function ExploreScreen() {
       }
       return next;
     });
-  }, [params.purpose, params.type, params.city, params.locality, setSelectedCity]);
+  }, [params.purpose, params.type, params.city, params.locality, preferredPurpose, setSelectedCity]);
 
   const search = usePropertySearch(filters, listingFilters);
   const { results } = search;
