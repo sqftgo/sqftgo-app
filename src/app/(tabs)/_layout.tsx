@@ -1,9 +1,8 @@
-import { Redirect, Tabs, type Href } from "expo-router";
+import { Tabs } from "expo-router";
 import React from "react";
 
 import { AppTabBar, type TabDef } from "@/components/navigation/AppTabBar";
 import { Briefcase, Heart, Home, Search, User } from "@/components/ui/icons";
-import { useApp } from "@/context/AppContext";
 import { colors } from "@/theme/tokens";
 
 const BUYER_TABS: TabDef[] = [
@@ -15,12 +14,6 @@ const BUYER_TABS: TabDef[] = [
 ];
 
 export default function TabLayout() {
-  const { userRole } = useApp();
-
-  if (userRole === "broker") {
-    return <Redirect href={"/(dealer)" as Href} />;
-  }
-
   return (
     <Tabs
       initialRouteName="index"

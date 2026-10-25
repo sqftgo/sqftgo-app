@@ -27,6 +27,7 @@ import {
   apiVerifySubscriptionPayment,
   type SubscriptionOrder,
 } from "@/lib/api/services/billing";
+import { userFacingError } from "@/lib/errors";
 import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
 
 const FAQS = [
@@ -112,7 +113,7 @@ export default function DealerSubscriptionScreen() {
       setCheckout(order);
     } catch (e) {
       setBusyPlan(null);
-      appAlert("Couldn't start checkout", e instanceof Error ? e.message : "Please try again.");
+      appAlert("Couldn't start checkout", userFacingError(e, "Please try again."));
     }
   };
 
@@ -129,7 +130,7 @@ export default function DealerSubscriptionScreen() {
     } catch (e) {
       appAlert(
         "Payment received, verification pending",
-        e instanceof Error ? e.message : "Pull to refresh in a moment to see your plan.",
+        userFacingError(e, "Pull to refresh in a moment to see your plan."),
       );
     } finally {
       setBusyPlan(null);

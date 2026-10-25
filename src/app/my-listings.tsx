@@ -171,6 +171,8 @@ export default function MyListingsScreen() {
             icon={Building2}
             title="No properties yet"
             message="Add a home, plot or commercial space. Admin reviews it before buyers can see it."
+            actionLabel={canAdd ? "List a property" : undefined}
+            onAction={canAdd ? () => router.push("/post-property" as Href) : undefined}
           />
         ) : (
           mine.map((p) => (

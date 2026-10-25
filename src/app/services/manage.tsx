@@ -16,10 +16,11 @@ import {
   type BadgeTone,
 } from "@/components/ds";
 import { appAlert } from "@/components/ui/app-alert";
-import { Calendar, Phone, Store } from "@/components/ui/icons";
+import { Calendar, Lock, Phone, Store } from "@/components/ui/icons";
 import { useApp } from "@/context/AppContext";
 import { useMyServiceProfile } from "@/hooks/use-my-service-profile";
 import { isApiMode } from "@/lib/api/config";
+import { userFacingError } from "@/lib/errors";
 import {
   apiGetMyServiceVerification,
   apiListOwnerServiceBookings,
@@ -56,7 +57,7 @@ function formatWhen(iso: string) {
 export default function ManageServiceScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { updateDirectoryProfile } = useApp();
+  const { updateDirectoryProfile, isLoggedIn } = useApp();
   const mine = useMyServiceProfile();
   const profile = mine.profile;
   const [tab, setTab] = useState<Tab>("bookings");
@@ -64,12 +65,12 @@ export default function ManageServiceScreen() {
   const bookingsQuery = useQuery({
     queryKey: ["service-bookings", "owner", profile?.id],
     queryFn: () => apiListOwnerServiceBookings(profile!.id),
-    enabled: isApiMode && Boolean(profile?.id),
+    enabled: isApiMode && isLoggedIn && Boolean(profile?.id),
   });
   const verificationQuery = useQuery({
     queryKey: ["service-verification", "mine"],
     queryFn: apiGetMyServiceVerification,
-    enabled: isApiMode && Boolean(profile?.id),
+    enabled: isApiMode && isLoggedIn && Boolean(profile?.id),
   });
   const verification = verificationQuery.data;
 
@@ -101,7 +102,7 @@ export default function ManageServiceScreen() {
       );
       toast(`Booking ${BOOKING_LABEL[updated.status].toLowerCase()}`);
     },
-    onError: (e) => appAlert("Couldn't update booking", e instanceof Error ? e.message : "Try again."),
+    onError: (e) => appAlert("Couldn't update booking", userFacingError(e, "Try again.")),
   });
 
   const submitVerification = useMutation({
@@ -112,8 +113,24 @@ export default function ManageServiceScreen() {
       setNotes("");
       toast("Sent for review");
     },
-    onError: (e) => appAlert("Couldn't submit", e instanceof Error ? e.message : "Try again."),
+    onError: (e) => appAlert("Couldn't submit", userFacingError(e, "Try again.")),
   });
+
+  if (!isLoggedIn) {
+    return (
+      <Screen title="Your service profile" fallbackHref="/(tabs)/services">
+        <EmptyState
+          icon={Lock}
+          title="Sign in required"
+          message="Sign in to manage bookings, details and verification."
+          actionLabel="Sign in"
+          onAction={() =>
+            router.push({ pathname: "/auth", params: { mode: "sign-in" } } as unknown as Href)
+          }
+        />
+      </Screen>
+    );
+  }
 
   if (mine.isLoading) {
     return (

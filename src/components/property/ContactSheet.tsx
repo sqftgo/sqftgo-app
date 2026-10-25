@@ -66,10 +66,16 @@ export function ContactSheet({
 
   useEffect(() => {
     if (!visible) return;
-    setName((v) => v || userName);
-    setEmail((v) => v || userEmail);
-    setPhone((v) => v || profile?.phone || "");
-  }, [visible, userName, userEmail, profile?.phone]);
+    // Always sync from the signed-in profile when the sheet opens.
+    setName((userName || profile?.name || "").trim());
+    setEmail((userEmail || "").trim());
+    setPhone((profile?.phone || "").trim());
+    setMessage(DEFAULT_MESSAGE);
+    setPreset(null);
+    setErrors({});
+    setSending(false);
+    setSent(false);
+  }, [visible, userName, userEmail, profile?.phone, profile?.name]);
 
   const close = () => {
     onClose();

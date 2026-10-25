@@ -188,20 +188,90 @@ export function isRentLikePurpose(purpose: PurposeFilter): boolean {
   return purpose === "rent" || purpose === "lease";
 }
 
+/** Build ascending unique stops across a range (Amazon-style digit steps). */
+function buildStops(parts: Array<number | readonly number[]>): number[] {
+  const out: number[] = [];
+  for (const part of parts) {
+    if (typeof part === "number") out.push(part);
+    else out.push(...part);
+  }
+  return [...new Set(out)].sort((a, b) => a - b);
+}
+
+function steps(from: number, to: number, step: number): number[] {
+  const list: number[] = [];
+  for (let n = from; n <= to; n += step) list.push(n);
+  return list;
+}
+
+/** Dense buy budget stops — every step across the full scale. */
+export const BUDGET_BUY_STOPS = buildStops([
+  0,
+  steps(500_000, 5_000_000, 500_000),
+  steps(6_000_000, 10_000_000, 1_000_000),
+  12_500_000,
+  15_000_000,
+  steps(20_000_000, 50_000_000, 5_000_000),
+  75_000_000,
+  100_000_000,
+  125_000_000,
+  150_000_000,
+]);
+
+/** Dense rent budget stops — every step across the full scale. */
+export const BUDGET_RENT_STOPS = buildStops([
+  0,
+  steps(2_500, 50_000, 2_500),
+  steps(55_000, 100_000, 5_000),
+  125_000,
+  150_000,
+  175_000,
+  200_000,
+]);
+
+/** Dense sq.ft. stops — every digit/step across the full size range. */
+export const SIZE_STOPS = buildStops([
+  0,
+  steps(250, 3_000, 250),
+  steps(3_500, 6_000, 500),
+  steps(7_000, 10_000, 1_000),
+  12_500,
+  15_000,
+  20_000,
+]);
+
+export function budgetStopsForPurpose(purpose: PurposeFilter): number[] {
+  return isRentLikePurpose(purpose) ? [...BUDGET_RENT_STOPS] : [...BUDGET_BUY_STOPS];
+}
+
 export function formatBudgetLabel(value: string, purpose: PurposeFilter): string {
   if (!value) return "";
   const opts = isRentLikePurpose(purpose)
     ? [...BUDGET_RENT_MIN_OPTIONS, ...BUDGET_RENT_MAX_OPTIONS]
     : [...BUDGET_BUY_MIN_OPTIONS, ...BUDGET_BUY_MAX_OPTIONS];
-  return opts.find((o) => o.value === value)?.label ?? value;
+  const known = opts.find((o) => o.value === value)?.label;
+  if (known) return known;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return value;
+  // Lazy import avoided — keep label short for chips.
+  if (n >= 10_000_000) {
+    const crore = n / 10_000_000;
+    return `₹${crore % 1 === 0 ? crore.toFixed(0) : crore.toFixed(2)} Cr`;
+  }
+  if (n >= 100_000) {
+    const lakh = n / 100_000;
+    return `₹${lakh % 1 === 0 ? lakh.toFixed(0) : lakh.toFixed(1)} L`;
+  }
+  return `₹${Math.round(n).toLocaleString("en-IN")}`;
 }
 
 export function formatSizeLabel(value: string): string {
   if (!value) return "";
-  return (
-    [...SIZE_MIN_OPTIONS, ...SIZE_MAX_OPTIONS].find((o) => o.value === value)?.label ??
-    `${value} sq.ft.`
-  );
+  const known = [...SIZE_MIN_OPTIONS, ...SIZE_MAX_OPTIONS].find((o) => o.value === value)?.label;
+  if (known) return known;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return `${value} sq.ft.`;
+  return `${Math.round(n).toLocaleString("en-IN")} sq.ft.`;
 }
 
 export function countActiveFilters(f: PropertyFilters): number {
@@ -238,6 +308,38 @@ function matchesType(p: Property, type: string): boolean {
   return p.type === type;
 }
 
+/**
+ * Browse intents map to multiple listing purposes:
+ * - Buy → buy or sell (both are for-sale inventory)
+ * - Rent → rent or lease
+ * Exact sell/lease still match only themselves when chosen in the filter sheet.
+ */
+export function matchesPurpose(listingPurpose: string, filter: PurposeFilter): boolean {
+  if (filter === "all") return true;
+  if (filter === "buy") return listingPurpose === "buy" || listingPurpose === "sell";
+  if (filter === "rent") return listingPurpose === "rent" || listingPurpose === "lease";
+  return listingPurpose === filter;
+}
+
+/** Filters applied only after pages load (not fully expressed in `/api/properties`). */
+export function hasClientOnlyFilters(f: PropertyFilters): boolean {
+  if (f.bhk.length > 0) return true;
+  if (f.furnishing.length > 0) return true;
+  if (f.minSize || f.maxSize) return true;
+  if (f.reraApprovedOnly) return true;
+  if (f.selectedAmenities.length > 0) return true;
+  if (f.type === "commercial") return true;
+  if (f.purpose === "buy" || f.purpose === "sell" || f.purpose === "rent") return true;
+  if (f.extra) {
+    for (const val of Object.values(f.extra)) {
+      if (val === true) return true;
+      if (typeof val === "string" && val.trim()) return true;
+      if (Array.isArray(val) && val.length) return true;
+    }
+  }
+  return false;
+}
+
 /** Client-side filter — same rules as web `listings/page.tsx` `filterProperties`. */
 export function filterProperties(
   properties: Property[],
@@ -272,8 +374,8 @@ export function filterProperties(
       return false;
     }
 
-    // Purpose — exact match like web (not buy↔sell merge)
-    if (enabled("purpose") && filters.purpose !== "all" && p.purpose !== filters.purpose) return false;
+    // Purpose — Buy/Rent browse intents include related listing purposes
+    if (enabled("purpose") && !matchesPurpose(p.purpose, filters.purpose)) return false;
 
     // Type
     if (enabled("type") && !matchesType(p, filters.type)) return false;

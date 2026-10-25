@@ -8,6 +8,7 @@ import { ProjectForm, projectDraftFrom, type ProjectSaveStatus } from "@/compone
 import { appAlert } from "@/components/ui/app-alert";
 import type { ProjectInput } from "@/data/project";
 import { apiGetProject, apiUpdateProject } from "@/lib/api/services/projects";
+import { userFacingError } from "@/lib/errors";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 
 export default function EditProjectScreen() {
@@ -36,7 +37,7 @@ export default function EditProjectScreen() {
     try {
       await apiUpdateProject(project.id, status ? { ...payload, status } : payload);
     } catch (e) {
-      appAlert("Couldn't save project", e instanceof Error ? e.message : "Please try again.");
+      appAlert("Couldn't save project", userFacingError(e, "Please try again."));
       return false;
     }
     void queryClient.invalidateQueries({ queryKey: ["project", project.id] });

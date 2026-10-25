@@ -34,7 +34,8 @@ const styles = StyleSheet.create({
   icon: {
     width: 56,
     height: 56,
-    borderRadius: radius.full,
+    borderRadius: radius.sm,
+    borderCurve: "continuous",
     backgroundColor: colors.dangerSoft,
     alignItems: "center",
     justifyContent: "center",

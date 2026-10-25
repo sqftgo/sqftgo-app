@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "expo-router";
+import { useRouter, type Href } from "expo-router";
 import React from "react";
 import { FlatList, StyleSheet, Text, View } from "react-native";
 
 import { Button, EmptyState, ErrorState, ListSkeleton, Screen, StatusBadge, toast, type BadgeTone } from "@/components/ds";
 import { appAlert } from "@/components/ui/app-alert";
-import { Briefcase } from "@/components/ui/icons";
+import { Briefcase, Lock } from "@/components/ui/icons";
+import { useApp } from "@/context/AppContext";
 import { isApiMode } from "@/lib/api/config";
 import {
   apiCancelServiceBooking,
@@ -13,12 +14,13 @@ import {
   type ServiceBooking,
   type ServiceBookingStatus,
 } from "@/lib/api/services/services";
+import { userFacingError } from "@/lib/errors";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 
 const STATUS: Record<ServiceBookingStatus, { label: string; tone: BadgeTone }> = {
   pending: { label: "Awaiting partner", tone: "warning" },
   confirmed: { label: "Confirmed", tone: "success" },
-  cancelled: { label: "Cancelled", tone: "neutral" },
+  cancelled: { label: "Cancelled", tone: "danger" },
   completed: { label: "Completed", tone: "info" },
 };
 
@@ -26,8 +28,13 @@ const KEY = ["service-bookings", "mine"];
 
 export default function MyServiceBookingsScreen() {
   const router = useRouter();
+  const { isLoggedIn } = useApp();
   const queryClient = useQueryClient();
-  const query = useQuery({ queryKey: KEY, queryFn: apiListMyServiceBookings, enabled: isApiMode });
+  const query = useQuery({
+    queryKey: KEY,
+    queryFn: apiListMyServiceBookings,
+    enabled: isApiMode && isLoggedIn,
+  });
 
   const cancel = useMutation({
     mutationFn: (id: string) => apiCancelServiceBooking(id),
@@ -35,8 +42,24 @@ export default function MyServiceBookingsScreen() {
       queryClient.setQueryData<ServiceBooking[]>(KEY, (prev) => prev?.map((b) => (b.id === updated.id ? updated : b)));
       toast("Booking cancelled");
     },
-    onError: (e) => appAlert("Couldn't cancel", e instanceof Error ? e.message : "Try again."),
+    onError: (e) => appAlert("Couldn't cancel", userFacingError(e, "Try again.")),
   });
+
+  if (!isLoggedIn) {
+    return (
+      <Screen title="Service bookings" fallbackHref="/(tabs)/services">
+        <EmptyState
+          icon={Lock}
+          title="Sign in required"
+          message="Sign in to see the booking requests you sent to partners."
+          actionLabel="Sign in"
+          onAction={() =>
+            router.push({ pathname: "/auth", params: { mode: "sign-in" } } as unknown as Href)
+          }
+        />
+      </Screen>
+    );
+  }
 
   const confirmCancel = (item: ServiceBooking) =>
     appAlert("Cancel this request?", `${item.firmName ?? "The partner"} will be told you no longer need the visit.`, [

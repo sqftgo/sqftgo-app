@@ -2,7 +2,7 @@ import * as Haptics from "expo-haptics";
 import React from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { colors, radius, spacing, type } from "@/theme/tokens";
+import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
 
 export interface Segment<T extends string> {
   value: T;
@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
     borderCurve: "continuous",
     paddingHorizontal: spacing.sm,
   },
-  active: { backgroundColor: colors.surface, boxShadow: "0 1px 3px rgba(28, 37, 48, 0.12)" },
+  active: { backgroundColor: colors.surface, boxShadow: shadow.card },
   label: { ...type.label, color: colors.inkMuted },
   labelActive: { color: colors.ink, fontFamily: "Inter_600SemiBold", fontWeight: "600" },
 });

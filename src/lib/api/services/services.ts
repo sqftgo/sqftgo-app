@@ -42,12 +42,17 @@ export async function apiListServiceTypes(): Promise<ServiceType[]> {
 export async function apiListServicePartners(filters: {
   city?: string;
   search?: string;
+  /** When set, only partners of this service type (server-side when supported). */
+  serviceTypeId?: string;
+  category?: string;
   limit?: number;
 } = {}): Promise<DirectoryProfile[]> {
   const params = new URLSearchParams();
   params.set("surface", "services");
   if (filters.city) params.set("city", filters.city);
   if (filters.search) params.set("search", filters.search);
+  if (filters.serviceTypeId) params.set("serviceTypeId", filters.serviceTypeId);
+  if (filters.category) params.set("category", filters.category);
   params.set("limit", String(filters.limit ?? 50));
   const res = await apiFetch<ListResponse<DirectoryProfile> | DirectoryProfile[]>(
     `/api/dealers?${params.toString()}`,

@@ -88,7 +88,7 @@ export default function CitySelectionModal({ visible, onClose, value, onSelect }
         </View>
         {isSelected && (
           <View style={styles.checkBadge}>
-            <Check size={10} color="#FFFFFF" strokeWidth={3} />
+            <Check size={10} color={colors.onAccent} strokeWidth={3} />
           </View>
         )}
       </Pressable>
@@ -149,9 +149,13 @@ export default function CitySelectionModal({ visible, onClose, value, onSelect }
           />
         ) : (
           <View style={styles.emptyContainer}>
-            <MapPin size={40} color={colors.inkMuted} style={styles.emptyIcon} />
-            <Text style={styles.emptyText}>No matching cities found</Text>
-            <Text style={styles.emptySubtext}>Try searching for a different name</Text>
+            <MapPin size={40} color={colors.accent} style={styles.emptyIcon} />
+            <Text style={styles.emptyText}>
+              We&apos;ll reach {searchQuery.trim() || "your city"} very soon
+            </Text>
+            <Text style={styles.emptySubtext}>
+              That city isn&apos;t live on SqftGo yet. Try a nearby city, or check back as we expand.
+            </Text>
           </View>
         )}
       </View>
@@ -227,7 +231,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   cityName: {
-    color: "#FFFFFF",
+    color: colors.onAccent,
     fontSize: 13,
     fontWeight: "600",
     textAlign: "center",

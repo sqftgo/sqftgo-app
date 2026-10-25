@@ -2,14 +2,25 @@ import { useQuery } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { useRouter, type Href } from "expo-router";
 import React, { useMemo, useState } from "react";
-import { FlatList, Pressable, Text, TextInput, View } from "react-native";
+import { FlatList, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { ErrorState, ListSkeleton } from "@/components/ds";
+import { ErrorState, ListSkeleton, useRequireAuth } from "@/components/ds";
 import CitySelectionModal from "@/components/ui/CitySelectionModal";
+import { RemovableFilterChip } from "@/components/ui/chip";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ExpertCard } from "@/components/ui/expert-card";
-import { Calendar, ChevronDown, ChevronRight, ChevronUp, Compass, MapPin, Search, Store, X } from "@/components/ui/icons";
+import {
+  Calendar,
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  Compass,
+  MapPin,
+  Search,
+  Store,
+  X,
+} from "@/components/ui/icons";
 import { HeaderPillButton, ScreenNavbar } from "@/components/ui/screen-navbar";
 import { SectionHeader } from "@/components/ui/section-header";
 import { ALL_SERVICES_ICON, ServiceTile, serviceIconFor } from "@/components/ui/service-card";
@@ -19,7 +30,7 @@ import { useMyServiceProfile } from "@/hooks/use-my-service-profile";
 import { useServiceTypes } from "@/hooks/use-service-types";
 import { isApiMode } from "@/lib/api/config";
 import { apiListServicePartners } from "@/lib/api/services/services";
-import { isServiceDirectoryCategory } from "@/lib/is-dealer-category";
+import { isDirectoryVerified, isServiceDirectoryCategory } from "@/lib/is-dealer-category";
 import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
 
 /** Tiles shown before the grid collapses behind a "More" tile. */
@@ -54,8 +65,13 @@ function matchesQuery(p: DirectoryProfile, q: string) {
   );
 }
 
+function matchesType(p: DirectoryProfile, typeId: string, typeName: string) {
+  return p.serviceTypeId === typeId || p.category === typeName;
+}
+
 export default function ServicesTabScreen() {
   const router = useRouter();
+  const requireAuth = useRequireAuth();
   const { selectedCity, directoryProfiles, isLoggedIn } = useApp();
   const { types } = useServiceTypes();
   const myService = useMyServiceProfile();
@@ -66,10 +82,18 @@ export default function ServicesTabScreen() {
 
   const city = selectedCity && selectedCity.toLowerCase() !== "all india" ? selectedCity : undefined;
   const search = query.trim();
+  const activeTypeMeta = types.find((t) => t.id === activeType);
 
   const partnersQuery = useQuery({
-    queryKey: ["service-partners", city ?? "all", search],
-    queryFn: () => apiListServicePartners({ city, search: search || undefined, limit: 60 }),
+    queryKey: ["service-partners", city ?? "all", search, activeType],
+    queryFn: () =>
+      apiListServicePartners({
+        city,
+        search: search || undefined,
+        serviceTypeId: activeTypeMeta?.id,
+        category: activeTypeMeta?.name,
+        limit: 60,
+      }),
     enabled: isApiMode,
   });
 
@@ -83,24 +107,46 @@ export default function ServicesTabScreen() {
             (!city || p.city.trim().toLowerCase() === city.toLowerCase()),
         );
     const q = search.toLowerCase();
-    return q && !isApiMode ? base.filter((p) => matchesQuery(p, q)) : base;
-  }, [partnersQuery.data, directoryProfiles, city, search]);
-
-  const activeTypeMeta = types.find((t) => t.id === activeType);
-  const filteredPartners = useMemo(() => {
-    if (!activeTypeMeta) return partners;
-    return partners.filter((p) => p.serviceTypeId === activeTypeMeta.id || p.category === activeTypeMeta.name);
-  }, [partners, activeTypeMeta]);
+    let list = q && !isApiMode ? base.filter((p) => matchesQuery(p, q)) : base;
+    // Safety net when the API ignores serviceTypeId / category.
+    if (activeTypeMeta) {
+      list = list.filter((p) => matchesType(p, activeTypeMeta.id, activeTypeMeta.name));
+    }
+    return [...list].sort(
+      (a, b) => Number(isDirectoryVerified(b)) - Number(isDirectoryVerified(a)),
+    );
+  }, [partnersQuery.data, directoryProfiles, city, search, activeTypeMeta]);
 
   const handleSelectType = (id: string) => {
     if (process.env.EXPO_OS === "ios") Haptics.selectionAsync();
     setActiveType(id);
   };
 
+  const clearFilters = () => {
+    if (process.env.EXPO_OS === "ios") Haptics.selectionAsync();
+    setActiveType("all");
+    setQuery("");
+  };
+
+  const openBookings = () => {
+    requireAuth("Sign in to see the booking requests you sent to partners.", () => {
+      router.push("/my-service-bookings");
+    });
+  };
+
   const hasServiceProfile = Boolean(myService.profile);
   const listBusinessBanner = (
     <Pressable
-      onPress={() => router.push((hasServiceProfile ? "/services/manage" : "/services/register") as Href)}
+      onPress={() => {
+        const href = (hasServiceProfile ? "/services/manage" : "/services/register") as Href;
+        if (hasServiceProfile || isLoggedIn) {
+          router.push(href);
+          return;
+        }
+        requireAuth("Sign in to list your service business on SqftGo.", () => {
+          router.push(href);
+        });
+      }}
       accessibilityRole="button"
       style={({ pressed }) => ({
         flexDirection: "row",
@@ -143,10 +189,26 @@ export default function ServicesTabScreen() {
   );
 
   const loading = isApiMode && partnersQuery.isLoading;
+  const hasActiveFilters = Boolean(search || activeTypeMeta);
+
+  const emptyMessage = search && activeTypeMeta
+    ? `No ${activeTypeMeta.name.toLowerCase()} partners match “${search}”.`
+    : search
+      ? `No partners match “${search}”.`
+      : activeTypeMeta
+        ? `No ${activeTypeMeta.name.toLowerCase()} partners in ${city ?? "India"} yet.`
+        : `No service partners in ${city ?? "India"} yet. Try another city.`;
 
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.bg }}>
-      <View style={{ paddingHorizontal: spacing.lg, gap: spacing.sm, paddingBottom: spacing.md, paddingTop: spacing.xs }}>
+      <View
+        style={{
+          paddingHorizontal: spacing.lg,
+          gap: spacing.sm,
+          paddingBottom: spacing.md,
+          paddingTop: spacing.xs,
+        }}
+      >
         <ScreenNavbar
           title="Services"
           rightAction={
@@ -158,11 +220,7 @@ export default function ServicesTabScreen() {
               onPress={() => setCityModalVisible(true)}
             />
           }
-          actions={
-            isLoggedIn
-              ? [{ icon: Calendar, label: "My bookings", onPress: () => router.push("/my-service-bookings") }]
-              : undefined
-          }
+          actions={[{ icon: Calendar, label: "My bookings", onPress: openBookings }]}
         />
         <View
           style={{
@@ -193,10 +251,25 @@ export default function ServicesTabScreen() {
             </Pressable>
           ) : null}
         </View>
+
+        {hasActiveFilters ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: spacing.sm, paddingVertical: 2 }}
+          >
+            {activeTypeMeta ? (
+              <RemovableFilterChip label={activeTypeMeta.name} onRemove={() => handleSelectType("all")} />
+            ) : null}
+            {search ? (
+              <RemovableFilterChip label={`“${search}”`} onRemove={() => setQuery("")} />
+            ) : null}
+          </ScrollView>
+        ) : null}
       </View>
 
       <FlatList
-        data={loading ? [] : filteredPartners}
+        data={loading ? [] : partners}
         keyExtractor={(item) => item.id}
         refreshing={partnersQuery.isRefetching}
         onRefresh={isApiMode ? () => void partnersQuery.refetch() : undefined}
@@ -227,7 +300,7 @@ export default function ServicesTabScreen() {
                       <ServiceTile
                         key={t.id}
                         label={t.name}
-                        icon={serviceIconFor(t.icon || t.name)}
+                        icon={serviceIconFor(t.name, t.icon)}
                         selected={activeType === t.id}
                         onPress={() => handleSelectType(activeType === t.id ? "all" : t.id)}
                       />
@@ -241,15 +314,18 @@ export default function ServicesTabScreen() {
               <SectionHeader title={activeTypeMeta?.name ?? "All partners"} />
               {!loading ? (
                 <Text style={{ ...type.caption, color: colors.inkMuted }}>
-                  {filteredPartners.length} {filteredPartners.length === 1 ? "partner" : "partners"} in{" "}
-                  {city ?? "India"}
+                  {partners.length === 0
+                    ? `No partners in ${city ?? "India"}`
+                    : partners.length === 1
+                      ? `1 partner in ${city ?? "India"} · verified first`
+                      : `${partners.length} partners in ${city ?? "India"} · verified first`}
                 </Text>
               ) : null}
             </View>
             {loading ? <ListSkeleton rows={3} /> : null}
           </View>
         }
-        ListFooterComponent={filteredPartners.length > 0 ? listBusinessBanner : null}
+        ListFooterComponent={partners.length > 0 ? listBusinessBanner : null}
         ListEmptyComponent={
           loading ? null : partnersQuery.isError ? (
             <ErrorState onRetry={() => void partnersQuery.refetch()} />
@@ -257,14 +333,10 @@ export default function ServicesTabScreen() {
             <View style={{ gap: spacing.md }}>
               <EmptyState
                 icon={Compass}
-                title="No partners found"
-                message={
-                  search || activeTypeMeta
-                    ? "Nothing matches yet. Try another category or clear the search."
-                    : `No service partners in ${city ?? "India"} yet. Try another city.`
-                }
-                actionLabel="Change city"
-                onAction={() => setCityModalVisible(true)}
+                title={hasActiveFilters ? "No matches" : "No partners found"}
+                message={emptyMessage}
+                actionLabel={hasActiveFilters ? "Clear filters" : "Change city"}
+                onAction={hasActiveFilters ? clearFilters : () => setCityModalVisible(true)}
               />
               {listBusinessBanner}
             </View>

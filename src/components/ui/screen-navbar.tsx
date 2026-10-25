@@ -21,7 +21,7 @@ export interface ScreenNavbarProps {
   subtitle?: string;
   /** Renders a back button on the left. */
   onBack?: () => void;
-  /** Uniform circular icon buttons on the right. */
+  /** Uniform rounded-square icon buttons on the right. */
   actions?: HeaderAction[];
   /** Custom right-side control, rendered before `actions`. */
   rightAction?: React.ReactNode;
@@ -51,7 +51,8 @@ export function HeaderIconButton({
       style={({ pressed }) => ({
         width: BUTTON_SIZE,
         height: BUTTON_SIZE,
-        borderRadius: radius.full,
+        borderRadius: radius.sm,
+        borderCurve: "continuous",
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: accent ? colors.accent : colors.surface,
@@ -72,7 +73,7 @@ export function HeaderIconButton({
             minWidth: 18,
             height: 18,
             paddingHorizontal: 4,
-            borderRadius: radius.full,
+            borderRadius: radius.xs,
             backgroundColor: colors.accent,
             borderWidth: 2,
             borderColor: colors.bg,
@@ -92,7 +93,7 @@ export function HeaderIconButton({
             right: 9,
             width: 8,
             height: 8,
-            borderRadius: 4,
+            borderRadius: radius.xs,
             backgroundColor: colors.accent,
             borderWidth: 1.5,
             borderColor: colors.surface,
@@ -112,7 +113,7 @@ export interface HeaderPillButtonProps {
   accessibilityLabel?: string;
 }
 
-/** Text pill sized to sit next to `HeaderIconButton`s (city picker, filters). */
+/** Text chip sized to sit next to `HeaderIconButton`s (city picker, filters). */
 export function HeaderPillButton({
   label,
   onPress,
@@ -132,7 +133,8 @@ export function HeaderPillButton({
         alignItems: "center",
         gap: 5,
         paddingHorizontal: spacing.md,
-        borderRadius: radius.full,
+        borderRadius: radius.sm,
+        borderCurve: "continuous",
         backgroundColor: colors.surface,
         borderWidth: 1,
         borderColor: colors.border,

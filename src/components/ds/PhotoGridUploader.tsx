@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: radius.full,
   },
-  coverText: { ...type.micro, color: "#fff" },
+  coverText: { ...type.micro, color: colors.onAccent },
   tileBtn: {
     position: "absolute",
     top: spacing.xs,

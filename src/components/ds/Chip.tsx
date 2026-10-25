@@ -1,5 +1,6 @@
+import * as Haptics from "expo-haptics";
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Check } from "@/components/ui/icons";
 import { colors, radius, spacing, touchTarget, type } from "@/theme/tokens";
@@ -19,7 +20,10 @@ export function Chip({
 }) {
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => {
+        if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
+        onPress();
+      }}
       accessibilityRole="button"
       accessibilityState={{ selected }}
       hitSlop={{ top: 4, bottom: 4 }}
@@ -83,7 +87,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.xs,
     paddingHorizontal: spacing.md,
-    borderRadius: radius.full,
+    borderRadius: radius.sm,
+    borderCurve: "continuous",
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,

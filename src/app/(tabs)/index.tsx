@@ -1,12 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
+import { Image } from "expo-image";
 import { useRouter, type Href } from "expo-router";
 import React, { useMemo, useState } from "react";
 import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useRequireAuth } from "@/components/ds/AuthGate";
+import { ErrorState } from "@/components/ds/ErrorState";
 import CitySelectionModal from "@/components/ui/CitySelectionModal";
+import { EmptyState } from "@/components/ui/empty-state";
 import { ExpertCard } from "@/components/ui/expert-card";
 import {
   Bell,
@@ -21,19 +24,21 @@ import {
   Plus,
   Search,
   Shop,
-  WifiOff,
 } from "@/components/ui/icons";
 import { NotificationsSheet, useNotifications } from "@/components/ui/notifications-sheet";
 import { ProjectCard } from "@/components/ui/project-card";
 import { PropertyCard } from "@/components/ui/property-card";
 import { ScreenNavbar } from "@/components/ui/screen-navbar";
+import { DestinationCard } from "@/components/destinations/destination-card";
 import { SectionHeader } from "@/components/ui/section-header";
 import { useApp } from "@/context/AppContext";
+import { DESTINATIONS } from "@/data/destinations";
+import { useCities } from "@/hooks/use-cities";
 import { apiListProjects } from "@/lib/api/services/projects";
 import type { PurposeFilter } from "@/lib/filters";
 import { displayNameFromEmail, greetingForHour } from "@/lib/format";
 import { isDealerCategory } from "@/lib/is-dealer-category";
-import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
+import { colors, fonts, radius, shadow, spacing, type } from "@/theme/tokens";
 
 type ExploreIntent = PurposeFilter | "commercial" | "plot";
 
@@ -41,7 +46,6 @@ const INTENTS: { id: ExploreIntent; label: string; icon: typeof HomeIcon }[] = [
   { id: "buy", label: "Buy", icon: HomeIcon },
   { id: "rent", label: "Rent", icon: KeyRound },
   { id: "plot", label: "Plots", icon: Community },
-  { id: "commercial", label: "Commercial", icon: Shop },
 ];
 
 const CATEGORIES = [
@@ -74,6 +78,7 @@ export default function HomeScreen() {
     catalogLoadFailed,
     reloadCatalog,
   } = useApp();
+  const { cities } = useCities();
   const [refreshing, setRefreshing] = useState(false);
   const requireAuth = useRequireAuth();
 
@@ -91,6 +96,11 @@ export default function HomeScreen() {
 
   const allIndia = isAllIndia(selectedCity);
 
+  const cityActiveCount = useMemo(
+    () => properties.filter((p) => p.status === "Active" && matchesCity(p.city, selectedCity)).length,
+    [properties, selectedCity],
+  );
+
   const topPicks = useMemo(() => {
     const active = properties.filter((p) => p.status === "Active" && matchesCity(p.city, selectedCity));
     const featured = active.filter((p) => p.featured);
@@ -104,6 +114,11 @@ export default function HomeScreen() {
         .slice(0, 3),
     [directoryProfiles, selectedCity],
   );
+
+  const cityImage = useMemo(() => {
+    const match = cities.find((c) => c.name.toLowerCase() === selectedCity.trim().toLowerCase());
+    return match?.image ?? cities[0]?.image ?? "";
+  }, [cities, selectedCity]);
 
   const projects = useQuery({
     queryKey: ["projects", "home", allIndia ? "all" : selectedCity],
@@ -134,8 +149,9 @@ export default function HomeScreen() {
   const handleIntentPress = (id: ExploreIntent) => {
     if (process.env.EXPO_OS === "ios") Haptics.selectionAsync();
     setSelectedIntent(id);
-    goToExplore(id);
   };
+
+  const intentLabel = INTENTS.find((i) => i.id === selectedIntent)?.label ?? "Buy";
 
   const listProperty = () =>
     requireAuth("Sign in to list your property and reach buyers in your city.", () =>
@@ -161,7 +177,27 @@ export default function HomeScreen() {
             ]}
           />
 
+          <View style={styles.heroCard}>
+            {cityImage ? (
+              <Image source={{ uri: cityImage }} style={styles.heroImage} contentFit="cover" transition={200} />
+            ) : null}
+            <View style={styles.heroScrim} />
+            <View style={styles.heroContent}>
+              <View style={styles.heroBadge}>
+                <MapPin size={13} color={colors.onAccent} />
+                <Text style={styles.heroBadgeText}>{allIndia ? "All India" : selectedCity}</Text>
+              </View>
+              <Text style={styles.heroTitle}>Find your next home</Text>
+              <Text style={styles.heroSubtitle}>
+                {cityActiveCount > 0
+                  ? `${cityActiveCount} verified ${cityActiveCount === 1 ? "listing" : "listings"} ready to explore`
+                  : "Browse verified homes, plots, and commercial spaces"}
+              </Text>
+            </View>
+          </View>
+
           <View style={styles.searchCard}>
+            <Text style={styles.searchEyebrow}>What are you looking for?</Text>
             <View style={styles.segment} accessibilityRole="tablist">
               {INTENTS.map(({ id, label, icon: Icon }) => {
                 const active = selectedIntent === id;
@@ -172,7 +208,11 @@ export default function HomeScreen() {
                     accessibilityRole="tab"
                     accessibilityState={{ selected: active }}
                     accessibilityLabel={`Browse ${label} properties`}
-                    style={({ pressed }) => [styles.segmentItem, active && styles.segmentItemActive, pressed && { opacity: 0.8 }]}
+                    style={({ pressed }) => [
+                      styles.segmentItem,
+                      active && styles.segmentItemActive,
+                      pressed && { opacity: 0.8 },
+                    ]}
                   >
                     <Icon size={15} color={active ? colors.accent : colors.inkMuted} strokeWidth={active ? 2.5 : 2} />
                     <Text numberOfLines={1} style={[styles.segmentLabel, active && styles.segmentLabelActive]}>
@@ -186,11 +226,25 @@ export default function HomeScreen() {
             <Pressable
               onPress={() => goToExplore(selectedIntent)}
               accessibilityRole="search"
-              accessibilityLabel="Search properties"
-              style={({ pressed }) => [styles.searchPill, pressed && { opacity: 0.8 }]}
+              accessibilityLabel={`Search ${intentLabel.toLowerCase()} properties in ${selectedCity}`}
+              style={({ pressed }) => [styles.searchField, pressed && { opacity: 0.8 }]}
             >
               <Search size={18} color={colors.accent} strokeWidth={2} />
-              <Text style={styles.searchText}>Search locality, landmark or builder</Text>
+              <Text style={styles.searchText}>
+                {allIndia
+                  ? `Search ${intentLabel.toLowerCase()} across India`
+                  : `Search ${intentLabel.toLowerCase()} in ${selectedCity}`}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => goToExplore(selectedIntent)}
+              accessibilityRole="button"
+              accessibilityLabel={`Explore ${intentLabel} listings`}
+              style={({ pressed }) => [styles.exploreBtn, pressed && { opacity: 0.9 }]}
+            >
+              <Text style={styles.exploreBtnText}>Explore {intentLabel.toLowerCase()} listings</Text>
+              <ChevronRight size={16} color={colors.onAccent} />
             </Pressable>
           </View>
         </View>
@@ -213,33 +267,57 @@ export default function HomeScreen() {
               contentContainerStyle={{ paddingHorizontal: spacing.lg, gap: spacing.md }}
             />
           ) : catalogLoadFailed ? (
-            <View style={styles.pad}>
-              <View style={styles.emptyCard} accessibilityLiveRegion="polite">
-                <WifiOff size={22} color={colors.inkMuted} />
-                <Text style={styles.emptyTitle}>Couldn&apos;t load listings</Text>
-                <Text style={styles.emptyText}>Check your connection and try again.</Text>
-                <Pressable onPress={onRefresh} hitSlop={8} accessibilityRole="button" style={{ marginTop: spacing.xs }}>
-                  <Text style={styles.link}>{refreshing ? "Retrying…" : "Try again"}</Text>
-                </Pressable>
-              </View>
+            <View style={styles.pad} accessibilityLiveRegion="polite">
+              <ErrorState
+                offline
+                title="Couldn't load listings"
+                message="Check your connection and try again."
+                onRetry={refreshing ? undefined : () => void onRefresh()}
+              />
             </View>
           ) : (
-            <View style={[styles.pad]}>
-              <View style={styles.emptyCard}>
-                <MapPin size={22} color={colors.inkMuted} />
-                <Text style={styles.emptyTitle}>No listings in {selectedCity} yet</Text>
-                <Text style={styles.emptyText}>Try another city, or be the first to list here.</Text>
-                <View style={{ flexDirection: "row", gap: spacing.lg, marginTop: spacing.xs }}>
-                  <Pressable onPress={() => setCityModalVisible(true)} hitSlop={8} accessibilityRole="button">
-                    <Text style={styles.link}>Change city</Text>
-                  </Pressable>
-                  <Pressable onPress={listProperty} hitSlop={8} accessibilityRole="button">
-                    <Text style={styles.link}>List a property</Text>
-                  </Pressable>
-                </View>
-              </View>
+            <View style={styles.pad}>
+              <EmptyState
+                compact
+                icon={MapPin}
+                title={`No listings in ${selectedCity} yet`}
+                message="Try another city from the header, or be the first to list here."
+                actionLabel="List a property"
+                onAction={listProperty}
+              />
             </View>
           )}
+        </View>
+
+        <View style={{ gap: spacing.md }}>
+          <View style={[styles.pad, { gap: spacing.xs }]}>
+            <SectionHeader
+              title="Cities on SqftGo"
+              actionLabel="See all"
+              onAction={() => router.push("/destinations" as Href)}
+            />
+            <Text style={styles.destinationsSub}>Search homes by market — tap a city to open Explore</Text>
+          </View>
+          <FlatList
+            horizontal
+            data={DESTINATIONS}
+            keyExtractor={(item) => item.slug}
+            renderItem={({ item }) => {
+              const listingCount = properties.filter(
+                (p) => p.status === "Active" && p.city.trim().toLowerCase() === item.name.toLowerCase(),
+              ).length;
+              return (
+                <DestinationCard
+                  destination={item}
+                  variant="rail"
+                  listingCount={listingCount}
+                  browseHomes
+                />
+              );
+            }}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: spacing.lg, gap: spacing.md }}
+          />
         </View>
 
         {newProjects.length > 0 ? (
@@ -281,18 +359,6 @@ export default function HomeScreen() {
               );
             })}
           </View>
-          <Pressable
-            onPress={() => router.push("/destinations" as Href)}
-            accessibilityRole="button"
-            style={({ pressed }) => [styles.rowLink, pressed && { opacity: 0.85 }]}
-          >
-            <MapPin size={18} color={colors.accent} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.tileTitle}>Heritage destinations</Text>
-              <Text style={styles.emptyText}>City guides and wedding venues</Text>
-            </View>
-            <ChevronRight size={16} color={colors.inkMuted} />
-          </Pressable>
         </View>
 
         {cityExperts.length > 0 ? (
@@ -318,7 +384,9 @@ export default function HomeScreen() {
             </View>
             <View style={{ flex: 1, gap: 2 }}>
               <Text style={styles.sellTitle}>List your property free</Text>
-              <Text style={styles.sellText}>Reach buyers and tenants in {allIndia ? "your city" : selectedCity}</Text>
+              <Text style={styles.sellText}>
+                Reach buyers and tenants in {allIndia ? "your city" : selectedCity}
+              </Text>
             </View>
             <Building2 size={24} color={colors.onPrimaryMuted} />
           </Pressable>
@@ -342,6 +410,53 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   scroll: { paddingBottom: spacing.xxl + spacing.lg, gap: spacing.xxl },
   pad: { paddingHorizontal: spacing.lg },
+  heroCard: {
+    height: 168,
+    borderRadius: radius.xl,
+    borderCurve: "continuous",
+    overflow: "hidden",
+    backgroundColor: colors.primary,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  heroImage: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  heroScrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(27, 56, 100, 0.55)",
+  },
+  heroContent: {
+    flex: 1,
+    justifyContent: "flex-end",
+    padding: spacing.lg,
+    gap: spacing.xs,
+  },
+  heroBadge: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: colors.accent,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 4,
+    borderRadius: radius.xs,
+    marginBottom: spacing.xs,
+  },
+  heroBadgeText: {
+    ...type.micro,
+    fontFamily: fonts.sansSemiBold,
+    color: colors.onAccent,
+  },
+  heroTitle: {
+    ...type.title,
+    color: colors.onPrimary,
+  },
+  heroSubtitle: {
+    ...type.caption,
+    color: colors.onPrimaryMuted,
+    maxWidth: 300,
+  },
   searchCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
@@ -352,10 +467,14 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     boxShadow: shadow.card,
   },
+  searchEyebrow: {
+    ...type.label,
+    color: colors.inkSecondary,
+  },
   segment: {
     flexDirection: "row",
     backgroundColor: colors.surfaceSubtle,
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     borderCurve: "continuous",
     padding: spacing.xs,
     gap: spacing.xs,
@@ -369,18 +488,18 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     paddingHorizontal: spacing.xs,
     minHeight: 38,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     borderCurve: "continuous",
   },
   segmentItemActive: { backgroundColor: colors.surface, boxShadow: shadow.card },
   segmentLabel: { ...type.caption, color: colors.inkMuted, fontWeight: "500" },
   segmentLabelActive: { color: colors.ink, fontWeight: "700" },
-  searchPill: {
+  searchField: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
     backgroundColor: colors.surfaceSubtle,
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     borderCurve: "continuous",
     height: 48,
     paddingHorizontal: spacing.lg,
@@ -388,19 +507,22 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   searchText: { ...type.body, color: colors.inkMuted, flex: 1 },
-  emptyCard: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.xl,
+  exploreBtn: {
+    minHeight: 46,
+    borderRadius: radius.md,
     borderCurve: "continuous",
-    padding: spacing.xl,
+    backgroundColor: colors.accent,
+    flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
+    justifyContent: "center",
+    gap: spacing.xs,
+    paddingHorizontal: spacing.lg,
   },
-  emptyTitle: { ...type.emphasis, color: colors.ink, textAlign: "center" },
-  emptyText: { ...type.caption, color: colors.inkMuted },
-  link: { ...type.label, fontFamily: "Inter_600SemiBold", fontWeight: "600", color: colors.accent },
+  exploreBtnText: {
+    ...type.emphasis,
+    color: colors.onAccent,
+  },
+  destinationsSub: { ...type.caption, color: colors.inkMuted },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   tile: {
     flexBasis: "48%",
@@ -415,19 +537,15 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     padding: spacing.md,
   },
-  tileIcon: { width: 40, height: 40, borderRadius: radius.md, alignItems: "center", justifyContent: "center" },
-  tileTitle: { ...type.emphasis, color: colors.ink, flexShrink: 1 },
-  rowLink: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+  tileIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.sm,
     borderCurve: "continuous",
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
+    alignItems: "center",
+    justifyContent: "center",
   },
+  tileTitle: { ...type.emphasis, color: colors.ink, flexShrink: 1 },
   sellCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -441,7 +559,8 @@ const styles = StyleSheet.create({
   sellIcon: {
     width: 46,
     height: 46,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
+    borderCurve: "continuous",
     backgroundColor: colors.accent,
     alignItems: "center",
     justifyContent: "center",

@@ -4,23 +4,27 @@ import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { Button, ChipGroup, ListSkeleton, Screen, StatusBadge, toast } from "@/components/ds";
+import { Button, ChipGroup, ListSkeleton, Screen, SegmentedControl, StatusBadge, toast } from "@/components/ds";
 import { appAlert } from "@/components/ui/app-alert";
 import { EmptyState } from "@/components/ui/empty-state";
 import { HeaderPillButton } from "@/components/ui/screen-navbar";
-import { Building2, ClipboardList, Home, Pencil, Plus, Send, Trash2 } from "@/components/ui/icons";
+import { Archive, Building2, ClipboardList, Home, Pencil, Plus, Send, Trash2 } from "@/components/ui/icons";
 import { useListings, usePlatform, useSession } from "@/hooks/domain";
-import type { Property, PropertyStatus } from "@/data/types";
+import type { Property, PropertyStatus, PropertyType } from "@/data/types";
 import { apiGetListingQuota } from "@/lib/api/services/listing-plans";
 import { apiListMyProperties } from "@/lib/api/services/properties";
+import { PROPERTY_TYPE_OPTIONS } from "@/lib/filters";
 import { formatPriceWithPeriod } from "@/lib/format";
 import { ownsProperty } from "@/lib/ownership";
 import { PROPERTY_STATUS_LABEL } from "@/lib/status-labels";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 
 type Filter = PropertyStatus | "All";
+type TypeFilter = PropertyType | "All";
+type SortKey = "newest" | "price-desc" | "price-asc";
 
 const FILTERS: Filter[] = ["All", "Draft", "Pending Review", "Active", "Sold", "Rented", "Rejected"];
+const TYPE_FILTERS: TypeFilter[] = ["All", ...PROPERTY_TYPE_OPTIONS];
 
 export default function DealerPropertiesScreen() {
   const router = useRouter();
@@ -33,6 +37,8 @@ export default function DealerPropertiesScreen() {
   const [filter, setFilter] = useState<Filter>(
     FILTERS.includes(params.status as Filter) ? (params.status as Filter) : "All",
   );
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("All");
+  const [sort, setSort] = useState<SortKey>("newest");
 
   const mineQuery = useQuery({
     queryKey: ["properties", "mine"],
@@ -58,7 +64,15 @@ export default function DealerPropertiesScreen() {
     for (const p of mine) map.set(p.status, (map.get(p.status) ?? 0) + 1);
     return map;
   }, [mine]);
-  const filtered = useMemo(() => (filter === "All" ? mine : mine.filter((p) => p.status === filter)), [mine, filter]);
+  const filtered = useMemo(() => {
+    let rows = filter === "All" ? mine : mine.filter((p) => p.status === filter);
+    if (typeFilter !== "All") rows = rows.filter((p) => p.type === typeFilter);
+    const sorted = [...rows];
+    if (sort === "price-desc") sorted.sort((a, b) => b.price - a.price);
+    else if (sort === "price-asc") sorted.sort((a, b) => a.price - b.price);
+    // "newest" keeps API / merge order (already newest-first from server)
+    return sorted;
+  }, [mine, filter, typeFilter, sort]);
 
   const quota = quotaQuery.data;
   const atCap = Boolean(quota?.atCap && !quota.unlimited);
@@ -97,6 +111,16 @@ export default function DealerPropertiesScreen() {
     toast("Sent for review");
   };
 
+  const handleMoveToDraft = async (item: Property) => {
+    const updated = await updateProperty(item.id, { status: "Draft" });
+    if (!updated) {
+      appAlert("Couldn't update", getLastActionError() ?? "Please try again.");
+      return;
+    }
+    refresh();
+    toast("Moved to draft");
+  };
+
   const header = (
     <View style={styles.header}>
       {quota && !quota.unlimited ? (
@@ -124,6 +148,25 @@ export default function DealerPropertiesScreen() {
           return n ? `${label} (${n})` : label;
         }}
       />
+      {filter !== "Draft" ? (
+        <>
+          <ChipGroup
+            options={TYPE_FILTERS}
+            value={typeFilter}
+            onChange={setTypeFilter}
+            labelFor={(t) => (t === "All" ? "All types" : t)}
+          />
+          <SegmentedControl<SortKey>
+            segments={[
+              { value: "newest", label: "Newest" },
+              { value: "price-desc", label: "Price ↓" },
+              { value: "price-asc", label: "Price ↑" },
+            ]}
+            value={sort}
+            onChange={setSort}
+          />
+        </>
+      ) : null}
     </View>
   );
 
@@ -209,6 +252,15 @@ export default function DealerPropertiesScreen() {
               />
               {item.status === "Draft" ? (
                 <Button label="Submit" icon={Send} style={{ flex: 1 }} onPress={() => void handleSubmit(item)} />
+              ) : null}
+              {item.status === "Pending Review" || item.status === "Rejected" ? (
+                <Button
+                  label="Draft"
+                  icon={Archive}
+                  variant="secondary"
+                  style={{ flex: 1 }}
+                  onPress={() => void handleMoveToDraft(item)}
+                />
               ) : null}
               <Pressable
                 onPress={() => handleDelete(item)}

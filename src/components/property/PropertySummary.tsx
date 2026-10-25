@@ -3,6 +3,7 @@ import { Text, View } from "react-native";
 
 import { MapPin, ShieldCheck, Sparkles, type IconComponent } from "@/components/ui/icons";
 import type { Property } from "@/data/types";
+import { purposeLabel } from "@/lib/format";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 
 import { formatIndianCurrency, isRentalPurpose } from "./format";
@@ -26,7 +27,7 @@ function Badge({
         gap: 4,
         paddingHorizontal: spacing.sm,
         paddingVertical: 4,
-        borderRadius: radius.full,
+        borderRadius: radius.xs,
         backgroundColor: background,
       }}
     >
@@ -38,18 +39,25 @@ function Badge({
 
 export function PropertySummary({ property }: { property: Property }) {
   const rental = isRentalPurpose(property.purpose);
+  const pricePerSqft =
+    !rental && property.size > 0 ? Math.round(property.price / property.size) : null;
+
+  const place = [property.locality, property.city, property.state].filter(Boolean).join(", ");
 
   return (
     <View style={{ gap: spacing.sm, paddingBottom: spacing.xl }}>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs }}>
         <Badge
-          label={rental ? "For Rent" : "For Sale"}
+          label={purposeLabel(property.purpose)}
           color={colors.primary}
           background={colors.primarySoft}
         />
+        {property.type ? (
+          <Badge label={property.type} color={colors.inkSecondary} background={colors.surfaceSubtle} />
+        ) : null}
         {property.reraApproved ? (
           <Badge
-            label="RERA Approved"
+            label="RERA approved"
             icon={ShieldCheck}
             color={colors.success}
             background={colors.successSoft}
@@ -65,15 +73,22 @@ export function PropertySummary({ property }: { property: Property }) {
         ) : null}
       </View>
 
-      <View style={{ flexDirection: "row", alignItems: "baseline", gap: spacing.xs }}>
-        <Text
-          selectable
-          style={{ ...type.hero, fontSize: 28, lineHeight: 34, color: colors.ink }}
-        >
-          {formatIndianCurrency(property.price)}
-        </Text>
-        {rental ? (
-          <Text style={{ ...type.label, color: colors.inkMuted }}>/ month</Text>
+      <View style={{ gap: 2 }}>
+        <View style={{ flexDirection: "row", alignItems: "baseline", gap: spacing.xs }}>
+          <Text
+            selectable
+            style={{ ...type.hero, fontSize: 28, lineHeight: 34, color: colors.ink }}
+          >
+            {formatIndianCurrency(property.price)}
+          </Text>
+          {rental ? (
+            <Text style={{ ...type.label, color: colors.inkMuted }}>/ month</Text>
+          ) : null}
+        </View>
+        {pricePerSqft ? (
+          <Text style={{ ...type.caption, color: colors.inkMuted }}>
+            ₹{pricePerSqft.toLocaleString("en-IN")} per sq.ft
+          </Text>
         ) : null}
       </View>
 
@@ -81,8 +96,8 @@ export function PropertySummary({ property }: { property: Property }) {
 
       <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
         <MapPin size={15} color={colors.inkMuted} />
-        <Text style={{ ...type.body, color: colors.inkSecondary, flex: 1 }} numberOfLines={1}>
-          {property.locality}, {property.city}
+        <Text style={{ ...type.body, color: colors.inkSecondary, flex: 1 }} numberOfLines={2}>
+          {place}
         </Text>
       </View>
     </View>

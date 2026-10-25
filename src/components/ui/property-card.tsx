@@ -9,7 +9,7 @@ import { Pressable, Text, View } from "react-native";
 import { useApp } from "@/context/AppContext";
 import type { Property } from "@/data/types";
 import { formatIndianPrice, formatSize, purposeLabel } from "@/lib/format";
-import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
+import { colors, radius, shadow, spacing, touchTarget, type } from "@/theme/tokens";
 
 
 interface PropertyCardProps {
@@ -31,9 +31,10 @@ const FavoriteButton = memo(function FavoriteButton({
       accessibilityRole="button"
       accessibilityLabel={isFav ? "Remove from saved" : "Save property"}
       style={({ pressed }) => ({
-        width: 36,
-        height: 36,
-        borderRadius: radius.full,
+        width: touchTarget - 8,
+        height: touchTarget - 8,
+        borderRadius: radius.sm,
+        borderCurve: "continuous",
         backgroundColor: colors.surface,
         alignItems: "center",
         justifyContent: "center",
@@ -64,11 +65,12 @@ function PropertyCardBase({ property, variant = "full" }: PropertyCardProps) {
   }, [router, property.id]);
 
   const handleFavorite = useCallback(() => {
-    if (!requireAuth("Sign in to save homes and see them on all your devices.")) return;
-    if (process.env.EXPO_OS === "ios") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-    toggleFavorite(property.id);
+    requireAuth("Sign in to save homes and see them on all your devices.", () => {
+      if (process.env.EXPO_OS === "ios") {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+      toggleFavorite(property.id);
+    });
   }, [requireAuth, toggleFavorite, property.id]);
 
   const priceLabel = useMemo(() => formatIndianPrice(property.price), [property.price]);
@@ -271,4 +273,4 @@ function PropertyCardBase({ property, variant = "full" }: PropertyCardProps) {
 }
 
 export const PropertyCard = memo(PropertyCardBase);
-
+

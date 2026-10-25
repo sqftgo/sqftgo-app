@@ -11,11 +11,12 @@ import { StatusBadge } from "@/components/ds/StatusBadge";
 import { toast } from "@/components/ds/Toast";
 import { appAlert } from "@/components/ui/app-alert";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Calendar, Clock, Home, Phone } from "@/components/ui/icons";
+import { Calendar, Clock, Home, Lock, Phone } from "@/components/ui/icons";
 import { ModalSheet, ModalSheetHeader } from "@/components/ui/modal-sheet";
 import { useApp } from "@/context/AppContext";
 import type { SiteVisit } from "@/data/types";
 import { VISIT_STATUS_LABEL } from "@/lib/status-labels";
+import { VISIT_BADGE_TONE } from "@/lib/status-tones";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 
 type Tab = "upcoming" | "past";
@@ -33,7 +34,8 @@ function formatVisitDate(iso: string): string {
 
 export default function MyVisitsScreen() {
   const router = useRouter();
-  const { visits, userEmail, properties, rescheduleVisit, cancelVisit, refreshVisits } = useApp();
+  const { isLoggedIn, visits, userEmail, properties, rescheduleVisit, cancelVisit, refreshVisits } =
+    useApp();
   const [tab, setTab] = useState<Tab>("upcoming");
   const [refreshing, setRefreshing] = useState(false);
   const [editing, setEditing] = useState<SiteVisit | null>(null);
@@ -57,6 +59,22 @@ export default function MyVisitsScreen() {
     [mine, today],
   );
   const list = tab === "upcoming" ? upcoming : past;
+
+  if (!isLoggedIn) {
+    return (
+      <Screen title="My visits" fallbackHref="/(tabs)/profile">
+        <EmptyState
+          icon={Lock}
+          title="Sign in required"
+          message="Sign in to see and manage the site visits you've booked."
+          actionLabel="Sign in"
+          onAction={() =>
+            router.push({ pathname: "/auth", params: { mode: "sign-in" } } as unknown as Href)
+          }
+        />
+      </Screen>
+    );
+  }
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -166,7 +184,7 @@ export default function MyVisitsScreen() {
                     </Text>
                   ) : null}
                 </View>
-                <StatusBadge label={VISIT_STATUS_LABEL[item.status]} />
+                <StatusBadge label={VISIT_STATUS_LABEL[item.status]} tone={VISIT_BADGE_TONE[item.status]} />
               </Pressable>
 
               <View style={styles.when}>

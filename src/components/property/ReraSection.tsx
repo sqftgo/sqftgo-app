@@ -15,11 +15,25 @@ const CHECK_LABELS: Record<keyof VerificationChecks, string> = {
   structuralVetted: "Structure vetted",
 };
 
+function formatVerifiedDate(raw?: string): string | null {
+  if (!raw?.trim()) return null;
+  const t = Date.parse(raw);
+  if (Number.isNaN(t)) return raw.trim();
+  return new Date(t).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+/** Shows only checks/IDs provided by the listing — never invents RERA status. */
 export function ReraSection({
+  reraApproved,
   reraId,
   checks,
   verifiedDate,
 }: {
+  reraApproved?: boolean;
   reraId?: string;
   checks?: VerificationChecks;
   verifiedDate?: string;
@@ -27,11 +41,15 @@ export function ReraSection({
   const passed = checks
     ? (Object.keys(CHECK_LABELS) as (keyof VerificationChecks)[]).filter((k) => checks[k])
     : [];
-  if (!reraId && passed.length === 0) return null;
+  const id = reraId?.trim();
+  const showRera = Boolean(reraApproved || id);
+  if (!showRera && passed.length === 0) return null;
+
+  const verifiedLabel = formatVerifiedDate(verifiedDate);
 
   return (
     <PropertySection title="RERA & verification">
-      {reraId ? (
+      {showRera ? (
         <View
           style={{
             flexDirection: "row",
@@ -40,18 +58,27 @@ export function ReraSection({
             padding: spacing.md,
             borderRadius: radius.lg,
             borderCurve: "continuous",
-            backgroundColor: colors.successSoft,
+            backgroundColor: reraApproved ? colors.successSoft : colors.surfaceSubtle,
           }}
         >
-          <ShieldCheck size={24} color={colors.success} />
+          <ShieldCheck size={24} color={reraApproved ? colors.success : colors.inkMuted} />
           <View style={{ flex: 1, gap: 2 }}>
-            <Text style={{ ...type.emphasis, color: colors.ink }}>RERA registered</Text>
-            <Text selectable style={{ ...type.caption, color: colors.inkSecondary }}>
-              Reg. no. {reraId}
+            <Text style={{ ...type.emphasis, color: colors.ink }}>
+              {reraApproved ? "RERA approved" : "RERA ID on file"}
             </Text>
+            {id ? (
+              <Text selectable style={{ ...type.caption, color: colors.inkSecondary }}>
+                Reg. no. {id}
+              </Text>
+            ) : (
+              <Text style={{ ...type.caption, color: colors.inkSecondary }}>
+                Registration number not shared by the lister
+              </Text>
+            )}
           </View>
         </View>
       ) : null}
+
       {passed.length > 0 ? (
         <View style={{ gap: spacing.sm }}>
           {passed.map((key) => (
@@ -60,11 +87,12 @@ export function ReraSection({
               <Text style={{ ...type.body, color: colors.inkSecondary }}>{CHECK_LABELS[key]}</Text>
             </View>
           ))}
-          {verifiedDate ? (
-            <Text style={{ ...type.caption, color: colors.inkMuted }}>Verified on {verifiedDate}</Text>
+          {verifiedLabel ? (
+            <Text style={{ ...type.caption, color: colors.inkMuted }}>Verified on {verifiedLabel}</Text>
           ) : null}
         </View>
       ) : null}
+
       <Text style={{ ...type.caption, color: colors.inkMuted }}>
         Always verify RERA details and title documents yourself before paying any token amount.
       </Text>

@@ -1,7 +1,8 @@
 import React from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import type { LucideIcon } from "@/components/ui/icons";
 
+import { Button } from "@/components/ds/Button";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 
 interface EmptyStateProps {
@@ -10,15 +11,17 @@ interface EmptyStateProps {
   message: string;
   actionLabel?: string;
   onAction?: () => void;
+  /** Tighter padding for embedding inside a section (e.g. home rails). */
+  compact?: boolean;
 }
 
 /** Teaches the user what belongs here and how to fill it. */
-export function EmptyState({ icon: Icon, title, message, actionLabel, onAction }: EmptyStateProps) {
+export function EmptyState({ icon: Icon, title, message, actionLabel, onAction, compact }: EmptyStateProps) {
   return (
     <View
       style={{
         alignItems: "center",
-        paddingVertical: spacing.xxl * 2,
+        paddingVertical: compact ? spacing.xl : spacing.xxl * 2,
         paddingHorizontal: spacing.xl,
         gap: spacing.md,
       }}
@@ -27,7 +30,8 @@ export function EmptyState({ icon: Icon, title, message, actionLabel, onAction }
         style={{
           width: 64,
           height: 64,
-          borderRadius: radius.full,
+          borderRadius: radius.md,
+          borderCurve: "continuous",
           backgroundColor: colors.accentSoft,
           alignItems: "center",
           justifyContent: "center",
@@ -46,23 +50,9 @@ export function EmptyState({ icon: Icon, title, message, actionLabel, onAction }
       >
         {message}
       </Text>
-      {actionLabel && onAction && (
-        <Pressable
-          onPress={onAction}
-          accessibilityRole="button"
-          style={({ pressed }) => ({
-            marginTop: spacing.sm,
-            backgroundColor: colors.accent,
-            paddingHorizontal: spacing.xl,
-            paddingVertical: spacing.md,
-            borderRadius: radius.md,
-            borderCurve: "continuous",
-            opacity: pressed ? 0.85 : 1,
-          })}
-        >
-          <Text style={{ ...type.label, color: colors.onAccent }}>{actionLabel}</Text>
-        </Pressable>
-      )}
+      {actionLabel && onAction ? (
+        <Button label={actionLabel} size="md" onPress={onAction} style={{ marginTop: spacing.sm }} />
+      ) : null}
     </View>
   );
 }

@@ -34,7 +34,7 @@ function Counter({ index, total, bottom }: { index: number; total: number; botto
         bottom,
         paddingHorizontal: spacing.sm + 2,
         paddingVertical: 4,
-        borderRadius: radius.full,
+        borderRadius: radius.xs,
         backgroundColor: colors.overlay,
       }}
     >

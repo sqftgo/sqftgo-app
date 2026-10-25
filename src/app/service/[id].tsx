@@ -23,8 +23,9 @@ import { ApiError } from "@/lib/api/client";
 import { isApiMode } from "@/lib/api/config";
 import { apiGetDealer } from "@/lib/api/services/dealers";
 import { apiCreateServiceBooking } from "@/lib/api/services/services";
+import { userFacingError } from "@/lib/errors";
 import { initialsFromName } from "@/lib/format";
-import { isServiceDirectoryCategory } from "@/lib/is-dealer-category";
+import { isDirectoryVerified, isServiceDirectoryCategory } from "@/lib/is-dealer-category";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 
 function tomorrowAt11() {
@@ -64,7 +65,7 @@ export default function ServiceProfileScreen() {
         contactPhone: phone.trim(),
         message: message.trim() || undefined,
       }),
-    onError: (e) => appAlert("Couldn't send request", e instanceof Error ? e.message : "Please try again."),
+    onError: (e) => appAlert("Couldn't send request", userFacingError(e, "Please try again.")),
   });
 
   if (!partner || !isServiceDirectoryCategory(partner.category)) {
@@ -98,21 +99,22 @@ export default function ServiceProfileScreen() {
   const isOwner =
     (me?.id && partner.userId === me.id) ||
     (userEmail && partner.email?.toLowerCase() === userEmail.toLowerCase());
-  const verified = partner.verificationStatus === "verified";
+  const verified = isDirectoryVerified(partner);
   const logo = partner.logoUrl || partner.avatarUrl;
   const mapQuery = encodeURIComponent([partner.address, partner.city, "India"].filter(Boolean).join(", "));
 
   const submit = () => {
-    if (!requireAuth("Sign in to request a booking with this partner.")) return;
-    if (phone.trim().length < 5) {
-      setPhoneError("Enter a phone number the partner can call.");
-      return;
-    }
-    if (when.getTime() <= Date.now()) {
-      appAlert("Pick a later time", "Choose a time in the future.");
-      return;
-    }
-    booking.mutate();
+    requireAuth("Sign in to request a booking with this partner.", () => {
+      if (phone.trim().length < 5) {
+        setPhoneError("Enter a phone number the partner can call.");
+        return;
+      }
+      if (when.getTime() <= Date.now()) {
+        appAlert("Pick a later time", "Choose a time in the future.");
+        return;
+      }
+      booking.mutate();
+    });
   };
 
   return (
@@ -250,7 +252,8 @@ const styles = StyleSheet.create({
   chip: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
-    borderRadius: radius.full,
+    borderRadius: radius.sm,
+    borderCurve: "continuous",
     backgroundColor: colors.surfaceSubtle,
     borderWidth: 1,
     borderColor: colors.border,

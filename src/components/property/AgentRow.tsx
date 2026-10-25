@@ -35,7 +35,8 @@ function ActionButton({
       style={({ pressed }) => ({
         width: 44,
         height: 44,
-        borderRadius: radius.full,
+        borderRadius: radius.sm,
+        borderCurve: "continuous",
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: pressed ? colors.accentBorder : colors.accentSoft,
@@ -80,7 +81,8 @@ export function AgentRow({ name, firm, meta, avatarUrl, onPress, onCall, onChat 
           style={{
             width: 48,
             height: 48,
-            borderRadius: radius.full,
+            borderRadius: radius.sm,
+            borderCurve: "continuous",
             backgroundColor: colors.primary,
             alignItems: "center",
             justifyContent: "center",
