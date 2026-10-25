@@ -9,10 +9,9 @@ import { colors, radius, spacing, type } from "@/theme/tokens";
 import { PropertySection } from "./PropertySection";
 
 function openInMaps(property: Property) {
+  // Only use fields present on the listing — never invent a default state/country.
   const query = encodeURIComponent(
-    [property.locality, property.city, property.state ?? "Rajasthan", property.country ?? "India"]
-      .filter(Boolean)
-      .join(", "),
+    [property.locality, property.city, property.state, property.country].filter(Boolean).join(", "),
   );
   const native = Platform.OS === "ios" ? `maps:0,0?q=${query}` : `geo:0,0?q=${query}`;
   Linking.openURL(native).catch(() =>

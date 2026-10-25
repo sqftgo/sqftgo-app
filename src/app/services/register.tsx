@@ -15,7 +15,7 @@ import {
   toast,
 } from "@/components/ds";
 import { appAlert } from "@/components/ui/app-alert";
-import { Store } from "@/components/ui/icons";
+import { Lock, Store } from "@/components/ui/icons";
 import { useApp } from "@/context/AppContext";
 import { useMyServiceProfile } from "@/hooks/use-my-service-profile";
 import { useServiceTypes } from "@/hooks/use-service-types";
@@ -38,7 +38,14 @@ type Field =
 export default function RegisterServiceScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { registerServiceProfile, userName, userEmail, profile: me, selectedCity } = useApp();
+  const {
+    registerServiceProfile,
+    userName,
+    userEmail,
+    profile: me,
+    selectedCity,
+    isLoggedIn,
+  } = useApp();
   const existing = useMyServiceProfile();
   const { types, isLoading: typesLoading } = useServiceTypes();
 
@@ -62,6 +69,22 @@ export default function RegisterServiceScreen() {
     setForm((f) => ({ ...f, [key]: value }));
     if (key in errors) setErrors((e) => ({ ...e, [key]: undefined }));
   };
+
+  if (!isLoggedIn) {
+    return (
+      <Screen title="List your business" fallbackHref="/(tabs)/services">
+        <EmptyState
+          icon={Lock}
+          title="Sign in required"
+          message="Sign in to create a service profile and receive booking requests."
+          actionLabel="Sign in"
+          onAction={() =>
+            router.push({ pathname: "/auth", params: { mode: "sign-in" } } as unknown as Href)
+          }
+        />
+      </Screen>
+    );
+  }
 
   if (existing.isLoading) {
     return (
@@ -134,6 +157,8 @@ export default function RegisterServiceScreen() {
     }
     setBusy(false);
     void queryClient.invalidateQueries({ queryKey: ["dealers", "mine"] });
+    void queryClient.invalidateQueries({ queryKey: ["service-partners"] });
+    void queryClient.invalidateQueries({ queryKey: ["service-types"] });
     toast("Service profile created", "success");
     router.replace("/services/manage" as Href);
   };

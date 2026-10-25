@@ -9,7 +9,6 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { Button, ErrorState, Sheet, SheetHeader, Skeleton, useRequireAuth } from "@/components/ds";
 import { AgentRow } from "@/components/property/AgentRow";
 import { callOwner, ContactSheet, whatsappOwner } from "@/components/property/ContactSheet";
-import { CostEmiSection } from "@/components/property/CostEmiSection";
 import { formatIndianCurrency, isRentalPurpose } from "@/components/property/format";
 import { KeyFacts, type KeyFact } from "@/components/property/KeyFacts";
 import { LocationSection } from "@/components/property/LocationSection";
@@ -21,10 +20,12 @@ import { PropertyTopBar } from "@/components/property/PropertyTopBar";
 import { ReraSection } from "@/components/property/ReraSection";
 import { StickyCta } from "@/components/property/StickyCta";
 import { VisitSheet } from "@/components/property/VisitSheet";
+import { WhyThisListing } from "@/components/property/WhyThisListing";
 import { CheckCircle2, ChevronLeft, Bath, Bed, Maximize2, Sparkles, Eye } from "@/components/ui/icons";
 import { PropertyCard } from "@/components/ui/property-card";
 import { useApp } from "@/context/AppContext";
 import { apiGetProperty } from "@/lib/api/services/properties";
+import { formatSize, purposeLabel } from "@/lib/format";
 import { ownsProperty } from "@/lib/ownership";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 
@@ -73,7 +74,8 @@ export default function PropertyDetailsScreen() {
     if (remote.data) mergeProperties([remote.data]);
   }, [remote.data, mergeProperties]);
 
-  const property = local ?? remote.data;
+  // Prefer fresh API payload over a possibly stale local cache entry.
+  const property = remote.data ?? local;
 
   const scrollY = useSharedValue(0);
   const onScroll = useAnimatedScrollHandler((e) => {
@@ -136,26 +138,56 @@ export default function PropertyDetailsScreen() {
   const isActive = property.status === "Active";
   const hasPhone = Boolean(property.ownerPhone?.trim());
 
-  const broker =
-    directoryProfiles.find(
-      (d) =>
-        (property.brokerId && (d.userId === property.brokerId || d.id === property.brokerId)) ||
-        (property.ownerId && d.userId === property.ownerId),
-    ) ?? undefined;
+  // Only link a dealer profile when IDs match — never fall back to an unrelated directory card.
+  const broker = directoryProfiles.find(
+    (d) =>
+      (property.brokerId && (d.userId === property.brokerId || d.id === property.brokerId)) ||
+      (property.ownerId && d.userId === property.ownerId),
+  );
 
   const facts: KeyFact[] = [
     property.bhk ? { icon: Bed, value: `${property.bhk} BHK`, label: "Config" } : null,
-    property.bathrooms ? { icon: Bath, value: String(property.bathrooms), label: "Baths" } : null,
-    property.size ? { icon: Maximize2, value: property.size.toLocaleString("en-IN"), label: "Sq.ft" } : null,
+    property.bathrooms
+      ? {
+          icon: Bath,
+          value: String(property.bathrooms),
+          label: property.bathrooms === 1 ? "Bath" : "Baths",
+        }
+      : null,
+    property.size > 0
+      ? { icon: Maximize2, value: property.size.toLocaleString("en-IN"), label: "Sq.ft" }
+      : null,
     property.furnished ? { icon: Sparkles, value: property.furnished, label: "Furnishing" } : null,
   ].filter((f): f is KeyFact => f !== null);
 
+  const pricePerSqft =
+    !rental && property.size > 0 ? Math.round(property.price / property.size) : null;
+
   const overview = [
-    { label: "Property type", value: property.type },
-    { label: "Listed for", value: rental ? (property.purpose === "lease" ? "Lease" : "Rent") : "Sale" },
+    property.type ? { label: "Property type", value: property.type } : null,
+    { label: "Listed for", value: purposeLabel(property.purpose) },
+    property.bhk ? { label: "Configuration", value: `${property.bhk} BHK` } : null,
+    property.bathrooms
+      ? {
+          label: "Bathrooms",
+          value: String(property.bathrooms),
+        }
+      : null,
+    property.size > 0 ? { label: "Area", value: formatSize(property.size) } : null,
+    pricePerSqft
+      ? { label: "Price / sq.ft", value: `₹${pricePerSqft.toLocaleString("en-IN")}` }
+      : null,
     property.furnished ? { label: "Furnishing", value: property.furnished } : null,
-    property.yearBuilt ? { label: "Built in", value: String(property.yearBuilt) } : null,
-    property.parking ? { label: "Parking", value: `${property.parking} covered` } : null,
+    property.yearBuilt ? { label: "Year built", value: String(property.yearBuilt) } : null,
+    property.parking
+      ? {
+          label: "Parking",
+          value: property.parking === 1 ? "1 spot" : `${property.parking} spots`,
+        }
+      : null,
+    property.status && property.status !== "Active"
+      ? { label: "Listing status", value: property.status }
+      : null,
   ].filter((x): x is { label: string; value: string } => x !== null);
 
   const share = async () => {
@@ -169,7 +201,9 @@ export default function PropertyDetailsScreen() {
   };
 
   const toggleSave = () => {
-    if (requireAuth("Sign in to save homes and see them on all your devices.")) toggleFavorite(property.id);
+    requireAuth("Sign in to save homes and see them on all your devices.", () => {
+      toggleFavorite(property.id);
+    });
   };
 
   const priceLabel = formatIndianCurrency(property.price);
@@ -202,19 +236,43 @@ export default function PropertyDetailsScreen() {
 
           {facts.length > 0 ? <KeyFacts facts={facts} /> : null}
 
-          <AgentRow
-            name={broker?.ownerName || property.ownerName}
-            firm={broker?.firmName}
-            meta={broker?.experience ? `${broker.experience} experience` : undefined}
-            avatarUrl={broker?.avatarUrl}
-            onPress={broker ? () => router.push({ pathname: "/broker/[id]", params: { id: broker.id } }) : undefined}
-            onCall={hasPhone && !isOwner ? () => callOwner(property.ownerPhone) : undefined}
-            onChat={hasPhone && !isOwner ? () => whatsappOwner(property.ownerPhone, property) : undefined}
-          />
+          {property.ownerName?.trim() || broker ? (
+            <AgentRow
+              name={(broker?.ownerName || property.ownerName).trim() || "Lister"}
+              firm={broker?.firmName}
+              meta={
+                broker?.experience
+                  ? `${broker.experience} experience`
+                  : broker
+                    ? broker.category
+                    : "Listed by owner"
+              }
+              avatarUrl={broker?.avatarUrl}
+              onPress={
+                broker
+                  ? () => router.push({ pathname: "/broker/[id]", params: { id: broker.id } })
+                  : undefined
+              }
+              onCall={hasPhone && !isOwner ? () => callOwner(property.ownerPhone) : undefined}
+              onChat={
+                hasPhone && !isOwner ? () => whatsappOwner(property.ownerPhone, property) : undefined
+              }
+            />
+          ) : null}
 
-          <PropertySection title="Overview">
-            <OverviewList items={overview} />
-          </PropertySection>
+          {overview.length > 0 ? (
+            <PropertySection title="Overview">
+              <OverviewList items={overview} />
+            </PropertySection>
+          ) : null}
+
+          {isOwner && property.status === "Rejected" && property.rejectionReason ? (
+            <PropertySection title="Rejection reason">
+              <Text style={styles.desc} selectable>
+                {property.rejectionReason}
+              </Text>
+            </PropertySection>
+          ) : null}
 
           {property.description ? (
             <PropertySection title="About this property">
@@ -254,10 +312,19 @@ export default function PropertyDetailsScreen() {
 
           <LocationSection property={property} />
 
-          <CostEmiSection property={property} />
+          <WhyThisListing
+            property={property}
+            isOwner={isOwner}
+            isActive={isActive}
+            onBookVisit={() =>
+              requireAuth("Sign in to book a site visit with the dealer.", () => setVisitOpen(true))
+            }
+            onContact={() => setContactOpen(true)}
+          />
 
           <ReraSection
-            reraId={property.reraApproved || property.reraId ? property.reraId : undefined}
+            reraApproved={property.reraApproved}
+            reraId={property.reraId}
             checks={property.verificationChecks}
             verifiedDate={property.verifiedDate}
           />
@@ -300,7 +367,9 @@ export default function PropertyDetailsScreen() {
           price={priceLabel}
           period={period}
           primaryLabel="Book visit"
-          onPrimary={() => setVisitOpen(true)}
+          onPrimary={() =>
+            requireAuth("Sign in to book a site visit with the dealer.", () => setVisitOpen(true))
+          }
           secondaryLabel="Contact"
           onSecondary={() => setContactOpen(true)}
         />

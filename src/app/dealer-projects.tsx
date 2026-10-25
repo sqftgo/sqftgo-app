@@ -1,11 +1,12 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
-import { useRouter, type Href } from "expo-router";
-import React from "react";
+import { useLocalSearchParams, useRouter, type Href } from "expo-router";
+import React, { useMemo, useState } from "react";
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 
 import {
   Button,
+  ChipGroup,
   ErrorState,
   ListSkeleton,
   Screen,
@@ -17,24 +18,37 @@ import {
 } from "@/components/ds";
 import { appAlert } from "@/components/ui/app-alert";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Building2, Plus, Trash2 } from "@/components/ui/icons";
+import { Archive, Building2, Plus, Trash2 } from "@/components/ui/icons";
 import { formatProjectPriceRange } from "@/components/ui/project-card";
 import type { Project } from "@/data/project";
 import { isApiMode } from "@/lib/api/config";
 import { apiDeleteProject, apiListProjects, apiUpdateProject } from "@/lib/api/services/projects";
+import { userFacingError } from "@/lib/errors";
 import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
 
 const MINE_KEY = ["projects", "mine"] as const;
 
+type ProjectFilter = "All" | "Active" | "Pending Review" | "Draft" | "Rejected" | "Sold";
+const FILTERS: ProjectFilter[] = ["All", "Active", "Pending Review", "Draft", "Rejected", "Sold"];
+
 export default function DealerProjectsScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const params = useLocalSearchParams<{ status?: string }>();
   const query = useQuery({
     queryKey: MINE_KEY,
     queryFn: () => apiListProjects({ mine: true, limit: 100 }),
     enabled: isApiMode,
   });
   const items = query.data ?? [];
+  const [filter, setFilter] = useState<ProjectFilter>(
+    FILTERS.includes(params.status as ProjectFilter) ? (params.status as ProjectFilter) : "All",
+  );
+
+  const filtered = useMemo(
+    () => (filter === "All" ? items : items.filter((p) => p.status === filter)),
+    [items, filter],
+  );
 
   const replace = (updated: Project) =>
     queryClient.setQueryData<Project[]>(MINE_KEY, (prev) => prev?.map((p) => (p.id === updated.id ? updated : p)));
@@ -52,7 +66,7 @@ export default function DealerProjectsScreen() {
             void queryClient.invalidateQueries({ queryKey: ["projects"] });
             toast("Project deleted");
           } catch (e) {
-            appAlert("Couldn't delete", e instanceof Error ? e.message : "Please try again.");
+            appAlert("Couldn't delete", userFacingError(e, "Please try again."));
           }
         },
       },
@@ -64,7 +78,16 @@ export default function DealerProjectsScreen() {
       replace(await apiUpdateProject(item.id, { status: "Pending Review" }));
       toast("Sent for review");
     } catch (e) {
-      appAlert("Couldn't submit", e instanceof Error ? e.message : "Add at least one photo, then try again.");
+      appAlert("Couldn't submit", userFacingError(e, "Add at least one photo, then try again."));
+    }
+  };
+
+  const handleToDraft = async (item: Project) => {
+    try {
+      replace(await apiUpdateProject(item.id, { status: "Draft" }));
+      toast("Moved to draft");
+    } catch (e) {
+      appAlert("Couldn't update", userFacingError(e, "Please try again."));
     }
   };
 
@@ -86,17 +109,25 @@ export default function DealerProjectsScreen() {
         <ErrorState message="Check your connection and try again." onRetry={() => void query.refetch()} />
       ) : (
         <FlatList
-          data={items}
+          data={filtered}
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} tintColor={colors.accent} />
           }
           contentContainerStyle={styles.list}
+          ListHeaderComponent={
+            <ChipGroup
+              options={FILTERS}
+              value={filter}
+              onChange={setFilter}
+              labelFor={(f) => f}
+            />
+          }
           ListEmptyComponent={
             <EmptyState
               icon={Building2}
-              title="No projects yet"
+              title={filter === "All" ? "No projects yet" : `No ${filter.toLowerCase()} projects`}
               message="Showcase a new launch with its unit types, price range and photos."
               actionLabel="Add project"
               onAction={addAction.onPress}
@@ -136,9 +167,20 @@ export default function DealerProjectsScreen() {
                   {item.status === "Rejected" && item.rejectionReason ? (
                     <Text style={styles.rejection}>Not approved: {item.rejectionReason}</Text>
                   ) : null}
-                  {item.status === "Draft" ? (
-                    <Button label="Submit for review" size="sm" onPress={() => void handleSubmit(item)} style={{ alignSelf: "flex-start" }} />
-                  ) : null}
+                  <View style={styles.actions}>
+                    {item.status === "Draft" ? (
+                      <Button label="Submit for review" size="sm" onPress={() => void handleSubmit(item)} />
+                    ) : null}
+                    {item.status === "Pending Review" || item.status === "Rejected" ? (
+                      <Button
+                        label="Move to draft"
+                        icon={Archive}
+                        size="sm"
+                        variant="secondary"
+                        onPress={() => void handleToDraft(item)}
+                      />
+                    ) : null}
+                  </View>
                 </Pressable>
               </SwipeRow>
             );
@@ -168,4 +210,5 @@ const styles = StyleSheet.create({
   meta: { ...type.caption, color: colors.inkMuted },
   price: { ...type.label, color: colors.accent, fontVariant: ["tabular-nums"] },
   rejection: { ...type.caption, color: colors.danger },
+  actions: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
 });

@@ -1,25 +1,44 @@
-import { type Href } from "expo-router";
+import { useRouter, type Href } from "expo-router";
 import React, { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { EmptyState } from "@/components/ds";
 import { Button } from "@/components/ds/Button";
 import { Screen, useBack } from "@/components/ds/Screen";
 import { TextField } from "@/components/ds/TextField";
 import { toast } from "@/components/ds/Toast";
 import { appAlert } from "@/components/ui/app-alert";
+import { Lock } from "@/components/ui/icons";
 import { useApp } from "@/context/AppContext";
 import { colors, spacing, type } from "@/theme/tokens";
 
 const MIN_PASSWORD_LENGTH = 8;
 
 export default function ChangePasswordScreen() {
+  const router = useRouter();
   const back = useBack("/settings" as Href);
-  const { updatePassword, forgotPassword, userEmail } = useApp();
+  const { updatePassword, forgotPassword, userEmail, isLoggedIn } = useApp();
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
   const [errors, setErrors] = useState<{ current?: string; next?: string; confirm?: string }>({});
   const [saving, setSaving] = useState(false);
+
+  if (!isLoggedIn) {
+    return (
+      <Screen title="Change password" fallbackHref={"/settings" as Href}>
+        <EmptyState
+          icon={Lock}
+          title="Sign in required"
+          message="Sign in to change your account password."
+          actionLabel="Sign in"
+          onAction={() =>
+            router.push({ pathname: "/auth", params: { mode: "sign-in" } } as unknown as Href)
+          }
+        />
+      </Screen>
+    );
+  }
 
   const submit = async () => {
     const e: typeof errors = {};

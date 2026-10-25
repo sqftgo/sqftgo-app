@@ -22,7 +22,6 @@ export default function DealerRegisterScreen() {
   const [city, setCity] = useState(selectedCity && selectedCity.toLowerCase() !== "all india" ? selectedCity : "");
   const [address, setAddress] = useState("");
   const [mobile, setMobile] = useState("");
-  const [website, setWebsite] = useState("");
   const [description, setDescription] = useState("");
   const [reraId, setReraId] = useState("");
   const [busy, setBusy] = useState(false);
@@ -70,7 +69,7 @@ export default function DealerRegisterScreen() {
       city,
       address: address.trim(),
       email: userEmail,
-      website: website.trim() || "—",
+      website: "",
       mobile: mobile.trim(),
       description: description.trim() || `${firmName.trim()} on SqftGo`,
       reraId: reraId.trim() || undefined,
@@ -122,7 +121,6 @@ export default function DealerRegisterScreen() {
 
       <View style={styles.group}>
         <TextField label="RERA ID" value={reraId} onChangeText={setReraId} hint="Optional. Shown on your profile when provided." />
-        <TextField label="Website" value={website} onChangeText={setWebsite} placeholder="https://" autoCapitalize="none" keyboardType="url" />
         <TextField
           label="About your firm"
           value={description}

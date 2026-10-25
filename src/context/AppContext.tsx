@@ -9,6 +9,7 @@
 
 import React, { createContext, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { router, type Href } from "expo-router";
 
 import { seedDirectoryProfiles } from "@/data/directory";
 import { seedProperties } from "@/data/properties";
@@ -293,8 +294,8 @@ interface AppContextType {
     phone?: string;
     message: string;
   }) => Promise<Inquiry | null> | Inquiry | null;
-  markInquiryRead: (id: string) => void;
-  archiveInquiry: (id: string) => void;
+  markInquiryRead: (id: string) => Promise<ActionResult>;
+  archiveInquiry: (id: string) => Promise<ActionResult>;
   replyInquiry: (id: string, replyMessage: string) => Promise<ActionResult>;
   createMessageThread: (input: {
     buyerEmail: string;
@@ -655,8 +656,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAuthError(null);
     try {
       const [
-        onboarding,
-        storedStep,
         storedFavorites,
         storedCity,
         storedSession,
@@ -669,8 +668,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         storedMessages,
         storedNotif,
       ] = await Promise.all([
-        AsyncStorage.getItem(STORAGE_KEYS.onboarding),
-        AsyncStorage.getItem(STORAGE_KEYS.onboardingStep),
         AsyncStorage.getItem(STORAGE_KEYS.favorites),
         AsyncStorage.getItem(STORAGE_KEYS.city),
         AsyncStorage.getItem(STORAGE_KEYS.session),
@@ -683,13 +680,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         AsyncStorage.getItem(STORAGE_KEYS.messages),
         AsyncStorage.getItem(STORAGE_KEYS.notifPrefs),
       ]);
-
-      if (storedStep) {
-        const stepNum = parseInt(storedStep, 10);
-        if (!isNaN(stepNum) && stepNum >= 0 && stepNum <= 3) {
-          setOnboardingStepState(stepNum);
-        }
-      }
 
       if (storedFavorites) setFavorites(JSON.parse(storedFavorites));
       if (storedCity) setSelectedCityState(storedCity);
@@ -851,7 +841,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (Array.isArray(parsed)) setVisits(parsed);
       }
 
-      setHasCompletedOnboardingState(onboarding === "true");
+      // Guests always re-enter through onboarding (city/role prefs still load above).
+      if (activeSession.isLoggedIn) {
+        setHasCompletedOnboardingState(true);
+        setOnboardingStepState(0);
+      } else {
+        setHasCompletedOnboardingState(false);
+        setOnboardingStepState(0);
+        AsyncStorage.setItem(STORAGE_KEYS.onboarding, "false").catch(() => {});
+        AsyncStorage.removeItem(STORAGE_KEYS.onboardingStep).catch(() => {});
+      }
 
       // API mode: load public catalog for guests (logged-in hydrate runs separately).
       if (isApiMode && !activeSession.isLoggedIn) {
@@ -952,6 +951,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const next = sessionFromApiUser(res);
       setSessionNotice(null);
       persistSession(next);
+      setHasCompletedOnboardingState(true);
+      AsyncStorage.setItem(STORAGE_KEYS.onboarding, "true").catch(() => {});
       await hydrateFromApi(next.role);
       return {
         ok: true,
@@ -975,6 +976,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           ? "This account is suspended. Contact support."
           : "Your session expired. Please sign in again.",
       );
+      queueMicrotask(() => {
+        router.replace({ pathname: "/auth", params: { mode: "sign-in" } } as unknown as Href);
+      });
     });
   }, [persistSession]);
 
@@ -1014,6 +1018,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         };
       }
       persistSession(sessionFromAccount(account));
+      setHasCompletedOnboardingState(true);
+      AsyncStorage.setItem(STORAGE_KEYS.onboarding, "true").catch(() => {});
       return {
         ok: true,
         role: account.role,
@@ -1092,6 +1098,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setAccounts(nextAccounts);
       persistAccounts(nextAccounts);
       persistSession(sessionFromAccount(account));
+      setHasCompletedOnboardingState(true);
+      AsyncStorage.setItem(STORAGE_KEYS.onboarding, "true").catch(() => {});
       return {
         ok: true,
         role: asDealer ? "broker" : "user",
@@ -1112,6 +1120,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     clearTokens();
     persistSession(GUEST_SESSION);
+    // Return guests to a fresh onboarding entry every time they sign out.
+    setHasCompletedOnboardingState(false);
+    setOnboardingStepState(0);
+    AsyncStorage.setItem(STORAGE_KEYS.onboarding, "false").catch(() => {});
+    AsyncStorage.removeItem(STORAGE_KEYS.onboardingStep).catch(() => {});
+    // Navigate after the session clear so /auth is a registered stack screen.
+    queueMicrotask(() => {
+      router.replace({ pathname: "/auth", params: { mode: "sign-in" } } as unknown as Href);
+    });
   }, [persistSession]);
 
   const refreshSessionFromApi = useCallback(async () => {
@@ -1594,9 +1611,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
 
   const markInquiryRead = useCallback(
-    (id: string) => {
+    async (id: string): Promise<ActionResult> => {
+      const target = inquiries.find((inq) => inq.id === id);
+      if (!target) return { ok: false, message: "Inquiry not found." };
+      if (target.status !== "new") return { ok: true };
+
       if (isApiMode) {
-        apiPatchInquiry(id, { status: "read" }).catch(() => {});
+        try {
+          await apiPatchInquiry(id, { status: "read" });
+        } catch (e) {
+          return {
+            ok: false,
+            message: e instanceof Error ? e.message : "Couldn't update inquiry.",
+          };
+        }
       }
       setInquiries((prev) => {
         const next = prev.map((inq) =>
@@ -1605,14 +1633,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         persistInquiries(next);
         return next;
       });
+      return { ok: true };
     },
-    [persistInquiries],
+    [inquiries, persistInquiries],
   );
 
   const archiveInquiry = useCallback(
-    (id: string) => {
+    async (id: string): Promise<ActionResult> => {
+      const target = inquiries.find((inq) => inq.id === id);
+      if (!target) return { ok: false, message: "Inquiry not found." };
+
       if (isApiMode) {
-        apiPatchInquiry(id, { status: "archived" }).catch(() => {});
+        try {
+          await apiPatchInquiry(id, { status: "archived" });
+        } catch (e) {
+          return {
+            ok: false,
+            message: e instanceof Error ? e.message : "Couldn't archive inquiry.",
+          };
+        }
       }
       setInquiries((prev) => {
         const next = prev.map((inq) =>
@@ -1621,8 +1660,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         persistInquiries(next);
         return next;
       });
+      return { ok: true };
     },
-    [persistInquiries],
+    [inquiries, persistInquiries],
   );
 
   const replyInquiry = useCallback(
@@ -2028,11 +2068,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const fetchDealerAnalytics = useCallback(async () => {
     if (isApiMode) {
-      try {
-        return await apiGetDealerAnalytics();
-      } catch {
-        // fall through to derived
-      }
+      // Surface API failures — do not silently substitute derived metrics.
+      return await apiGetDealerAnalytics();
     }
     return deriveDealerAnalytics(properties, inquiries, visits, {
       userId: session.accountId,

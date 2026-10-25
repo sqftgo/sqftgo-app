@@ -1,24 +1,21 @@
-import React, { useMemo, useState } from "react";
-import { FlatList, Pressable, Text, View } from "react-native";
-import { appAlert } from "@/components/ui/app-alert";
 import { useRouter, type Href } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Calendar } from "@/components/ui/icons";
+import React, { useMemo, useState } from "react";
+import { FlatList, Linking, Text, View } from "react-native";
 
-import { StatusBadge, type BadgeTone } from "@/components/ds/StatusBadge";
+import { Button } from "@/components/ds/Button";
+import { Screen } from "@/components/ds/Screen";
+import { SegmentedControl } from "@/components/ds/SegmentedControl";
+import { StatusBadge } from "@/components/ds/StatusBadge";
+import { toast } from "@/components/ds/Toast";
+import { appAlert } from "@/components/ui/app-alert";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Calendar } from "@/components/ui/icons";
 import { useApp } from "@/context/AppContext";
 import type { VisitStatus } from "@/data/types";
 import { ownedPropertyIds, ownsVisit } from "@/lib/ownership";
 import { VISIT_STATUS_LABEL } from "@/lib/status-labels";
+import { VISIT_BADGE_TONE } from "@/lib/status-tones";
 import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
-
-const VISIT_TONE: Record<VisitStatus, BadgeTone> = {
-  pending: "warning",
-  confirmed: "info",
-  completed: "success",
-  cancelled: "neutral",
-};
 
 export default function ManageVisitsScreen() {
   const router = useRouter();
@@ -31,6 +28,7 @@ export default function ManageVisitsScreen() {
     updateVisitStatus,
   } = useApp();
   const [filter, setFilter] = useState<"open" | "all">("open");
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   const ownedIds = useMemo(
     () => ownedPropertyIds(properties, { userId: profile?.id, email: userEmail }),
@@ -42,6 +40,11 @@ export default function ManageVisitsScreen() {
     [visits, userEmail, ownedIds],
   );
 
+  const openCount = useMemo(
+    () => mine.filter((v) => v.status === "pending" || v.status === "confirmed").length,
+    [mine],
+  );
+
   const list = useMemo(() => {
     if (filter === "open") {
       return mine.filter((v) => v.status === "pending" || v.status === "confirmed");
@@ -51,76 +54,54 @@ export default function ManageVisitsScreen() {
 
   if (!canAccessDealerDashboard) {
     return (
-      <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.bg }}>
+      <Screen title="Site visits" fallbackHref={"/(dealer)" as Href}>
         <EmptyState
           icon={Calendar}
           title="Dealer access required"
           message="Visit management unlocks for approved brokers."
-          actionLabel="Back"
-          onAction={() => router.back()}
+          actionLabel="Back to dashboard"
+          onAction={() => router.replace("/(dealer)" as Href)}
         />
-      </SafeAreaView>
+      </Screen>
     );
   }
 
-  const setStatus = (id: string, status: VisitStatus) => {
-    updateVisitStatus(id, status);
+  const setStatus = async (id: string, status: VisitStatus, successLabel: string) => {
+    setBusyId(id);
+    const result = await updateVisitStatus(id, status);
+    setBusyId(null);
+    if (!result.ok) {
+      appAlert("Couldn't update visit", result.message ?? "Please try again.");
+      return;
+    }
+    toast(successLabel);
   };
 
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.bg }}>
-      <View style={{ paddingHorizontal: spacing.xl, paddingTop: spacing.lg, gap: spacing.xs }}>
-        <Pressable onPress={() => router.back()}>
-          <Text style={{ ...type.label, color: colors.accent }}>← Back</Text>
-        </Pressable>
-        <Text style={{ ...type.title, color: colors.ink }}>Site visits</Text>
-        <Text style={{ ...type.caption, color: colors.inkMuted }}>
-          Confirm, complete, or cancel buyer visit requests
-        </Text>
-      </View>
-
-      <View
-        style={{
-          flexDirection: "row",
-          marginHorizontal: spacing.xl,
-          marginTop: spacing.md,
-          backgroundColor: colors.surfaceSubtle,
-          borderRadius: radius.md,
-          padding: spacing.xs,
-        }}
-      >
-        {(
-          [
-            { id: "open", label: "Open" },
-            { id: "all", label: "All" },
-          ] as const
-        ).map((tab) => {
-          const active = filter === tab.id;
-          return (
-            <Pressable
-              key={tab.id}
-              onPress={() => setFilter(tab.id)}
-              style={{
-                flex: 1,
-                paddingVertical: spacing.sm,
-                borderRadius: radius.sm,
-                backgroundColor: active ? colors.surface : "transparent",
-                alignItems: "center",
-              }}
-            >
-              <Text style={{ ...type.label, color: active ? colors.ink : colors.inkMuted }}>
-                {tab.label}
-              </Text>
-            </Pressable>
-          );
-        })}
+    <Screen
+      title="Site visits"
+      subtitle="Confirm, complete, or cancel buyer visit requests"
+      scroll={false}
+      fallbackHref={"/(dealer)" as Href}
+      contentStyle={{ paddingHorizontal: 0, paddingTop: spacing.sm, gap: 0 }}
+    >
+      <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.md }}>
+        <SegmentedControl
+          segments={[
+            { value: "open", label: "Open", count: openCount },
+            { value: "all", label: "All", count: mine.length },
+          ]}
+          value={filter}
+          onChange={setFilter}
+        />
       </View>
 
       <FlatList
         data={list}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{
-          padding: spacing.xl,
+          paddingHorizontal: spacing.lg,
+          paddingBottom: spacing["4xl"],
           gap: spacing.md,
           flexGrow: 1,
         }}
@@ -133,92 +114,89 @@ export default function ManageVisitsScreen() {
             onAction={() => router.push("/(dealer)" as Href)}
           />
         }
-        renderItem={({ item }) => {
-          return (
-            <View
-              style={{
-                backgroundColor: colors.surface,
-                borderWidth: 1,
-                borderColor: colors.border,
-                borderRadius: radius.lg,
-                padding: spacing.md,
-                gap: spacing.sm,
-                boxShadow: shadow.card,
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  gap: spacing.sm,
-                }}
-              >
-                <Text style={{ ...type.emphasis, color: colors.ink, flex: 1 }} numberOfLines={2}>
-                  {item.propertyTitle}
-                </Text>
-                <StatusBadge label={VISIT_STATUS_LABEL[item.status]} tone={VISIT_TONE[item.status]} />
-              </View>
-              <Text style={{ ...type.caption, color: colors.inkMuted }}>
-                {item.buyerName} · {item.buyerEmail}
+        renderItem={({ item }) => (
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle} numberOfLines={2}>
+                {item.propertyTitle}
               </Text>
-              <Text style={{ ...type.body, color: colors.ink }}>
-                {item.visitDate} · {item.visitTime}
-              </Text>
-              {item.status === "pending" || item.status === "confirmed" ? (
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
-                  {item.status === "pending" ? (
-                    <Pressable
-                      onPress={() => setStatus(item.id, "confirmed")}
-                      style={{
-                        paddingHorizontal: spacing.md,
-                        paddingVertical: spacing.sm,
-                        borderRadius: radius.md,
-                        backgroundColor: colors.accent,
-                      }}
-                    >
-                      <Text style={{ ...type.label, color: colors.onAccent }}>Confirm</Text>
-                    </Pressable>
-                  ) : null}
-                  {item.status === "confirmed" ? (
-                    <Pressable
-                      onPress={() => setStatus(item.id, "completed")}
-                      style={{
-                        paddingHorizontal: spacing.md,
-                        paddingVertical: spacing.sm,
-                        borderRadius: radius.md,
-                        backgroundColor: colors.success,
-                      }}
-                    >
-                      <Text style={{ ...type.label, color: colors.onAccent }}>Complete</Text>
-                    </Pressable>
-                  ) : null}
-                  <Pressable
-                    onPress={() =>
-                      appAlert("Cancel visit", "Mark this visit as cancelled?", [
-                        { text: "Keep", style: "cancel" },
-                        {
-                          text: "Cancel visit",
-                          style: "destructive",
-                          onPress: () => setStatus(item.id, "cancelled"),
-                        },
-                      ])
-                    }
-                    style={{
-                      paddingHorizontal: spacing.md,
-                      paddingVertical: spacing.sm,
-                      borderRadius: radius.md,
-                      borderWidth: 1,
-                      borderColor: colors.border,
-                    }}
-                  >
-                    <Text style={{ ...type.label, color: colors.inkMuted }}>Cancel</Text>
-                  </Pressable>
-                </View>
-              ) : null}
+              <StatusBadge label={VISIT_STATUS_LABEL[item.status]} tone={VISIT_BADGE_TONE[item.status]} />
             </View>
-          );
-        }}
+            <Text style={styles.meta}>
+              {item.buyerName} · {item.buyerEmail}
+            </Text>
+            <Text style={styles.when}>
+              {item.visitDate} · {item.visitTime}
+            </Text>
+            {item.status === "pending" || item.status === "confirmed" ? (
+              <View style={styles.actions}>
+                {item.status === "pending" ? (
+                  <Button
+                    label="Confirm"
+                    size="sm"
+                    loading={busyId === item.id}
+                    onPress={() => void setStatus(item.id, "confirmed", "Tour confirmed")}
+                  />
+                ) : null}
+                {item.status === "confirmed" ? (
+                  <Button
+                    label="Complete"
+                    size="sm"
+                    loading={busyId === item.id}
+                    onPress={() => void setStatus(item.id, "completed", "Visit completed")}
+                  />
+                ) : null}
+                {item.buyerPhone ? (
+                  <Button
+                    label="Call"
+                    size="sm"
+                    variant="secondary"
+                    onPress={() => void Linking.openURL(`tel:${item.buyerPhone}`)}
+                  />
+                ) : null}
+                <Button
+                  label="Cancel"
+                  size="sm"
+                  variant="secondary"
+                  loading={busyId === item.id}
+                  onPress={() =>
+                    appAlert("Cancel visit", "Mark this visit as cancelled?", [
+                      { text: "Keep", style: "cancel" },
+                      {
+                        text: "Cancel visit",
+                        style: "destructive",
+                        onPress: () => void setStatus(item.id, "cancelled", "Visit cancelled"),
+                      },
+                    ])
+                  }
+                />
+              </View>
+            ) : null}
+          </View>
+        )}
       />
-    </SafeAreaView>
+    </Screen>
   );
 }
+
+const styles = {
+  card: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    borderCurve: "continuous" as const,
+    padding: spacing.md,
+    gap: spacing.sm,
+    boxShadow: shadow.card,
+  },
+  cardHeader: {
+    flexDirection: "row" as const,
+    justifyContent: "space-between" as const,
+    gap: spacing.sm,
+  },
+  cardTitle: { ...type.emphasis, color: colors.ink, flex: 1 },
+  meta: { ...type.caption, color: colors.inkMuted },
+  when: { ...type.body, color: colors.ink },
+  actions: { flexDirection: "row" as const, flexWrap: "wrap" as const, gap: spacing.sm },
+};

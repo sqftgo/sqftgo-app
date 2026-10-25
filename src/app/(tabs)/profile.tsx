@@ -1,12 +1,14 @@
+import { useFocusEffect } from "@react-navigation/native";
 import { Image } from "expo-image";
 import { useRouter, type Href } from "expo-router";
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Button } from "@/components/ds/Button";
 import { ListRow, ListSection } from "@/components/ds/ListRow";
 import { Screen } from "@/components/ds/Screen";
 import { StatusBadge } from "@/components/ds/StatusBadge";
+import { useRequireAuth } from "@/components/ds/AuthGate";
 import { appAlert } from "@/components/ui/app-alert";
 import {
   BarChart3,
@@ -27,6 +29,7 @@ import {
   Settings,
   Shield,
   Store,
+  User,
   Users,
 } from "@/components/ui/icons";
 import { useApp } from "@/context/AppContext";
@@ -38,6 +41,7 @@ import { colors, radius, spacing, type } from "@/theme/tokens";
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const requireAuth = useRequireAuth();
   const {
     isLoggedIn,
     canAccessDealerDashboard,
@@ -53,7 +57,11 @@ export default function ProfileScreen() {
     directoryProfiles,
     platformSettings,
     myListingsCount,
+    refreshVisits,
+    refreshInquiries,
   } = useApp();
+
+  const [countsRefreshing, setCountsRefreshing] = useState(false);
 
   const go = (href: string) => router.push(href as Href);
 
@@ -85,16 +93,43 @@ export default function ProfileScreen() {
       icon={Briefcase}
       title="List your service business"
       subtitle="Movers, interiors, legal and more"
-      onPress={() => go("/services/register")}
+      onPress={() => {
+        requireAuth("Sign in to list your service business on SqftGo.", () => go("/services/register"));
+      }}
     />
   );
 
+  // Refresh buyer activity when the tab is focused so counts stay accurate.
+  useFocusEffect(
+    useCallback(() => {
+      if (!isLoggedIn || canAccessDealerDashboard) return;
+      let active = true;
+      setCountsRefreshing(true);
+      void Promise.all([refreshVisits(), refreshInquiries()]).finally(() => {
+        if (active) setCountsRefreshing(false);
+      });
+      return () => {
+        active = false;
+      };
+    }, [isLoggedIn, canAccessDealerDashboard, refreshVisits, refreshInquiries]),
+  );
+
   const email = userEmail.toLowerCase();
-  const myInquiries = inquiries.filter((i) => i.buyerEmail.toLowerCase() === email).length;
-  const myVisits = visits.filter((v) => v.buyerEmail.toLowerCase() === email).length;
-  const openLeads = inquiries.filter(
-    (i) => i.brokerEmail.toLowerCase() === email && (i.status === "new" || i.status === "read"),
-  ).length;
+  const myInquiries = useMemo(
+    () => inquiries.filter((i) => i.buyerEmail.toLowerCase() === email).length,
+    [inquiries, email],
+  );
+  const myVisits = useMemo(
+    () => visits.filter((v) => v.buyerEmail.toLowerCase() === email).length,
+    [visits, email],
+  );
+  const openLeads = useMemo(
+    () =>
+      inquiries.filter(
+        (i) => i.brokerEmail.toLowerCase() === email && (i.status === "new" || i.status === "read"),
+      ).length,
+    [inquiries, email],
+  );
 
   const supportSection = (
     <ListSection title="Support">
@@ -107,7 +142,7 @@ export default function ProfileScreen() {
   const discoverSection = (
     <ListSection title="Discover">
       <ListRow icon={Building2} title="New projects" onPress={() => go("/projects")} />
-      <ListRow icon={Compass} title="Destinations" onPress={() => go("/destinations")} />
+      <ListRow icon={Compass} title="Cities" subtitle="Markets, localities and homes" onPress={() => go("/destinations")} />
       <ListRow icon={Users} title="Dealers & agents" onPress={() => go("/brokers")} />
     </ListSection>
   );
@@ -124,7 +159,11 @@ export default function ProfileScreen() {
             Sign in to save homes, book site visits, message dealers and list your property.
           </Text>
           <View style={styles.guestActions}>
-            <Button label="Sign in" onPress={() => router.push({ pathname: "/auth", params: { mode: "sign-in" } })} fullWidth />
+            <Button
+              label="Sign in"
+              onPress={() => router.push({ pathname: "/auth", params: { mode: "sign-in" } })}
+              fullWidth
+            />
             <Button
               label="Create account"
               variant="secondary"
@@ -168,7 +207,9 @@ export default function ProfileScreen() {
         <Text style={styles.sub} numberOfLines={1} selectable>
           {userEmail}
         </Text>
-        <Text style={styles.editLink}>{canAccessDealerDashboard ? "Edit business profile" : "Edit profile"}</Text>
+        <Text style={styles.editLink}>
+          {canAccessDealerDashboard ? "Edit business profile" : "Edit profile"}
+        </Text>
       </View>
     </Pressable>
   );
@@ -194,7 +235,12 @@ export default function ProfileScreen() {
         ) : null}
 
         <ListSection title="Business">
-          <ListRow icon={Store} title="Business profile" subtitle="Firm, contact and specialties" onPress={() => go("/dealer-settings")} />
+          <ListRow
+            icon={Store}
+            title="Business profile"
+            subtitle="Firm, contact and specialties"
+            onPress={() => go("/dealer-settings")}
+          />
           <ListRow
             icon={Shield}
             title="KYC & RERA"
@@ -203,9 +249,15 @@ export default function ProfileScreen() {
             onPress={() => go("/dealer-kyc")}
           />
           <ListRow icon={CreditCard} title="Plans & billing" onPress={() => go("/subscription")} />
+          <ListRow
+            icon={User}
+            title="Personal account"
+            subtitle="Name, password and notifications"
+            onPress={() => go("/settings")}
+          />
         </ListSection>
 
-        <ListSection title="Manage">
+        <ListSection title="Manage" footer="Shortcuts — Inbox and Analytics are also in the dealer tabs.">
           <ListRow icon={Plus} title="Add property" onPress={() => go("/post-property")} />
           <ListRow icon={Building2} title="My projects" onPress={() => go("/dealer-projects")} />
           <ListRow icon={Calendar} title="Site visits" onPress={() => go("/manage-visits")} />
@@ -255,7 +307,7 @@ export default function ProfileScreen() {
               pressed && { backgroundColor: colors.surfaceSubtle },
             ]}
           >
-            <Text style={styles.statValue}>{s.value}</Text>
+            <Text style={styles.statValue}>{countsRefreshing && s.label !== "Saved" ? "…" : s.value}</Text>
             <Text style={styles.statLabel}>{s.label}</Text>
           </Pressable>
         ))}
@@ -263,7 +315,9 @@ export default function ProfileScreen() {
 
       {dealerAccess === "pending" && userRole !== "broker" ? (
         <Pressable onPress={() => go("/dealer-pending")} style={styles.notice} accessibilityRole="button">
-          <Clock size={18} color={colors.warning} />
+          <View style={styles.noticeIcon}>
+            <Clock size={18} color={colors.warning} />
+          </View>
           <View style={{ flex: 1, gap: 2 }}>
             <Text style={styles.noticeTitle}>Dealer application under review</Text>
             <Text style={styles.noticeBody}>You can keep using all customer features meanwhile.</Text>
@@ -271,9 +325,25 @@ export default function ProfileScreen() {
         </Pressable>
       ) : null}
 
-      <ListSection title="Activity">
-        <ListRow icon={Calendar} title="My visits" onPress={() => go("/my-visits")} />
-        <ListRow icon={MessageSquare} title="My inquiries" onPress={() => go("/my-inquiries")} />
+      <ListSection title="Activity" footer="Track visits, messages and anything you’ve listed.">
+        <ListRow
+          icon={Heart}
+          title="Saved homes"
+          value={favorites.length > 0 ? String(favorites.length) : undefined}
+          onPress={() => go("/(tabs)/saved")}
+        />
+        <ListRow
+          icon={Calendar}
+          title="My visits"
+          value={myVisits > 0 ? String(myVisits) : undefined}
+          onPress={() => go("/my-visits")}
+        />
+        <ListRow
+          icon={MessageSquare}
+          title="My inquiries"
+          value={myInquiries > 0 ? String(myInquiries) : undefined}
+          onPress={() => go("/my-inquiries")}
+        />
         <ListRow icon={Briefcase} title="Service bookings" onPress={() => go("/my-service-bookings")} />
         {platformSettings.allowUserListings ? (
           <ListRow
@@ -289,7 +359,12 @@ export default function ProfileScreen() {
 
       <ListSection title="Grow with SqftGo">
         {dealerAccess === "none" ? (
-          <ListRow icon={Store} title="Become a dealer" subtitle="List more properties and get leads" onPress={() => go("/dealer-register")} />
+          <ListRow
+            icon={Store}
+            title="Become a dealer"
+            subtitle="List more properties and get leads"
+            onPress={() => go("/dealer-register")}
+          />
         ) : dealerAccess === "pending" ? (
           <ListRow icon={Shield} title="Dealer KYC" onPress={() => go("/dealer-kyc")} />
         ) : null}
@@ -319,7 +394,8 @@ const styles = StyleSheet.create({
   guestIcon: {
     width: 56,
     height: 56,
-    borderRadius: radius.full,
+    borderRadius: radius.md,
+    borderCurve: "continuous",
     backgroundColor: colors.accentSoft,
     alignItems: "center",
     justifyContent: "center",
@@ -341,7 +417,8 @@ const styles = StyleSheet.create({
   avatar: {
     width: 64,
     height: 64,
-    borderRadius: radius.full,
+    borderRadius: radius.lg,
+    borderCurve: "continuous",
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
@@ -350,7 +427,13 @@ const styles = StyleSheet.create({
   initials: { ...type.title, color: colors.onPrimary },
   name: { ...type.heading, color: colors.ink },
   sub: { ...type.caption, color: colors.inkMuted },
-  editLink: { ...type.caption, color: colors.accent, fontFamily: "Inter_600SemiBold", fontWeight: "600", marginTop: 2 },
+  editLink: {
+    ...type.caption,
+    color: colors.accent,
+    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
+    marginTop: 2,
+  },
   stats: {
     flexDirection: "row",
     backgroundColor: colors.surface,
@@ -374,6 +457,15 @@ const styles = StyleSheet.create({
     borderCurve: "continuous",
     borderWidth: 1,
     borderColor: colors.warningBorder,
+  },
+  noticeIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.sm,
+    borderCurve: "continuous",
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
   },
   noticeTitle: { ...type.emphasis, color: colors.warning },
   noticeBody: { ...type.caption, color: colors.inkSecondary },

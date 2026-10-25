@@ -60,6 +60,26 @@ export async function apiListDealers(mine = false): Promise<DirectoryProfile[]> 
   return (Array.isArray(res) ? res : (res.items ?? [])).map(normalize);
 }
 
+/** Public dealers directory (agents, consultants, builders) — mirrors Services `surface=services`. */
+export async function apiListDealerDirectory(filters: {
+  city?: string;
+  search?: string;
+  category?: string;
+  limit?: number;
+} = {}): Promise<DirectoryProfile[]> {
+  const params = new URLSearchParams();
+  params.set("surface", "dealers");
+  if (filters.city) params.set("city", filters.city);
+  if (filters.search) params.set("search", filters.search);
+  if (filters.category) params.set("category", filters.category);
+  params.set("limit", String(filters.limit ?? 60));
+  const res = await apiFetch<ListResponse<DirectoryProfile> | DirectoryProfile[]>(
+    `/api/dealers?${params.toString()}`,
+    { public: true },
+  );
+  return (Array.isArray(res) ? res : (res.items ?? [])).map(normalize);
+}
+
 export async function apiCreateDealer(
   body: Omit<DirectoryProfile, "id" | "userId" | "listingsCount">,
 ): Promise<DirectoryProfile> {

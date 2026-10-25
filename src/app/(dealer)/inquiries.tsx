@@ -21,6 +21,7 @@ import {
   StatusBadge,
   SwipeRow,
   TextField,
+  toast,
   type BadgeTone,
 } from "@/components/ds";
 import { appAlert } from "@/components/ui/app-alert";
@@ -28,6 +29,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import {
   Archive,
   Inbox,
+  Mail,
   MessageSquare,
   Phone,
   Plus,
@@ -77,6 +79,7 @@ export default function DealerInquiriesScreen() {
     params.tab === "messages" ? "messages" : "leads",
   );
   const [filter, setFilter] = useState<LeadFilter>("inbox");
+  const [search, setSearch] = useState("");
   const [replyTarget, setReplyTarget] = useState<Inquiry | null>(null);
   const [replyText, setReplyText] = useState("");
   const [replyBusy, setReplyBusy] = useState(false);
@@ -98,15 +101,21 @@ export default function DealerInquiriesScreen() {
       ),
     [inquiries, userEmail, ownedIds],
   );
-  const leads = useMemo(
-    () =>
-      mine.filter((i) =>
-        filter === "archived"
-          ? i.status === "archived"
-          : i.status !== "archived",
-      ),
-    [mine, filter],
-  );
+  const leads = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return mine.filter((i) => {
+      const inBucket =
+        filter === "archived" ? i.status === "archived" : i.status !== "archived";
+      if (!inBucket) return false;
+      if (!q) return true;
+      return (
+        i.buyerName.toLowerCase().includes(q) ||
+        i.buyerEmail.toLowerCase().includes(q) ||
+        i.propertyTitle.toLowerCase().includes(q) ||
+        i.message.toLowerCase().includes(q)
+      );
+    });
+  }, [mine, filter, search]);
   const newCount = mine.filter((i) => i.status === "new").length;
   const unreadThreads = messageThreads.filter(
     (t) => (t.unreadCount ?? 0) > 0,
@@ -171,8 +180,28 @@ export default function DealerInquiriesScreen() {
   const confirmArchive = (item: Inquiry) =>
     appAlert("Archive this lead?", "You can still find it under Archived.", [
       { text: "Cancel", style: "cancel" },
-      { text: "Archive", onPress: () => archiveInquiry(item.id) },
+      {
+        text: "Archive",
+        onPress: () => {
+          void (async () => {
+            const result = await archiveInquiry(item.id);
+            if (!result.ok) {
+              appAlert("Couldn't archive", result.message ?? "Please try again.");
+              return;
+            }
+            toast("Lead archived");
+          })();
+        },
+      },
     ]);
+
+  const handleMarkRead = async (item: Inquiry) => {
+    if (item.status !== "new") return;
+    const result = await markInquiryRead(item.id);
+    if (!result.ok) {
+      appAlert("Couldn't update", result.message ?? "Please try again.");
+    }
+  };
 
   const header = (
     <View style={styles.header}>
@@ -204,17 +233,27 @@ export default function DealerInquiriesScreen() {
         onChange={setMainTab}
       />
       {mainTab === "leads" ? (
-        <View style={styles.filters}>
-          <Chip
-            label="Inbox"
-            selected={filter === "inbox"}
-            onPress={() => setFilter("inbox")}
+        <View style={styles.leadTools}>
+          <TextField
+            label="Search leads"
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Buyer, listing, or message"
+            autoCapitalize="none"
+            autoCorrect={false}
           />
-          <Chip
-            label="Archived"
-            selected={filter === "archived"}
-            onPress={() => setFilter("archived")}
-          />
+          <View style={styles.filters}>
+            <Chip
+              label="Inbox"
+              selected={filter === "inbox"}
+              onPress={() => setFilter("inbox")}
+            />
+            <Chip
+              label="Archived"
+              selected={filter === "archived"}
+              onPress={() => setFilter("archived")}
+            />
+          </View>
         </View>
       ) : null}
     </View>
@@ -257,9 +296,7 @@ export default function DealerInquiriesScreen() {
               }
             >
               <Pressable
-                onPress={() => {
-                  if (item.status === "new") markInquiryRead(item.id);
-                }}
+                onPress={() => void handleMarkRead(item)}
                 accessibilityHint={
                   item.status === "new" ? "Marks this lead as read" : undefined
                 }
@@ -307,6 +344,19 @@ export default function DealerInquiriesScreen() {
                         variant="secondary"
                         onPress={() =>
                           void Linking.openURL(`tel:${item.buyerPhone}`)
+                        }
+                      />
+                    ) : null}
+                    {item.buyerEmail ? (
+                      <Button
+                        label="Email"
+                        icon={Mail}
+                        size="sm"
+                        variant="secondary"
+                        onPress={() =>
+                          void Linking.openURL(
+                            `mailto:${item.buyerEmail}?subject=${encodeURIComponent(`Re: ${item.propertyTitle}`)}`,
+                          )
                         }
                       />
                     ) : null}
@@ -514,6 +564,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     paddingBottom: spacing.md,
   },
+  leadTools: { gap: spacing.sm },
   filters: { flexDirection: "row", gap: spacing.sm },
   list: {
     paddingHorizontal: spacing.lg,

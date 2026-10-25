@@ -3,16 +3,20 @@ import { useRouter, type Href } from "expo-router";
 import React, { useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from "react-native";
 
-import { Button } from "@/components/ds/Button";
-import { ListRow, ListSection } from "@/components/ds/ListRow";
-import { Screen } from "@/components/ds/Screen";
-import { TextField } from "@/components/ds/TextField";
-import { toast } from "@/components/ds/Toast";
-import CitySelectionModal from "@/components/ui/CitySelectionModal";
+import {
+  Button,
+  ChipGroup,
+  CityField,
+  EmptyState,
+  ListRow,
+  ListSection,
+  MultiChipGroup,
+  Screen,
+  TextField,
+  toast,
+} from "@/components/ds";
 import { appAlert } from "@/components/ui/app-alert";
-import { Chip } from "@/components/ui/chip";
-import { EmptyState } from "@/components/ui/empty-state";
-import { Plus, Store } from "@/components/ui/icons";
+import { Camera, Eye, Plus, Store } from "@/components/ui/icons";
 import { useApp } from "@/context/AppContext";
 import type { DirectoryCategory } from "@/data/types";
 import { initialsFromName } from "@/lib/format";
@@ -20,39 +24,36 @@ import { pickAndUploadPropertyImage } from "@/lib/media-upload";
 import { ownsDirectory } from "@/lib/ownership";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 
-const CATEGORIES: DirectoryCategory[] = [
+const DEALER_CATEGORIES = [
   "Agent & Broker",
   "Builder & Developer",
   "Property Consultant",
-  "Interior Decorator",
-  "Architect",
-  "Building Contractor",
-  "Vastu Consultant",
-  "Home Valuation/Inspection",
-  "Home Shifting/Deep Cleaning",
-  "Architect & Interior Designer",
-  "House Services",
-  "Movers & Packers",
-  "Contractors",
-  "Event Managers",
-  "Wedding Planners",
-];
+] as const satisfies readonly DirectoryCategory[];
+type DealerCategory = (typeof DEALER_CATEGORIES)[number];
 
 const SPECIALTIES = [
-  "Heritage Havelis",
-  "Lakefront Villas",
-  "Agricultural Lands",
-  "RERA Clearances",
-  "Commercial Leases",
-  "Title Checks",
-  "Luxury Apartments",
-  "Bungalows",
-  "Plots & Land",
+  "Residential sales",
+  "Residential rentals",
+  "Commercial leases",
+  "Plots & land",
+  "Luxury homes",
+  "New projects",
+  "RERA clearances",
+  "Title checks",
+  "Resale",
+  "Investment advisory",
 ];
 
 type Errors = Partial<Record<"firmName" | "ownerName" | "mobile" | "email" | "city", string>>;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function asDealerCategory(value: string | undefined): DealerCategory {
+  if (value && (DEALER_CATEGORIES as readonly string[]).includes(value)) {
+    return value as DealerCategory;
+  }
+  return "Agent & Broker";
+}
 
 export default function BusinessProfileScreen() {
   const router = useRouter();
@@ -69,12 +70,11 @@ export default function BusinessProfileScreen() {
   const [form, setForm] = useState(() => ({
     firmName: mine?.firmName ?? "",
     ownerName: mine?.ownerName ?? userName,
-    category: (mine?.category ?? "Agent & Broker") as DirectoryCategory,
+    category: asDealerCategory(mine?.category),
     city: mine?.city ?? "",
     address: mine?.address ?? "",
     mobile: mine?.mobile ?? profile?.phone ?? "",
     email: mine?.email ?? userEmail,
-    website: mine?.website ?? "",
     reraId: mine?.reraId ?? "",
     experience: mine?.experience ?? "",
     teamSize: mine?.teamSize != null ? String(mine.teamSize) : "",
@@ -90,7 +90,6 @@ export default function BusinessProfileScreen() {
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<"logo" | "cover" | null>(null);
-  const [cityOpen, setCityOpen] = useState(false);
 
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -99,7 +98,7 @@ export default function BusinessProfileScreen() {
 
   if (!mine) {
     return (
-      <Screen title="Business profile">
+      <Screen title="Business profile" fallbackHref={"/(tabs)/profile" as Href}>
         <EmptyState
           icon={Store}
           title="No business profile yet"
@@ -112,6 +111,10 @@ export default function BusinessProfileScreen() {
   }
 
   const upload = async (which: "logo" | "cover") => {
+    if (!isApiMode) {
+      appAlert("Photo upload unavailable", "Connect to the API to change your logo and cover.");
+      return;
+    }
     setUploading(which);
     try {
       const url = await pickAndUploadPropertyImage();
@@ -122,10 +125,11 @@ export default function BusinessProfileScreen() {
   };
 
   const save = async () => {
+    const digits = form.mobile.replace(/\D/g, "");
     const e: Errors = {};
     if (form.firmName.trim().length < 2) e.firmName = "Enter your firm name.";
     if (form.ownerName.trim().length < 2) e.ownerName = "Enter the owner or representative name.";
-    if (form.mobile.trim().length < 5) e.mobile = "Enter a contact number.";
+    if (digits.length < 10) e.mobile = "Enter a 10-digit mobile number.";
     if (!EMAIL_RE.test(form.email.trim())) e.email = "Enter a valid email.";
     if (form.city.trim().length < 2) e.city = "Choose your operating city.";
     setErrors(e);
@@ -148,7 +152,6 @@ export default function BusinessProfileScreen() {
       address: form.address.trim(),
       mobile: form.mobile.trim(),
       email: form.email.trim(),
-      website: form.website.trim(),
       reraId: form.reraId.trim() || undefined,
       experience: form.experience.trim() || undefined,
       teamSize: teamSize != null && Number.isFinite(teamSize) ? teamSize : undefined,
@@ -169,27 +172,35 @@ export default function BusinessProfileScreen() {
     toast("Business profile saved");
   };
 
-  const toggleSpecialty = (s: string) =>
-    set("specialties", form.specialties.includes(s) ? form.specialties.filter((x) => x !== s) : [...form.specialties, s]);
+  const busy = Boolean(uploading) || saving;
 
   return (
     <Screen
       title="Business profile"
-      fallbackHref={"/(dealer)/profile" as Href}
+      fallbackHref={"/(tabs)/profile" as Href}
       rightAction={
         <Button
           label="Preview"
           variant="tertiary"
+          icon={Eye}
           onPress={() => router.push({ pathname: "/broker/[id]", params: { id: mine.id } })}
         />
       }
-      footer={<Button label="Save business profile" loading={saving} disabled={Boolean(uploading)} onPress={() => void save()} fullWidth />}
+      footer={
+        <Button
+          label="Save business profile"
+          loading={saving}
+          disabled={Boolean(uploading)}
+          onPress={() => void save()}
+          fullWidth
+        />
+      }
     >
       <View style={styles.brand}>
         <Pressable
           onPress={() => void upload("cover")}
-          disabled={!isApiMode || Boolean(uploading)}
-          style={styles.cover}
+          disabled={busy}
+          style={({ pressed }) => [styles.cover, pressed && { opacity: 0.92 }]}
           accessibilityRole="button"
           accessibilityLabel="Change cover photo"
         >
@@ -203,34 +214,51 @@ export default function BusinessProfileScreen() {
           )}
           {uploading === "cover" ? (
             <View style={styles.overlay}>
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={colors.onAccent} />
+            </View>
+          ) : form.coverImageUrl ? (
+            <View style={styles.coverBadge}>
+              <Camera size={14} color={colors.onPrimary} />
+              <Text style={styles.coverBadgeText}>Cover</Text>
             </View>
           ) : null}
         </Pressable>
-        <Pressable
-          onPress={() => void upload("logo")}
-          disabled={!isApiMode || Boolean(uploading)}
-          style={styles.logo}
-          accessibilityRole="button"
-          accessibilityLabel="Change logo"
-        >
-          {form.logoUrl ? (
-            <Image source={{ uri: form.logoUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
-          ) : (
-            <Text style={styles.logoText}>{initialsFromName(form.firmName || form.ownerName || "SG")}</Text>
-          )}
-          {uploading === "logo" ? (
-            <View style={styles.overlay}>
-              <ActivityIndicator color="#fff" />
-            </View>
-          ) : null}
-        </Pressable>
-        <Text style={styles.caption}>Tap the cover or logo to change it.</Text>
+
+        <View style={styles.brandRow}>
+          <Pressable
+            onPress={() => void upload("logo")}
+            disabled={busy}
+            style={({ pressed }) => [styles.logo, pressed && { opacity: 0.9 }]}
+            accessibilityRole="button"
+            accessibilityLabel="Change logo"
+          >
+            {form.logoUrl ? (
+              <Image source={{ uri: form.logoUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
+            ) : (
+              <Text style={styles.logoText}>{initialsFromName(form.firmName || form.ownerName || "SG")}</Text>
+            )}
+            {uploading === "logo" ? (
+              <View style={styles.overlay}>
+                <ActivityIndicator color={colors.onAccent} />
+              </View>
+            ) : null}
+          </Pressable>
+          <View style={styles.brandMeta}>
+            <Text style={styles.firmPreview} numberOfLines={2}>
+              {form.firmName.trim() || "Your firm name"}
+            </Text>
+            <Text style={styles.ownerPreview} numberOfLines={1}>
+              {form.ownerName.trim() ? `Owner · ${form.ownerName.trim()}` : "Owner name"}
+            </Text>
+            <Text style={styles.caption}>Tap cover or logo to update photos.</Text>
+          </View>
+        </View>
       </View>
 
       <ListSection footer="Hidden profiles don't appear in the public dealer directory.">
         <ListRow
           title="Show in directory"
+          subtitle={form.listingActive ? "Visible to buyers searching dealers" : "Hidden from the dealer directory"}
           showChevron={false}
           accessory={
             <Switch
@@ -244,22 +272,35 @@ export default function BusinessProfileScreen() {
 
       <View style={styles.group}>
         <Text style={styles.heading}>Firm</Text>
-        <TextField label="Firm name" required value={form.firmName} onChangeText={(v) => set("firmName", v)} maxLength={160} error={errors.firmName} />
-        <View style={{ gap: spacing.sm }}>
-          <Text style={styles.label}>Category</Text>
-          <View style={styles.chips}>
-            {CATEGORIES.map((c) => (
-              <Chip key={c} label={c} selected={form.category === c} onPress={() => set("category", c)} />
-            ))}
-          </View>
+        <TextField
+          label="Firm name"
+          required
+          value={form.firmName}
+          onChangeText={(v) => set("firmName", v)}
+          maxLength={160}
+          placeholder="e.g. Lakeside Realty"
+          error={errors.firmName}
+        />
+        <View style={styles.fieldBlock}>
+          <Text style={styles.label}>Business type</Text>
+          <ChipGroup options={DEALER_CATEGORIES} value={form.category} onChange={(c) => set("category", c)} />
         </View>
-        <Pressable onPress={() => setCityOpen(true)} accessibilityRole="button" accessibilityLabel="Operating city">
-          <View pointerEvents="none">
-            <TextField label="Operating city" required value={form.city} placeholder="Choose city" editable={false} suffix="›" error={errors.city} />
-          </View>
-        </Pressable>
-        <TextField label="Office address" value={form.address} onChangeText={(v) => set("address", v)} maxLength={300} />
-        <TextField label="RERA ID" value={form.reraId} onChangeText={(v) => set("reraId", v)} autoCapitalize="characters" maxLength={80} />
+        <CityField value={form.city} onChange={(c) => set("city", c)} required error={errors.city} />
+        <TextField
+          label="Office address"
+          value={form.address}
+          onChangeText={(v) => set("address", v)}
+          maxLength={300}
+          placeholder="Street, landmark, area"
+        />
+        <TextField
+          label="RERA ID"
+          value={form.reraId}
+          onChangeText={(v) => set("reraId", v)}
+          autoCapitalize="characters"
+          maxLength={80}
+          hint="Optional. Shown as a badge on your public profile."
+        />
         <View style={styles.row}>
           <TextField
             label="Experience"
@@ -290,8 +331,26 @@ export default function BusinessProfileScreen() {
 
       <View style={styles.group}>
         <Text style={styles.heading}>Contact</Text>
-        <TextField label="Owner / representative" required value={form.ownerName} onChangeText={(v) => set("ownerName", v)} maxLength={120} error={errors.ownerName} />
-        <TextField label="Mobile" required value={form.mobile} onChangeText={(v) => set("mobile", v)} keyboardType="phone-pad" maxLength={40} error={errors.mobile} />
+        <TextField
+          label="Owner / representative"
+          required
+          value={form.ownerName}
+          onChangeText={(v) => set("ownerName", v)}
+          maxLength={120}
+          autoCapitalize="words"
+          error={errors.ownerName}
+        />
+        <TextField
+          label="Mobile"
+          required
+          value={form.mobile}
+          onChangeText={(v) => set("mobile", v)}
+          keyboardType="phone-pad"
+          maxLength={40}
+          prefix="+91"
+          placeholder="98xxxxxxxx"
+          error={errors.mobile}
+        />
         <TextField
           label="Public email"
           required
@@ -303,35 +362,51 @@ export default function BusinessProfileScreen() {
           hint="Shown to customers on your profile."
           error={errors.email}
         />
-        <TextField label="Website" value={form.website} onChangeText={(v) => set("website", v)} keyboardType="url" autoCapitalize="none" maxLength={200} />
       </View>
 
       <View style={styles.group}>
         <Text style={styles.heading}>Specialties</Text>
-        <View style={styles.chips}>
-          {SPECIALTIES.map((s) => (
-            <Chip key={s} label={s} selected={form.specialties.includes(s)} onPress={() => toggleSpecialty(s)} />
-          ))}
-        </View>
+        <Text style={styles.caption}>Pick the work buyers should associate with your firm.</Text>
+        <MultiChipGroup
+          options={SPECIALTIES}
+          value={form.specialties}
+          onChange={(next) => set("specialties", next)}
+        />
       </View>
 
       <View style={styles.group}>
         <Text style={styles.heading}>Business hours</Text>
-        <TextField label="Monday – Friday" value={form.hoursWeekdays} onChangeText={(v) => set("hoursWeekdays", v)} placeholder="9:30 AM – 7:30 PM" />
-        <TextField label="Saturday" value={form.hoursSaturday} onChangeText={(v) => set("hoursSaturday", v)} placeholder="10:00 AM – 6:00 PM" />
-        <TextField label="Sunday" value={form.hoursSunday} onChangeText={(v) => set("hoursSunday", v)} placeholder="Closed / By appointment" />
+        <TextField
+          label="Monday – Friday"
+          value={form.hoursWeekdays}
+          onChangeText={(v) => set("hoursWeekdays", v)}
+          placeholder="9:30 AM – 7:30 PM"
+        />
+        <TextField
+          label="Saturday"
+          value={form.hoursSaturday}
+          onChangeText={(v) => set("hoursSaturday", v)}
+          placeholder="10:00 AM – 6:00 PM"
+        />
+        <TextField
+          label="Sunday"
+          value={form.hoursSunday}
+          onChangeText={(v) => set("hoursSunday", v)}
+          placeholder="Closed / By appointment"
+        />
       </View>
-
-      <CitySelectionModal visible={cityOpen} onClose={() => setCityOpen(false)} value={form.city} onSelect={(c) => set("city", c)} />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  brand: { alignItems: "center", gap: spacing.sm },
+  brand: {
+    gap: spacing.md,
+    paddingBottom: spacing.sm,
+  },
   cover: {
     alignSelf: "stretch",
-    height: 140,
+    height: 148,
     borderRadius: radius.lg,
     borderCurve: "continuous",
     overflow: "hidden",
@@ -339,10 +414,30 @@ const styles = StyleSheet.create({
   },
   coverEmpty: { flex: 1, alignItems: "center", justifyContent: "center", gap: spacing.xs },
   coverText: { ...type.label, color: colors.onPrimary },
+  coverBadge: {
+    position: "absolute",
+    right: spacing.md,
+    bottom: spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: radius.sm,
+    borderCurve: "continuous",
+    backgroundColor: colors.overlay,
+  },
+  coverBadgeText: { ...type.caption, color: colors.onPrimary, fontFamily: "Inter_600SemiBold", fontWeight: "600" },
+  brandRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.lg,
+    marginTop: -40,
+    paddingHorizontal: spacing.sm,
+  },
   logo: {
-    width: 84,
-    height: 84,
-    marginTop: -48,
+    width: 80,
+    height: 80,
     borderRadius: radius.lg,
     borderCurve: "continuous",
     borderWidth: 3,
@@ -353,11 +448,19 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   logoText: { ...type.title, color: colors.onAccent },
-  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: colors.overlay, alignItems: "center", justifyContent: "center" },
+  brandMeta: { flex: 1, gap: 2, paddingTop: 28 },
+  firmPreview: { ...type.heading, color: colors.ink },
+  ownerPreview: { ...type.caption, color: colors.inkMuted },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: colors.overlay,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   caption: { ...type.caption, color: colors.inkMuted },
   group: { gap: spacing.lg },
   heading: { ...type.heading, color: colors.ink },
   label: { ...type.label, color: colors.inkSecondary },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  fieldBlock: { gap: spacing.sm },
   row: { flexDirection: "row", gap: spacing.md },
 });

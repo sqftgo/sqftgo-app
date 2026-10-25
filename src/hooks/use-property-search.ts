@@ -9,16 +9,21 @@ import { filterProperties, type PropertyFilters } from "@/lib/filters";
 
 const PAGE_SIZE = 20;
 
-/** Filters the BFF applies (`/api/properties`); everything else is refined on loaded pages. */
+/**
+ * Filters the BFF applies (`/api/properties`); everything else is refined on loaded pages.
+ * Buy/Rent are not sent as exact purpose — client merges buy↔sell and rent↔lease.
+ */
 export function toServerFilters(city: string, f: PropertyFilters): PropertyListFilters {
   const query = f.query.trim();
   const locality = f.locality.trim();
   const priceMin = f.minPrice ? Number(f.minPrice) : undefined;
   const priceMax = f.maxPrice ? Number(f.maxPrice) : undefined;
+  const serverPurpose =
+    f.purpose === "lease" || f.purpose === "sell" ? f.purpose : undefined;
   return {
     status: "Active",
     city: city && city.toLowerCase() !== "all india" ? city : undefined,
-    purpose: f.purpose !== "all" ? f.purpose : undefined,
+    purpose: serverPurpose,
     type: f.type !== "any" && f.type !== "commercial" ? f.type : undefined,
     minPrice: Number.isFinite(priceMin) ? priceMin : undefined,
     maxPrice: Number.isFinite(priceMax) ? priceMax : undefined,

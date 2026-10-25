@@ -9,7 +9,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ChevronLeft, Heart, Share2, type IconComponent } from "@/components/ui/icons";
-import { colors, radius, spacing, type } from "@/theme/tokens";
+import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
 
 import { GALLERY_HEIGHT } from "./PropertyGallery";
 
@@ -44,8 +44,9 @@ function FloatingButton({
       style={({ pressed }) => ({
         width: 40,
         height: 40,
-        borderRadius: radius.full,
-        boxShadow: "0 2px 8px rgba(15, 30, 54, 0.18)",
+        borderRadius: radius.sm,
+        borderCurve: "continuous",
+        boxShadow: shadow.raised,
         transform: [{ scale: pressed ? 0.94 : 1 }],
       })}
     >
@@ -56,7 +57,8 @@ function FloatingButton({
           flex: 1,
           alignItems: "center",
           justifyContent: "center",
-          borderRadius: radius.full,
+          borderRadius: radius.sm,
+          borderCurve: "continuous",
           overflow: "hidden",
           borderWidth: 1,
           borderColor: "rgba(255, 255, 255, 0.7)",

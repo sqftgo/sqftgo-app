@@ -3,27 +3,26 @@ import React, { useEffect, useState } from "react";
 import { Pressable, ScrollView, Switch, Text, TextInput, View } from "react-native";
 
 import { FilterOptionRow, MultiSelectChipRow } from "@/components/ui/chip";
+import { FilterDropdown } from "@/components/ui/filter-dropdown";
 import { ModalSheet, ModalSheetHeader } from "@/components/ui/modal-sheet";
+import { FilterRangeSlider } from "@/components/ui/filter-range-slider";
 import {
   AMENITY_OPTIONS,
   BHK_OPTIONS,
-  BUDGET_BUY_MAX_OPTIONS,
-  BUDGET_BUY_MIN_OPTIONS,
-  BUDGET_RENT_MAX_OPTIONS,
-  BUDGET_RENT_MIN_OPTIONS,
+  budgetStopsForPurpose,
   countActiveFilters,
   defaultFilters,
   FURNISHING_OPTIONS,
   isRentLikePurpose,
   NON_RESIDENTIAL_TYPES,
   PROPERTY_TYPE_OPTIONS,
-  SIZE_MAX_OPTIONS,
-  SIZE_MIN_OPTIONS,
+  SIZE_STOPS,
   type FurnishingFilter,
   type PropertyFilters,
   type PurposeFilter,
   type SortOption,
 } from "@/lib/filters";
+import { formatIndianPrice, formatSize } from "@/lib/format";
 import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
 import type { ListingFilter } from "@/data/listing-filters";
 import { isFilterOn } from "@/hooks/useListingFilters";
@@ -37,7 +36,7 @@ const PURPOSE_OPTIONS: { value: PurposeFilter; label: string }[] = [
 ];
 
 const TYPE_OPTIONS: { value: string; label: string }[] = [
-  { value: "any", label: "All Types" },
+  { value: "any", label: "All types" },
   ...PROPERTY_TYPE_OPTIONS.map((t) => ({ value: t, label: t })),
 ];
 
@@ -95,7 +94,7 @@ interface FilterSheetProps {
   listingFilters?: ListingFilter[];
 }
 
-/** Filter Properties panel — fields aligned with web `/listings` FilterPanel. */
+/** Filter Properties panel — dropdowns for long option lists, chips for quick multi-select. */
 export function FilterSheet({
   visible,
   filters,
@@ -105,9 +104,13 @@ export function FilterSheet({
   listingFilters = [],
 }: FilterSheetProps) {
   const [draft, setDraft] = useState<PropertyFilters>(filters);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
   useEffect(() => {
-    if (visible) setDraft(filters);
+    if (visible) {
+      setDraft(filters);
+      setOpenDropdown(null);
+    }
   }, [visible, filters]);
 
   const activeCount = countActiveFilters(draft);
@@ -143,11 +146,13 @@ export function FilterSheet({
       minPrice: "",
       maxPrice: "",
     }));
+    setOpenDropdown(null);
   };
 
   const handleReset = () => {
     triggerHaptic();
     setDraft({ ...defaultFilters, query: draft.query });
+    setOpenDropdown(null);
   };
 
   const handleApply = () => {
@@ -178,12 +183,8 @@ export function FilterSheet({
     setDraft((prev) => ({ ...prev, extra: { ...(prev.extra ?? {}), [key]: value } }));
   };
 
-  const minPriceOptions = isRentLikePurpose(draft.purpose)
-    ? BUDGET_RENT_MIN_OPTIONS
-    : BUDGET_BUY_MIN_OPTIONS;
-  const maxPriceOptions = isRentLikePurpose(draft.purpose)
-    ? BUDGET_RENT_MAX_OPTIONS
-    : BUDGET_BUY_MAX_OPTIONS;
+  const budgetStops = budgetStopsForPurpose(draft.purpose);
+  const sizeStops = [...SIZE_STOPS];
 
   const resetAction =
     activeCount > 0 ? (
@@ -195,7 +196,8 @@ export function FilterSheet({
   return (
     <ModalSheet visible={visible} onClose={onClose} maxHeight="85%" avoidKeyboard>
       <ModalSheetHeader
-        title={activeCount > 0 ? `Filter Properties (${activeCount})` : "Filter Properties"}
+        title={activeCount > 0 ? `Filters (${activeCount})` : "Filters"}
+        subtitle="Drag budget and size bars, or use dropdowns for type and sort"
         rightAction={resetAction}
         onClose={onClose}
       />
@@ -209,30 +211,35 @@ export function FilterSheet({
           gap: spacing.lg,
         }}
       >
-
-
         {on("purpose") ? (
-        <FilterGroup label="Looking to">
-          <FilterOptionRow
-            options={PURPOSE_OPTIONS}
-            value={draft.purpose}
-            onChange={handlePurposeChange}
-          />
-        </FilterGroup>
+          <FilterGroup label="Looking to">
+            <FilterOptionRow
+              options={PURPOSE_OPTIONS}
+              value={draft.purpose}
+              onChange={handlePurposeChange}
+            />
+          </FilterGroup>
         ) : null}
 
         {on("type") ? (
-        <FilterGroup label={listingFilters.find((f) => f.key === "type")?.label || "Property type"}>
-          <FilterOptionRow
-            options={TYPE_OPTIONS}
-            value={draft.type === "commercial" ? "any" : draft.type}
-            onChange={(v) => patch("type", v)}
-          />
-        </FilterGroup>
+          <FilterGroup label={listingFilters.find((f) => f.key === "type")?.label || "Property type"}>
+            <FilterDropdown
+              fieldKey="type"
+              label="Type"
+              value={draft.type === "commercial" ? "any" : draft.type}
+              options={TYPE_OPTIONS}
+              onChange={(v) => patch("type", v)}
+              openKey={openDropdown}
+              onOpenKeyChange={setOpenDropdown}
+            />
+          </FilterGroup>
         ) : null}
 
         {showResidentialSpecs && on("bhk") ? (
-          <FilterGroup label={listingFilters.find((f) => f.key === "bhk")?.label || "Bedrooms (BHK)"} subtitle="Select one or more">
+          <FilterGroup
+            label={listingFilters.find((f) => f.key === "bhk")?.label || "Bedrooms (BHK)"}
+            subtitle="Select one or more"
+          >
             <MultiSelectChipRow
               options={bhkOptions}
               values={draft.bhk}
@@ -243,62 +250,60 @@ export function FilterSheet({
         ) : null}
 
         {on("price") ? (
-        <FilterGroup
-          label={listingFilters.find((f) => f.key === "price")?.label || "Budget"}
-          subtitle={
-            isRentLikePurpose(draft.purpose) ? "Monthly rent range" : "Purchase price range"
-          }
-        >
-          <Text style={{ ...type.caption, color: colors.inkMuted }}>Minimum</Text>
-          <FilterOptionRow
-            options={minPriceOptions.map((o) => ({
-              value: o.value || "__none__",
-              label: o.label,
-            }))}
-            value={draft.minPrice || "__none__"}
-            onChange={(v) => patch("minPrice", v === "__none__" ? "" : v)}
-          />
-          <Text style={{ ...type.caption, color: colors.inkMuted, marginTop: spacing.sm }}>
-            Maximum
-          </Text>
-          <FilterOptionRow
-            options={maxPriceOptions.map((o) => ({
-              value: o.value || "__none__",
-              label: o.label,
-            }))}
-            value={draft.maxPrice || "__none__"}
-            onChange={(v) => patch("maxPrice", v === "__none__" ? "" : v)}
-          />
-        </FilterGroup>
+          <FilterGroup
+            label={listingFilters.find((f) => f.key === "price")?.label || "Budget"}
+            subtitle={
+              isRentLikePurpose(draft.purpose)
+                ? "Drag to set monthly rent range"
+                : "Drag to set purchase price range"
+            }
+          >
+            <FilterRangeSlider
+              key={draft.purpose}
+              stops={budgetStops}
+              minValue={draft.minPrice}
+              maxValue={draft.maxPrice}
+              onChange={(minPrice, maxPrice) => {
+                setDraft((prev) => ({ ...prev, minPrice, maxPrice }));
+              }}
+              formatValue={(amount, edge) => {
+                if (edge === "min" && amount <= 0) return "Any";
+                if (edge === "max" && amount >= budgetStops[budgetStops.length - 1]) return "Any";
+                return formatIndianPrice(amount);
+              }}
+              formatEndLabel={(amount) => formatIndianPrice(amount)}
+              accessibilityLabel="Budget range"
+            />
+          </FilterGroup>
         ) : null}
 
         {on("size") ? (
-        <FilterGroup label={listingFilters.find((f) => f.key === "size")?.label || "Size (sq.ft.)"}>
-          <Text style={{ ...type.caption, color: colors.inkMuted }}>Minimum</Text>
-          <FilterOptionRow
-            options={SIZE_MIN_OPTIONS.map((o) => ({
-              value: o.value || "__none__",
-              label: o.label,
-            }))}
-            value={draft.minSize || "__none__"}
-            onChange={(v) => patch("minSize", v === "__none__" ? "" : v)}
-          />
-          <Text style={{ ...type.caption, color: colors.inkMuted, marginTop: spacing.sm }}>
-            Maximum
-          </Text>
-          <FilterOptionRow
-            options={SIZE_MAX_OPTIONS.map((o) => ({
-              value: o.value || "__none__",
-              label: o.label,
-            }))}
-            value={draft.maxSize || "__none__"}
-            onChange={(v) => patch("maxSize", v === "__none__" ? "" : v)}
-          />
-        </FilterGroup>
+          <FilterGroup
+            label={listingFilters.find((f) => f.key === "size")?.label || "Size (sq.ft.)"}
+            subtitle="Drag to set area range — each tick is a size step"
+          >
+            <FilterRangeSlider
+              stops={sizeStops}
+              minValue={draft.minSize}
+              maxValue={draft.maxSize}
+              onChange={(minSize, maxSize) => {
+                setDraft((prev) => ({ ...prev, minSize, maxSize }));
+              }}
+              formatValue={(amount, edge) => {
+                if (edge === "min" && amount <= 0) return "Any";
+                if (edge === "max" && amount >= sizeStops[sizeStops.length - 1]) return "Any";
+                return formatSize(amount);
+              }}
+              formatEndLabel={(amount) => formatSize(amount)}
+              accessibilityLabel="Size range in square feet"
+            />
+          </FilterGroup>
         ) : null}
 
         {showResidentialSpecs && on("furnishing") ? (
-          <FilterGroup label={listingFilters.find((f) => f.key === "furnishing")?.label || "Furnishing"}>
+          <FilterGroup
+            label={listingFilters.find((f) => f.key === "furnishing")?.label || "Furnishing"}
+          >
             <MultiSelectChipRow
               options={furnishingOptions}
               values={draft.furnishing}
@@ -309,74 +314,77 @@ export function FilterSheet({
         ) : null}
 
         {on("amenities") ? (
-        <FilterGroup label={listingFilters.find((f) => f.key === "amenities")?.label || "Amenities"} subtitle="Must include all selected">
-          <MultiSelectChipRow
-            options={AMENITY_OPTIONS.map((a) => ({ value: a, label: a }))}
-            values={draft.selectedAmenities}
-            onToggle={(v) => toggleArrayItem("selectedAmenities", v)}
-            showCheck
-          />
-        </FilterGroup>
+          <FilterGroup
+            label={listingFilters.find((f) => f.key === "amenities")?.label || "Amenities"}
+            subtitle="Must include all selected"
+          >
+            <MultiSelectChipRow
+              options={AMENITY_OPTIONS.map((a) => ({ value: a, label: a }))}
+              values={draft.selectedAmenities}
+              onToggle={(v) => toggleArrayItem("selectedAmenities", v)}
+              showCheck
+            />
+          </FilterGroup>
         ) : null}
 
-        {(on("rera") || on("featured")) ? (
-        <View
-          style={{
-            gap: spacing.lg,
-            paddingVertical: spacing.sm,
-            borderTopWidth: 1,
-            borderBottomWidth: 1,
-            borderColor: colors.border,
-          }}
-        >
-          {on("rera") ? (
+        {on("rera") || on("featured") ? (
           <View
             style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
+              gap: spacing.lg,
+              paddingVertical: spacing.sm,
+              borderTopWidth: 1,
+              borderBottomWidth: 1,
+              borderColor: colors.border,
             }}
           >
-            <View style={{ flex: 1, paddingRight: spacing.md }}>
-              <Text style={{ ...type.emphasis, color: colors.ink }}>
-                {listingFilters.find((f) => f.key === "rera")?.label || "RERA Approved Only"}
-              </Text>
-              <Text style={{ ...type.caption, color: colors.inkMuted, marginTop: 2 }}>
-                Show properties with valid RERA registration
-              </Text>
-            </View>
-            <Switch
-              value={draft.reraApprovedOnly}
-              onValueChange={(val) => patch("reraApprovedOnly", val)}
-              trackColor={{ false: colors.borderStrong, true: colors.accent }}
-            />
-          </View>
-          ) : null}
+            {on("rera") ? (
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <View style={{ flex: 1, paddingRight: spacing.md }}>
+                  <Text style={{ ...type.emphasis, color: colors.ink }}>
+                    {listingFilters.find((f) => f.key === "rera")?.label || "RERA approved only"}
+                  </Text>
+                  <Text style={{ ...type.caption, color: colors.inkMuted, marginTop: 2 }}>
+                    Show properties with valid RERA registration
+                  </Text>
+                </View>
+                <Switch
+                  value={draft.reraApprovedOnly}
+                  onValueChange={(val) => patch("reraApprovedOnly", val)}
+                  trackColor={{ false: colors.borderStrong, true: colors.accent }}
+                />
+              </View>
+            ) : null}
 
-          {on("featured") ? (
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <View style={{ flex: 1, paddingRight: spacing.md }}>
-              <Text style={{ ...type.emphasis, color: colors.ink }}>
-                {listingFilters.find((f) => f.key === "featured")?.label || "Featured Only"}
-              </Text>
-              <Text style={{ ...type.caption, color: colors.inkMuted, marginTop: 2 }}>
-                Show handpicked featured listings
-              </Text>
-            </View>
-            <Switch
-              value={draft.featuredOnly}
-              onValueChange={(val) => patch("featuredOnly", val)}
-              trackColor={{ false: colors.borderStrong, true: colors.accent }}
-            />
+            {on("featured") ? (
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <View style={{ flex: 1, paddingRight: spacing.md }}>
+                  <Text style={{ ...type.emphasis, color: colors.ink }}>
+                    {listingFilters.find((f) => f.key === "featured")?.label || "Featured only"}
+                  </Text>
+                  <Text style={{ ...type.caption, color: colors.inkMuted, marginTop: 2 }}>
+                    Show handpicked featured listings
+                  </Text>
+                </View>
+                <Switch
+                  value={draft.featuredOnly}
+                  onValueChange={(val) => patch("featuredOnly", val)}
+                  trackColor={{ false: colors.borderStrong, true: colors.accent }}
+                />
+              </View>
+            ) : null}
           </View>
-          ) : null}
-        </View>
         ) : null}
 
         {customFilters.map((def) => {
@@ -430,7 +438,7 @@ export function FilterSheet({
                   color: colors.ink,
                   borderWidth: 1,
                   borderColor: colors.border,
-                  borderRadius: radius.md,
+                  borderRadius: radius.sm,
                   paddingHorizontal: spacing.md,
                   paddingVertical: spacing.sm,
                 }}
@@ -440,10 +448,14 @@ export function FilterSheet({
         })}
 
         <FilterGroup label="Sort by">
-          <FilterOptionRow
-            options={SORT_OPTIONS}
+          <FilterDropdown
+            fieldKey="sort"
+            label="Order"
             value={draft.sort}
+            options={SORT_OPTIONS}
             onChange={(v) => patch("sort", v)}
+            openKey={openDropdown}
+            onOpenKeyChange={setOpenDropdown}
           />
         </FilterGroup>
       </ScrollView>
@@ -463,7 +475,7 @@ export function FilterSheet({
           accessibilityRole="button"
           style={({ pressed }) => ({
             height: 48,
-            borderRadius: radius.md,
+            borderRadius: radius.sm,
             borderCurve: "continuous",
             backgroundColor: colors.accent,
             alignItems: "center",
@@ -484,4 +496,3 @@ export function FilterSheet({
     </ModalSheet>
   );
 }
-

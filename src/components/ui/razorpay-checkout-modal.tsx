@@ -44,7 +44,7 @@ function buildHtml(opts: {
       name: opts.prefillName || "",
       email: opts.prefillEmail || "",
     },
-    theme: { color: "#E05A36" },
+    theme: { color: colors.accent },
   });
 
   return `<!DOCTYPE html>
@@ -53,7 +53,7 @@ function buildHtml(opts: {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
   <style>
-    body { font-family: -apple-system, sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; background:#F7F5F2; color:#0F1E36; }
+    body { font-family: -apple-system, sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; background:${colors.bg}; color:${colors.ink}; }
   </style>
 </head>
 <body>

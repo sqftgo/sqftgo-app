@@ -1,7 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { Stack, useRouter, type Href } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
@@ -30,7 +30,8 @@ import { colors } from "@/theme/tokens";
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export const unstable_settings = {
-  anchor: "(tabs)",
+  /** Fresh guests land on onboarding; logout navigates to /auth explicitly. */
+  anchor: "onboarding",
 };
 
 const navTheme = {
@@ -46,6 +47,8 @@ const navTheme = {
 };
 
 function RootLayoutNav() {
+  const router = useRouter();
+  const wasLoggedInRef = useRef(false);
   const [fontsLoaded] = useFonts({
     Fredoka_600SemiBold,
     Inter_400Regular,
@@ -55,8 +58,8 @@ function RootLayoutNav() {
   });
 
   const {
-    hasCompletedOnboarding,
     isLoggedIn,
+    userRole,
     isHydrating,
     authStatus,
     authError,
@@ -67,11 +70,23 @@ function RootLayoutNav() {
     clearSessionNotice,
   } = useApp();
 
+  const isDealer = isLoggedIn && userRole === "broker";
+  const isBuyer = isLoggedIn && userRole !== "broker";
+
   useEffect(() => {
-    if (!isHydrating && hasCompletedOnboarding !== undefined && fontsLoaded) {
+    if (!isHydrating && fontsLoaded) {
       SplashScreen.hideAsync().catch(() => {});
     }
-  }, [isHydrating, hasCompletedOnboarding, fontsLoaded]);
+  }, [isHydrating, fontsLoaded]);
+
+  // Explicit fallback: when the session ends, leave protected routes for sign-in.
+  useEffect(() => {
+    if (isHydrating) return;
+    if (wasLoggedInRef.current && !isLoggedIn) {
+      router.replace({ pathname: "/auth", params: { mode: "sign-in" } } as unknown as Href);
+    }
+    wasLoggedInRef.current = isLoggedIn;
+  }, [isHydrating, isLoggedIn, router]);
 
   useEffect(() => {
     if (!sessionNotice) return;
@@ -79,7 +94,7 @@ function RootLayoutNav() {
     clearSessionNotice();
   }, [sessionNotice, clearSessionNotice]);
 
-  if (isHydrating || hasCompletedOnboarding === undefined || !fontsLoaded) {
+  if (isHydrating || !fontsLoaded) {
     return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
   }
 
@@ -105,13 +120,28 @@ function RootLayoutNav() {
             contentStyle: { backgroundColor: colors.bg },
           }}
         >
-          <Stack.Protected guard={!hasCompletedOnboarding}>
-            <Stack.Screen name="onboarding" />
+          {/*
+            Always registered. On logout, Protected removes the app shell and Expo
+            falls back to the first available screen / anchor — these must not be
+            dynamic routes (e.g. legal/[doc]) or guest-only Protected screens.
+          */}
+          <Stack.Screen name="onboarding" />
+          <Stack.Screen name="auth/index" />
+          <Stack.Screen name="auth/callback" />
+          <Stack.Screen name="legal/[doc]" />
+          <Stack.Screen name="help" />
+
+          {/* Role-split shells avoid (tabs)↔(dealer) Redirect races on logout. */}
+          <Stack.Protected guard={isBuyer}>
+            <Stack.Screen name="(tabs)" />
           </Stack.Protected>
 
-          {/* Public marketplace: guests browse listings, dealers and services. */}
-          <Stack.Protected guard={Boolean(hasCompletedOnboarding)}>
-            <Stack.Screen name="(tabs)" />
+          <Stack.Protected guard={isDealer}>
+            <Stack.Screen name="(dealer)" />
+          </Stack.Protected>
+
+          {/* Signed-in marketplace + account surfaces. */}
+          <Stack.Protected guard={isLoggedIn}>
             <Stack.Screen name="property/[id]" />
             <Stack.Screen name="broker/[id]" />
             <Stack.Screen name="brokers" />
@@ -120,19 +150,6 @@ function RootLayoutNav() {
             <Stack.Screen name="project/[id]" />
             <Stack.Screen name="destinations" />
             <Stack.Screen name="destinations/[slug]" />
-            <Stack.Screen name="help" />
-            <Stack.Screen name="legal/[doc]" />
-            <Stack.Screen name="auth/callback" />
-          </Stack.Protected>
-
-          {/* Signing in closes this modal and returns to where the guest was. */}
-          <Stack.Protected guard={Boolean(hasCompletedOnboarding) && !isLoggedIn}>
-            <Stack.Screen name="auth/index" options={{ presentation: "modal" }} />
-          </Stack.Protected>
-
-          {/* Account screens. Signing out anywhere drops these from the stack. */}
-          <Stack.Protected guard={Boolean(hasCompletedOnboarding) && isLoggedIn}>
-            <Stack.Screen name="(dealer)" />
             <Stack.Screen name="post-property" options={{ presentation: "fullScreenModal" }} />
             <Stack.Screen name="edit-property/[id]" />
             <Stack.Screen name="subscription" />

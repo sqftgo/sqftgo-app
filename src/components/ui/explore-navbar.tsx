@@ -14,13 +14,14 @@ interface ExploreNavbarProps {
   activeFilterCount: number;
   /** Undefined while the first page loads; null when the search failed. */
   resultCount?: number | null;
+  /** True when more pages may still load. */
+  hasMore?: boolean;
   sortLabel: string;
 }
 
 /**
- * Explore-only top bar — search-first pattern used by Airbnb / Zillow / Housing:
- * location control → unified search + filters → result meta.
- * Styled with SqftGo tokens so it can roll out to other tabs later.
+ * Explore top bar — city context → search → filters → result meta.
+ * Keeps the main browse flow readable: where, what, how many.
  */
 export function ExploreNavbar({
   city,
@@ -30,8 +31,22 @@ export function ExploreNavbar({
   onPressFilters,
   activeFilterCount,
   resultCount,
+  hasMore,
   sortLabel,
 }: ExploreNavbarProps) {
+  const resultLabel =
+    resultCount === null
+      ? "Couldn't load results"
+      : resultCount === undefined
+        ? "Searching listings…"
+        : resultCount === 0
+          ? `No matches in ${city}`
+          : hasMore
+            ? `${resultCount}+ listings in ${city}`
+            : resultCount === 1
+              ? `1 listing in ${city}`
+              : `${resultCount} listings in ${city}`;
+
   return (
     <View
       style={{
@@ -41,7 +56,6 @@ export function ExploreNavbar({
         backgroundColor: colors.bg,
       }}
     >
-      {/* Location Bar — primary context */}
       <Pressable
         onPress={onPressCity}
         hitSlop={6}
@@ -54,15 +68,16 @@ export function ExploreNavbar({
           gap: spacing.sm,
           paddingVertical: 2,
           paddingHorizontal: 2,
-          borderRadius: radius.md,
+          borderRadius: radius.sm,
           opacity: pressed ? 0.75 : 1,
         })}
       >
         <View
           style={{
-            width: 32,
-            height: 32,
-            borderRadius: radius.full,
+            width: 36,
+            height: 36,
+            borderRadius: radius.sm,
+            borderCurve: "continuous",
             backgroundColor: colors.accentSoft,
             alignItems: "center",
             justifyContent: "center",
@@ -80,7 +95,7 @@ export function ExploreNavbar({
               fontWeight: "600",
             }}
           >
-            Searching in
+            Browse properties in
           </Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
             <Text
@@ -99,27 +114,24 @@ export function ExploreNavbar({
         </View>
       </Pressable>
 
-      {/* Search + filters in one surface (marketplace pattern) */}
       <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
         <View style={{ flex: 1 }}>
           <SearchBar
             value={query}
             onChangeText={onQueryChange}
-            placeholder="Locality, project, or type"
+            placeholder={`Search locality or keyword in ${city}`}
           />
         </View>
         <Pressable
           onPress={onPressFilters}
           accessibilityRole="button"
           accessibilityLabel={
-            activeFilterCount > 0
-              ? `Filters, ${activeFilterCount} active`
-              : "Open filters"
+            activeFilterCount > 0 ? `Filters, ${activeFilterCount} active` : "Open filters and sort"
           }
           style={({ pressed }) => ({
             width: 46,
             height: 46,
-            borderRadius: radius.md,
+            borderRadius: radius.sm,
             borderCurve: "continuous",
             alignItems: "center",
             justifyContent: "center",
@@ -143,7 +155,7 @@ export function ExploreNavbar({
                 right: -4,
                 minWidth: 18,
                 height: 18,
-                borderRadius: radius.full,
+                borderRadius: radius.xs,
                 backgroundColor: colors.accent,
                 alignItems: "center",
                 justifyContent: "center",
@@ -160,26 +172,27 @@ export function ExploreNavbar({
         </Pressable>
       </View>
 
-      {/* Result meta — quiet, secondary */}
       <View
         style={{
           flexDirection: "row",
           justifyContent: "space-between",
           alignItems: "center",
+          gap: spacing.md,
         }}
       >
-        <Text style={{ ...type.caption, color: colors.inkMuted }}>
-          {resultCount === null
-            ? "Results unavailable"
-            : resultCount === undefined
-              ? "Searching…"
-              : resultCount === 1 ? "1 property" : `${resultCount} properties`}
+        <Text style={{ ...type.caption, color: colors.inkMuted, flex: 1 }} numberOfLines={1}>
+          {resultLabel}
           {activeFilterCount > 0
             ? ` · ${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"}`
             : ""}
         </Text>
-        <Pressable onPress={onPressFilters} hitSlop={8} accessibilityRole="button">
-          <Text style={{ ...type.caption, color: colors.inkSecondary, fontWeight: "500" }}>
+        <Pressable
+          onPress={onPressFilters}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={`Sort: ${sortLabel}. Open filters to change.`}
+        >
+          <Text style={{ ...type.caption, color: colors.inkSecondary, fontWeight: "600" }}>
             {sortLabel}
           </Text>
         </Pressable>

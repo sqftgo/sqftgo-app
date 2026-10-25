@@ -11,12 +11,14 @@ export interface IconProps extends Omit<SvgProps, 'color'> {
 export type IconComponent = React.ComponentType<IconProps>;
 export type LucideIcon = IconComponent;
 
-function wrapIcon(Component: React.ComponentType<any>): IconComponent {
+function wrapIcon(Component: React.ComponentType<any> | undefined): IconComponent {
+  // Guard missing Iconoir exports so a bad name can't crash the whole app bundle.
+  const Resolved = Component ?? Iconoir.QuestionMark;
   const IconWrapper = React.forwardRef<any, IconProps>(({ size, width, height, color, style, strokeWidth, ...props }, ref) => {
     const w = width ?? size ?? 24;
     const h = height ?? size ?? 24;
     return (
-      <Component
+      <Resolved
         ref={ref}
         width={w}
         height={h}
@@ -27,7 +29,7 @@ function wrapIcon(Component: React.ComponentType<any>): IconComponent {
       />
     );
   });
-  IconWrapper.displayName = Component.displayName || 'IconoirWrapper';
+  IconWrapper.displayName = Resolved.displayName || Resolved.name || 'IconoirWrapper';
   return IconWrapper;
 }
 
@@ -80,7 +82,33 @@ export const PageSearch = wrapIcon(Iconoir.PageSearch);
 export const Phone = wrapIcon(Iconoir.Phone);
 export const Wallet = wrapIcon(Iconoir.Wallet);
 export const Archive = wrapIcon(Iconoir.Archive);
+export const Bank = wrapIcon(Iconoir.Bank);
+export const Calculator = wrapIcon(Iconoir.Calculator);
+export const Camera = wrapIcon(Iconoir.Camera);
+export const Cash = wrapIcon(Iconoir.Cash);
+export const DeliveryTruck = wrapIcon(Iconoir.DeliveryTruck);
+export const DesignPencil = wrapIcon(Iconoir.DesignPencil);
+export const DocMagnifyingGlass = wrapIcon(Iconoir.DocMagnifyingGlass);
+export const Flower = wrapIcon(Iconoir.Flower);
+export const Garage = wrapIcon(Iconoir.Garage);
+export const Hammer = wrapIcon(Iconoir.Hammer);
+export const HistoricShield = wrapIcon(Iconoir.HistoricShield);
+export const HomeSimple = wrapIcon(Iconoir.HomeSimple);
+export const Industry = wrapIcon(Iconoir.Industry);
+export const Leaf = wrapIcon(Iconoir.Leaf);
+export const MagicWand = wrapIcon(Iconoir.MagicWand);
+export const Package = wrapIcon(Iconoir.Package);
+export const Packages = wrapIcon(Iconoir.Packages);
+export const Palette = wrapIcon(Iconoir.Palette);
 export const PhoneIncome = wrapIcon(Iconoir.PhoneIncome);
+export const PiggyBank = wrapIcon(Iconoir.PiggyBank);
+export const Rings = wrapIcon(Iconoir.Rings);
+export const Ruler = wrapIcon(Iconoir.Ruler);
+export const Sofa = wrapIcon(Iconoir.Sofa);
+export const Tools = wrapIcon(Iconoir.Tools);
+export const Truck = wrapIcon(Iconoir.Truck);
+export const Wash = wrapIcon(Iconoir.Wash);
+export const Wrench = wrapIcon(Iconoir.Wrench);
 export const Plus = wrapIcon(Iconoir.Plus);
 export const PlusCircle = wrapIcon(Iconoir.PlusCircle);
 export const Refresh = wrapIcon(Iconoir.Refresh);

@@ -5,7 +5,7 @@ import { Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { IconComponent } from "@/components/ui/icons";
-import { colors, type } from "@/theme/tokens";
+import { colors, radius, type } from "@/theme/tokens";
 
 export interface TabDef {
   name: string;
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
     right: -10,
     minWidth: 16,
     height: 16,
-    borderRadius: 8,
+    borderRadius: radius.xs,
     backgroundColor: colors.accent,
     alignItems: "center",
     justifyContent: "center",

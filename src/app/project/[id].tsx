@@ -1,20 +1,17 @@
-import React, { useCallback, useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Image,
-  Linking,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
+import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Building2, Phone } from "@/components/ui/icons";
+import React, { useCallback, useEffect, useState } from "react";
+import { Linking, StyleSheet, Text, View } from "react-native";
 
+import { Button } from "@/components/ds/Button";
+import { ErrorState } from "@/components/ds/ErrorState";
+import { Screen } from "@/components/ds/Screen";
+import { Skeleton } from "@/components/ds/Skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Building2, Phone } from "@/components/ui/icons";
 import type { Project } from "@/data/project";
 import { apiGetProject } from "@/lib/api/services/projects";
+import { userFacingError } from "@/lib/errors";
 import { formatPriceWithPeriod } from "@/lib/format";
 import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
 
@@ -32,7 +29,7 @@ export default function ProjectDetailScreen() {
     try {
       setProject(await apiGetProject(id));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Project not found");
+      setError(userFacingError(e, "This project may be pending review."));
       setProject(null);
     } finally {
       setLoading(false);
@@ -45,114 +42,134 @@ export default function ProjectDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg, alignItems: "center", justifyContent: "center" }}>
-        <ActivityIndicator color={colors.accent} />
-      </SafeAreaView>
+      <Screen title="Project" fallbackHref={"/projects" as Href}>
+        <Skeleton height={220} rounded={radius.lg} />
+        <Skeleton height={28} width="70%" />
+        <Skeleton height={18} width="45%" />
+        <Skeleton height={80} />
+        <Skeleton height={48} />
+      </Screen>
     );
   }
 
   if (!project) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
-        <EmptyState
-          icon={Building2}
-          title="Project unavailable"
-          message={error ?? "This project may be pending review."}
-          actionLabel="Back"
-          onAction={() => router.back()}
-        />
-      </SafeAreaView>
+      <Screen title="Project" fallbackHref={"/projects" as Href}>
+        {error ? (
+          <ErrorState title="Project unavailable" message={error} onRetry={() => void load()} />
+        ) : (
+          <EmptyState
+            icon={Building2}
+            title="Project unavailable"
+            message="This project may be pending review."
+            actionLabel="Browse projects"
+            onAction={() => router.replace("/projects" as Href)}
+          />
+        )}
+      </Screen>
     );
   }
 
   const cover = project.images?.[0];
+  const priceLabel =
+    project.priceFrom != null || project.priceTo != null
+      ? `${formatPriceWithPeriod(project.priceFrom ?? project.priceTo ?? 0, "buy")}${
+          project.priceTo != null && project.priceFrom != null
+            ? ` – ${formatPriceWithPeriod(project.priceTo, "buy")}`
+            : ""
+        }`
+      : "Price on request";
 
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.bg }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: spacing.xxl }}>
-        {cover ? (
-          <Image source={{ uri: cover }} style={{ width: "100%", height: 240 }} />
-        ) : (
-          <View style={{ height: 180, backgroundColor: colors.surfaceSubtle, alignItems: "center", justifyContent: "center" }}>
-            <Building2 size={36} color={colors.inkMuted} />
-          </View>
-        )}
-
-        <View style={{ padding: spacing.xl, gap: spacing.md }}>
-          <Pressable onPress={() => router.back()}>
-            <Text style={{ ...type.label, color: colors.accent }}>← Back</Text>
-          </Pressable>
-          <Text style={{ ...type.title, color: colors.ink }}>{project.title}</Text>
-          <Text style={{ ...type.caption, color: colors.inkMuted }}>
-            {project.locality}, {project.city} · {project.lifecycle} · {project.ownershipRole}
-          </Text>
-          <Text style={{ ...type.heading, color: colors.accent }}>
-            {project.priceFrom != null || project.priceTo != null
-              ? `${formatPriceWithPeriod(project.priceFrom ?? project.priceTo ?? 0, "buy")}${
-                  project.priceTo != null && project.priceFrom != null
-                    ? ` – ${formatPriceWithPeriod(project.priceTo, "buy")}`
-                    : ""
-                }`
-              : "Price on request"}
-          </Text>
-          <Text style={{ ...type.body, color: colors.inkSecondary, lineHeight: 22 }}>
-            {project.description}
-          </Text>
-
-          {project.configurations?.length ? (
-            <View style={{ gap: spacing.xs }}>
-              <Text style={{ ...type.label, color: colors.inkMuted }}>CONFIGURATIONS</Text>
-              <Text style={{ ...type.body, color: colors.ink }}>
-                {project.configurations.join(" · ")}
-              </Text>
-            </View>
-          ) : null}
-
-          {project.amenities?.length ? (
-            <View style={{ gap: spacing.xs }}>
-              <Text style={{ ...type.label, color: colors.inkMuted }}>AMENITIES</Text>
-              <Text style={{ ...type.body, color: colors.ink }}>
-                {project.amenities.join(" · ")}
-              </Text>
-            </View>
-          ) : null}
-
-          <View
-            style={{
-              marginTop: spacing.sm,
-              backgroundColor: colors.surface,
-              borderRadius: radius.lg,
-              borderWidth: 1,
-              borderColor: colors.border,
-              padding: spacing.lg,
-              gap: spacing.sm,
-              boxShadow: shadow.card,
-            }}
-          >
-            <Text style={{ ...type.emphasis, color: colors.ink }}>{project.contactName}</Text>
-            <Pressable
-              onPress={() => Linking.openURL(`tel:${project.contactPhone.replace(/\s/g, "")}`)}
-              style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}
-            >
-              <Phone size={16} color={colors.accent} />
-              <Text style={{ ...type.body, color: colors.accent }}>{project.contactPhone}</Text>
-            </Pressable>
-          </View>
-
-          <Pressable
-            onPress={() => router.push("/(tabs)/explore" as Href)}
-            style={{
-              height: 48,
-              borderRadius: radius.md,
-              backgroundColor: colors.accent,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Text style={{ ...type.emphasis, color: colors.onAccent }}>Browse listings in {project.city}</Text>
-          </Pressable>
+    <Screen title={project.title} fallbackHref={"/projects" as Href}>
+      {cover ? (
+        <Image
+          source={{ uri: cover }}
+          style={styles.cover}
+          contentFit="cover"
+          accessibilityLabel={`${project.title} cover photo`}
+        />
+      ) : (
+        <View style={styles.coverPlaceholder}>
+          <Building2 size={36} color={colors.inkMuted} />
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      )}
+
+      <View style={styles.metaBlock}>
+        <Text style={styles.meta}>
+          {project.locality}, {project.city} · {project.lifecycle} · {project.ownershipRole}
+        </Text>
+        <Text style={styles.price}>{priceLabel}</Text>
+        <Text style={styles.description}>{project.description}</Text>
+      </View>
+
+      {project.configurations?.length ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Configurations</Text>
+          <Text style={styles.sectionBody}>{project.configurations.join(" · ")}</Text>
+        </View>
+      ) : null}
+
+      {project.amenities?.length ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Amenities</Text>
+          <Text style={styles.sectionBody}>{project.amenities.join(" · ")}</Text>
+        </View>
+      ) : null}
+
+      <View style={styles.contactCard}>
+        <Text style={styles.contactName}>{project.contactName}</Text>
+        <Button
+          label={project.contactPhone}
+          icon={Phone}
+          variant="tertiary"
+          size="md"
+          onPress={() => Linking.openURL(`tel:${project.contactPhone.replace(/\s/g, "")}`)}
+          style={{ alignSelf: "flex-start", paddingHorizontal: 0 }}
+        />
+      </View>
+
+      <Button
+        label={`Browse listings in ${project.city}`}
+        onPress={() => router.push("/(tabs)/explore" as Href)}
+        fullWidth
+      />
+    </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  cover: {
+    width: "100%",
+    height: 220,
+    borderRadius: radius.lg,
+    borderCurve: "continuous",
+    backgroundColor: colors.surfaceSubtle,
+  },
+  coverPlaceholder: {
+    height: 180,
+    borderRadius: radius.lg,
+    borderCurve: "continuous",
+    backgroundColor: colors.surfaceSubtle,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  metaBlock: { gap: spacing.sm },
+  meta: { ...type.caption, color: colors.inkMuted },
+  price: { ...type.heading, color: colors.accent },
+  description: { ...type.body, color: colors.inkSecondary, lineHeight: 22 },
+  section: { gap: spacing.xs },
+  sectionLabel: { ...type.label, color: colors.inkMuted },
+  sectionBody: { ...type.body, color: colors.ink },
+  contactCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderCurve: "continuous",
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    gap: spacing.xs,
+    boxShadow: shadow.card,
+  },
+  contactName: { ...type.emphasis, color: colors.ink },
+});

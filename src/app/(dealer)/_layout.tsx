@@ -1,4 +1,4 @@
-import { Redirect, Tabs, type Href } from "expo-router";
+import { Tabs } from "expo-router";
 import React, { useMemo } from "react";
 
 import { AppTabBar, type TabDef } from "@/components/navigation/AppTabBar";
@@ -16,7 +16,7 @@ const DEALER_TABS: TabDef[] = [
 ];
 
 export default function DealerLayout() {
-  const { userRole, inquiries, properties, userEmail, profile } = useApp();
+  const { inquiries, properties, userEmail, profile } = useApp();
 
   const tabs = useMemo(() => {
     const ownedIds = ownedPropertyIds(properties, { userId: profile?.id, email: userEmail });
@@ -27,10 +27,6 @@ export default function DealerLayout() {
     ).length;
     return DEALER_TABS.map((t) => (t.name === "inquiries" ? { ...t, badge: newCount } : t));
   }, [inquiries, properties, userEmail, profile?.id]);
-
-  if (userRole !== "broker") {
-    return <Redirect href={"/(tabs)" as Href} />;
-  }
 
   return (
     <Tabs

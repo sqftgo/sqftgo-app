@@ -1,14 +1,16 @@
 import { Image } from "expo-image";
-import { type Href } from "expo-router";
+import { useRouter, type Href } from "expo-router";
 import React, { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
+import { EmptyState } from "@/components/ds";
 import { Button } from "@/components/ds/Button";
 import { CityField } from "@/components/ds/CityField";
 import { Screen, useBack } from "@/components/ds/Screen";
 import { TextField } from "@/components/ds/TextField";
 import { toast } from "@/components/ds/Toast";
 import { appAlert } from "@/components/ui/app-alert";
+import { Lock } from "@/components/ui/icons";
 import { useApp } from "@/context/AppContext";
 import { initialsFromName } from "@/lib/format";
 import { pickAndUploadAvatar } from "@/lib/media-upload";
@@ -17,8 +19,9 @@ import { colors, radius, spacing, type } from "@/theme/tokens";
 const BIO_MAX = 500;
 
 export default function EditProfileScreen() {
+  const router = useRouter();
   const back = useBack("/settings" as Href);
-  const { profile, userName, userEmail, updateProfile, isApiMode } = useApp();
+  const { profile, userName, userEmail, updateProfile, isApiMode, isLoggedIn } = useApp();
 
   const [name, setName] = useState(userName);
   const [phone, setPhone] = useState(profile?.phone ?? "");
@@ -61,6 +64,22 @@ export default function EditProfileScreen() {
     back();
   };
 
+  if (!isLoggedIn) {
+    return (
+      <Screen title="Edit profile" fallbackHref={"/settings" as Href}>
+        <EmptyState
+          icon={Lock}
+          title="Sign in required"
+          message="Sign in to edit your name, photo and contact details."
+          actionLabel="Sign in"
+          onAction={() =>
+            router.push({ pathname: "/auth", params: { mode: "sign-in" } } as unknown as Href)
+          }
+        />
+      </Screen>
+    );
+  }
+
   return (
     <Screen
       title="Edit profile"
@@ -82,7 +101,7 @@ export default function EditProfileScreen() {
           )}
           {uploading ? (
             <View style={styles.avatarOverlay}>
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={colors.onAccent} />
             </View>
           ) : null}
         </Pressable>
@@ -145,7 +164,8 @@ const styles = StyleSheet.create({
   avatar: {
     width: 96,
     height: 96,
-    borderRadius: radius.full,
+    borderRadius: radius.lg,
+    borderCurve: "continuous",
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",

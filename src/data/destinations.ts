@@ -1,6 +1,6 @@
 /**
  * Slim destination hub — editorial copy aligned with web destinations.
- * Images use Unsplash (web uses /public assets that aren't in the Expo bundle).
+ * Images: verified Unsplash landmarks for each city (wrong/404 IDs cause blank navy tiles).
  */
 
 export type DestinationHub = {
@@ -20,13 +20,18 @@ function slugify(name: string) {
   return name.trim().toLowerCase().replace(/\s+/g, "-");
 }
 
+/** Cropped Unsplash CDN URL for card/hero use. */
+function photo(id: string, w = 900) {
+  return `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${w}&q=80`;
+}
+
 const RAW: Omit<DestinationHub, "slug">[] = [
   {
     name: "Udaipur",
     title: "The City of Lakes",
-    desc: "Marble palaces, Mewar arches, and lakeside living.",
-    image:
-      "https://images.unsplash.com/photo-1595658658481-d53d3f999875?auto=format&fit=crop&w=800&q=80",
+    desc: "Marble palaces, Mewar arches, and lakeside living — from Fatehsagar villas to heritage boutique stays.",
+    // City Palace on Lake Pichola (not Gateway of India)
+    image: photo("photo-1615836245337-f5b9b2303f10"),
     tag: "Rajasthan",
     vibe: "Royal Lakefront",
     investmentIndex: "9.4/10",
@@ -36,9 +41,9 @@ const RAW: Omit<DestinationHub, "slug">[] = [
   {
     name: "Jaipur",
     title: "The Pink City",
-    desc: "Heritage cores meeting modern townships and IT corridors.",
-    image:
-      "https://images.unsplash.com/photo-1477587458883-471a5ed94245?auto=format&fit=crop&w=800&q=80",
+    desc: "Pink City heritage cores meeting modern townships, IT corridors, and strong family-home demand.",
+    // Hawa Mahal
+    image: photo("photo-1603262110263-fb0112e7cc33"),
     tag: "Rajasthan",
     vibe: "Heritage + Growth",
     investmentIndex: "9.1/10",
@@ -48,9 +53,9 @@ const RAW: Omit<DestinationHub, "slug">[] = [
   {
     name: "Jodhpur",
     title: "The Blue City",
-    desc: "Fort views, old city lanes, and expanding residential belts.",
-    image:
-      "https://images.unsplash.com/photo-1596176530529-78163a4f7af2?auto=format&fit=crop&w=800&q=80",
+    desc: "Fort views, blue-city lanes, and expanding residential belts along Pal Road and Chopasni.",
+    // Blue City rooftops
+    image: photo("photo-1686825780583-8be7c349a4b4"),
     tag: "Rajasthan",
     vibe: "Desert Heritage",
     investmentIndex: "8.6/10",
@@ -61,8 +66,8 @@ const RAW: Omit<DestinationHub, "slug">[] = [
     name: "Jaisalmer",
     title: "The Golden City",
     desc: "Fort living, desert resorts, and hospitality-led inventory.",
-    image:
-      "https://images.unsplash.com/photo-1558431382-27e303142255?auto=format&fit=crop&w=800&q=80",
+    // Jaisalmer Fort
+    image: photo("photo-1710347454810-e3d493dcc538"),
     tag: "Rajasthan",
     vibe: "Desert Escape",
     investmentIndex: "8.2/10",
@@ -73,8 +78,8 @@ const RAW: Omit<DestinationHub, "slug">[] = [
     name: "Ahmedabad",
     title: "Gujarat's Commercial Hub",
     desc: "Strong rental demand across west and SG Highway belts.",
-    image:
-      "https://images.unsplash.com/photo-1582510003544-4d00b7f74070?auto=format&fit=crop&w=800&q=80",
+    // Atal Bridge / Sabarmati riverfront
+    image: photo("photo-1651408451633-ff492f347ec1"),
     tag: "Gujarat",
     vibe: "Business Capital",
     investmentIndex: "9.0/10",
@@ -85,8 +90,8 @@ const RAW: Omit<DestinationHub, "slug">[] = [
     name: "Surat",
     title: "Diamond City",
     desc: "Fast-growing mid-segment apartments and commercial strips.",
-    image:
-      "https://images.unsplash.com/photo-1564501049412-61c2a3083791?auto=format&fit=crop&w=800&q=80",
+    // Tapi riverfront, Surat
+    image: photo("photo-1662528567133-324caf7bf71e"),
     tag: "Gujarat",
     vibe: "Industrial Growth",
     investmentIndex: "8.7/10",
@@ -97,8 +102,8 @@ const RAW: Omit<DestinationHub, "slug">[] = [
     name: "Pushkar",
     title: "Temple Town",
     desc: "Boutique stays and second homes around the sacred lake.",
-    image:
-      "https://images.unsplash.com/photo-1605649487212-47bdab064df7?auto=format&fit=crop&w=800&q=80",
+    // Pushkar Lake aerial
+    image: photo("photo-1538158851102-3fb1f36d910c"),
     tag: "Rajasthan",
     vibe: "Spiritual Escape",
     investmentIndex: "7.9/10",
@@ -109,8 +114,8 @@ const RAW: Omit<DestinationHub, "slug">[] = [
     name: "Kota",
     title: "Education Hub",
     desc: "Strong PG and rental demand driven by coaching institutes.",
-    image:
-      "https://images.unsplash.com/photo-1603262110263-fb0112e7cc33?auto=format&fit=crop&w=800&q=80",
+    // Kota / Chambal cable-stayed bridge
+    image: photo("photo-1590572852289-02c47eb0f3f9"),
     tag: "Rajasthan",
     vibe: "Student City",
     investmentIndex: "8.3/10",

@@ -10,6 +10,7 @@ import { useApp } from "@/context/AppContext";
 import type { ProjectInput } from "@/data/project";
 import { isApiMode } from "@/lib/api/config";
 import { apiCreateProject } from "@/lib/api/services/projects";
+import { userFacingError } from "@/lib/errors";
 
 export default function PostProjectScreen() {
   const router = useRouter();
@@ -36,7 +37,7 @@ export default function PostProjectScreen() {
     try {
       await apiCreateProject({ ...payload, status: status ?? "Pending Review" });
     } catch (e) {
-      appAlert("Couldn't save project", e instanceof Error ? e.message : "Please try again.");
+      appAlert("Couldn't save project", userFacingError(e, "Please try again."));
       return false;
     }
     void queryClient.invalidateQueries({ queryKey: ["projects"] });

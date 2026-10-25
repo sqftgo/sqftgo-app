@@ -3,6 +3,7 @@ import { useRouter, type Href } from "expo-router";
 import React, { useState } from "react";
 import { Linking, StyleSheet, Switch, Text } from "react-native";
 
+import { EmptyState } from "@/components/ds";
 import { ListRow, ListSection } from "@/components/ds/ListRow";
 import { Screen } from "@/components/ds/Screen";
 import CitySelectionModal from "@/components/ui/CitySelectionModal";
@@ -18,6 +19,7 @@ import {
   MapPin,
   MessageSquare,
   Shield,
+  Store,
   User,
 } from "@/components/ui/icons";
 import { useApp } from "@/context/AppContext";
@@ -25,8 +27,33 @@ import { colors, type } from "@/theme/tokens";
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { notifPrefs, setNotifPrefs, selectedCity, signOut, platformSettings, userEmail } = useApp();
+  const {
+    notifPrefs,
+    setNotifPrefs,
+    selectedCity,
+    signOut,
+    platformSettings,
+    userEmail,
+    isLoggedIn,
+    canAccessDealerDashboard,
+  } = useApp();
   const [cityOpen, setCityOpen] = useState(false);
+
+  if (!isLoggedIn) {
+    return (
+      <Screen title="Settings" fallbackHref={"/(tabs)/profile" as Href}>
+        <EmptyState
+          icon={Lock}
+          title="Sign in required"
+          message="Sign in to manage your account, city and notification preferences."
+          actionLabel="Sign in"
+          onAction={() =>
+            router.push({ pathname: "/auth", params: { mode: "sign-in" } } as unknown as Href)
+          }
+        />
+      </Screen>
+    );
+  }
 
   const confirmSignOut = () =>
     appAlert("Sign out?", "You can keep browsing as a guest.", [
@@ -59,12 +86,28 @@ export default function SettingsScreen() {
   );
 
   return (
-    <Screen title="Settings" fallbackHref={"/profile" as Href}>
+    <Screen title="Settings" fallbackHref={"/(tabs)/profile" as Href}>
       <ListSection title="Account">
-        <ListRow icon={User} title="Edit profile" onPress={() => router.push("/settings/profile" as Href)} />
+        <ListRow
+          icon={User}
+          title="Personal profile"
+          subtitle={userEmail}
+          onPress={() => router.push("/settings/profile" as Href)}
+        />
         <ListRow icon={Lock} title="Change password" onPress={() => router.push("/settings/password" as Href)} />
-        <ListRow icon={MapPin} title="City" value={selectedCity} onPress={() => setCityOpen(true)} />
+        <ListRow icon={MapPin} title="Preferred city" value={selectedCity} onPress={() => setCityOpen(true)} />
       </ListSection>
+
+      {canAccessDealerDashboard ? (
+        <ListSection title="Business" footer="Your public dealer card is managed separately from personal account details.">
+          <ListRow
+            icon={Store}
+            title="Business profile"
+            subtitle="Firm, contact, hours and specialties"
+            onPress={() => router.push("/dealer-settings" as Href)}
+          />
+        </ListSection>
+      ) : null}
 
       <ListSection
         title="Notifications"
