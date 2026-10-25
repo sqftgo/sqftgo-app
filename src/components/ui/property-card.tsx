@@ -1,77 +1,25 @@
-import { useRequireAuth } from "@/components/ds/AuthGate";
-import { Bed, Heart, Home, MapPin, Maximize2, ShieldCheck } from "@/components/ui/icons";
-import * as Haptics from "expo-haptics";
+import { Bed, Home, MapPin, Maximize2, ShieldCheck } from "@/components/ui/icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { memo, useCallback, useMemo } from "react";
 import { Pressable, Text, View } from "react-native";
 
-import { useApp } from "@/context/AppContext";
 import type { Property } from "@/data/types";
 import { formatIndianPrice, formatSize, purposeLabel } from "@/lib/format";
-import { colors, radius, shadow, spacing, touchTarget, type } from "@/theme/tokens";
-
+import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
 
 interface PropertyCardProps {
   property: Property;
   variant?: "full" | "compact";
 }
 
-const FavoriteButton = memo(function FavoriteButton({
-  isFav,
-  onPress,
-}: {
-  isFav: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      hitSlop={8}
-      accessibilityRole="button"
-      accessibilityLabel={isFav ? "Remove from saved" : "Save property"}
-      style={({ pressed }) => ({
-        width: touchTarget - 8,
-        height: touchTarget - 8,
-        borderRadius: radius.sm,
-        borderCurve: "continuous",
-        backgroundColor: colors.surface,
-        alignItems: "center",
-        justifyContent: "center",
-        borderWidth: 1,
-        borderColor: colors.border,
-        boxShadow: shadow.card,
-        transform: [{ scale: pressed ? 0.92 : 1 }],
-      })}
-    >
-      <Heart
-        size={16}
-        color={isFav ? colors.accent : colors.inkSecondary}
-        fill={isFav ? colors.accent : "transparent"}
-      />
-    </Pressable>
-  );
-});
-
 function PropertyCardBase({ property, variant = "full" }: PropertyCardProps) {
   const router = useRouter();
-  const { favorites, toggleFavorite } = useApp();
-  const requireAuth = useRequireAuth();
-  const isFav = favorites.includes(property.id);
   const compact = variant === "compact";
 
   const handleOpen = useCallback(() => {
     router.push({ pathname: "/property/[id]", params: { id: property.id } });
   }, [router, property.id]);
-
-  const handleFavorite = useCallback(() => {
-    requireAuth("Sign in to save homes and see them on all your devices.", () => {
-      if (process.env.EXPO_OS === "ios") {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
-      toggleFavorite(property.id);
-    });
-  }, [requireAuth, toggleFavorite, property.id]);
 
   const priceLabel = useMemo(() => formatIndianPrice(property.price), [property.price]);
   const sizeLabel = useMemo(() => formatSize(property.size), [property.size]);
@@ -120,7 +68,6 @@ function PropertyCardBase({ property, variant = "full" }: PropertyCardProps) {
           </View>
         )}
 
-        {/* Floating Badges and Save Button */}
         <View
           style={{
             position: "absolute",
@@ -129,44 +76,40 @@ function PropertyCardBase({ property, variant = "full" }: PropertyCardProps) {
             right: 10,
             flexDirection: "row",
             alignItems: "center",
-            justifyContent: "space-between",
+            gap: 6,
             zIndex: 10,
           }}
         >
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <View
+            style={{
+              backgroundColor: "rgba(255, 255, 255, 0.95)",
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+              borderRadius: radius.sm,
+              borderWidth: 1,
+              borderColor: "rgba(0, 0, 0, 0.05)",
+              boxShadow: shadow.card,
+            }}
+          >
+            <Text style={{ ...type.micro, color: colors.ink }}>
+              {purposeText}
+            </Text>
+          </View>
+
+          {property.featured && (
             <View
               style={{
-                backgroundColor: "rgba(255, 255, 255, 0.95)",
+                backgroundColor: colors.accent,
                 paddingHorizontal: 10,
                 paddingVertical: 4,
                 borderRadius: radius.sm,
-                borderWidth: 1,
-                borderColor: "rgba(0, 0, 0, 0.05)",
-                boxShadow: shadow.card,
               }}
             >
-              <Text style={{ ...type.micro, color: colors.ink }}>
-                {purposeText}
+              <Text style={{ ...type.micro, color: colors.onAccent }}>
+                Featured
               </Text>
             </View>
-
-            {property.featured && (
-              <View
-                style={{
-                  backgroundColor: colors.accent,
-                  paddingHorizontal: 10,
-                  paddingVertical: 4,
-                  borderRadius: radius.sm,
-                }}
-              >
-                <Text style={{ ...type.micro, color: colors.onAccent }}>
-                  Featured
-                </Text>
-              </View>
-            )}
-          </View>
-
-          <FavoriteButton isFav={isFav} onPress={handleFavorite} />
+          )}
         </View>
       </View>
 
@@ -273,4 +216,3 @@ function PropertyCardBase({ property, variant = "full" }: PropertyCardProps) {
 }
 
 export const PropertyCard = memo(PropertyCardBase);
-

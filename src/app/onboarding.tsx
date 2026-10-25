@@ -78,6 +78,7 @@ export default function OnboardingScreen() {
   const {
     setHasCompletedOnboarding,
     setPreferredRole,
+    setPreferredPurpose,
     selectedCity,
     setSelectedCity,
     preferredRole,
@@ -177,6 +178,11 @@ export default function OnboardingScreen() {
   const goToAuth = (mode: "sign-in" | "sign-up") => {
     triggerHaptic();
     setPreferredRole(selectedRole);
+    if (selectedRole === "user") {
+      setPreferredPurpose(activeIntent === "rent" ? "rent" : activeIntent === "buy_home" ? "buy" : "all");
+    } else {
+      setPreferredPurpose("all");
+    }
     setSelectedCity(chosenCity);
     setHasCompletedOnboarding(true);
     router.push({ pathname: "/auth", params: { mode } } as unknown as Href);

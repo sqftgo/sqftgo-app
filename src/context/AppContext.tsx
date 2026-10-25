@@ -50,11 +50,6 @@ import {
   apiListDealers,
   apiUpdateDealer,
 } from "@/lib/api/services/dealers";
-import {
-  apiAddFavorite,
-  apiListFavorites,
-  apiRemoveFavorite,
-} from "@/lib/api/services/favorites";
 import { apiGetKyc, apiPutKyc } from "@/lib/api/services/kyc";
 import {
   apiCreateInquiry,
@@ -89,10 +84,10 @@ export type { PublicPlatformSettings } from "@/lib/api/services/platform";
 const STORAGE_KEYS = {
   onboarding: "hasCompletedOnboarding",
   onboardingStep: "onboarding_step",
-  favorites: "favorites",
   city: "selectedCity",
   session: "session",
   preferredRole: "preferredRole",
+  preferredPurpose: "preferredPurpose",
   properties: "properties",
   inquiries: "inquiries",
   visits: "visits",
@@ -276,8 +271,6 @@ interface AppContextType {
     patch: Partial<Property>,
   ) => Promise<Property | null> | Property | null;
   deleteProperty: (id: string) => Promise<boolean> | boolean;
-  favorites: string[];
-  toggleFavorite: (id: string) => void;
   directoryProfiles: DirectoryProfile[];
   updateDirectoryProfile: (
     id: string,
@@ -397,6 +390,9 @@ interface AppContextType {
   retryAuthCheck: () => Promise<void>;
   preferredRole: UserRole;
   setPreferredRole: (role: UserRole) => void;
+  /** From onboarding intent — seeds Explore purpose (buy/rent/all). */
+  preferredPurpose: "buy" | "rent" | "all";
+  setPreferredPurpose: (purpose: "buy" | "rent" | "all") => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -491,7 +487,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [catalogLoadFailed, setCatalogLoadFailed] = useState(false);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [visits, setVisits] = useState<SiteVisit[]>([]);
-  const [favorites, setFavorites] = useState<string[]>([]);
   const [messageThreads, setMessageThreads] = useState<MessageThread[]>([]);
   const [messagesByThread, setMessagesByThread] = useState<Record<string, Message[]>>({});
   const [directoryProfiles, setDirectoryProfiles] = useState<DirectoryProfile[]>(
@@ -505,6 +500,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [accounts, setAccounts] = useState<StoredAccount[]>(DEMO_ACCOUNTS);
   const [session, setSession] = useState<Session>(GUEST_SESSION);
   const [preferredRole, setPreferredRoleState] = useState<UserRole>("user");
+  const [preferredPurpose, setPreferredPurposeState] = useState<"buy" | "rent" | "all">("all");
   const [hasCompletedOnboarding, setHasCompletedOnboardingState] = useState<boolean | undefined>(
     undefined,
   );
@@ -590,7 +586,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         receivedInqs,
         vs,
         threads,
-        favIds,
         settings,
       ] = await Promise.all([
           apiListProperties({ status: "Active", limit: 100 }).catch(() => null),
@@ -607,7 +602,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             : Promise.resolve([] as Inquiry[]),
           apiListVisits().catch(() => [] as SiteVisit[]),
           apiListThreads().catch(() => [] as MessageThread[]),
-          role ? apiListFavorites().catch(() => null) : Promise.resolve(null),
           apiGetPlatformSettings().catch(() => DEFAULT_PLATFORM_SETTINGS),
         ]);
 
@@ -641,10 +635,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         })),
       );
       setMessageThreads(threads);
-      if (favIds) {
-        setFavorites(favIds);
-        AsyncStorage.setItem(STORAGE_KEYS.favorites, JSON.stringify(favIds)).catch(() => {});
-      }
     } catch {
       // keep local state
     }
@@ -656,7 +646,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAuthError(null);
     try {
       const [
-        storedFavorites,
         storedCity,
         storedSession,
         storedRole,
@@ -667,8 +656,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         storedDirectory,
         storedMessages,
         storedNotif,
+        storedPurpose,
       ] = await Promise.all([
-        AsyncStorage.getItem(STORAGE_KEYS.favorites),
         AsyncStorage.getItem(STORAGE_KEYS.city),
         AsyncStorage.getItem(STORAGE_KEYS.session),
         AsyncStorage.getItem(STORAGE_KEYS.preferredRole),
@@ -679,9 +668,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         AsyncStorage.getItem(STORAGE_KEYS.directory),
         AsyncStorage.getItem(STORAGE_KEYS.messages),
         AsyncStorage.getItem(STORAGE_KEYS.notifPrefs),
+        AsyncStorage.getItem(STORAGE_KEYS.preferredPurpose),
       ]);
-
-      if (storedFavorites) setFavorites(JSON.parse(storedFavorites));
       if (storedCity) setSelectedCityState(storedCity);
       if (storedNotif) {
         try {
@@ -816,6 +804,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setPreferredRoleState(storedRole);
       }
 
+      if (storedPurpose === "buy" || storedPurpose === "rent" || storedPurpose === "all") {
+        setPreferredPurposeState(storedPurpose);
+      }
+
       if (!isApiMode && storedProperties) {
         const parsed: Property[] = JSON.parse(storedProperties);
         if (Array.isArray(parsed) && parsed.length > 0) {
@@ -893,6 +885,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     AsyncStorage.setItem(STORAGE_KEYS.preferredRole, role).catch(() => {});
   }, []);
 
+  const setPreferredPurpose = useCallback((purpose: "buy" | "rent" | "all") => {
+    setPreferredPurposeState(purpose);
+    AsyncStorage.setItem(STORAGE_KEYS.preferredPurpose, purpose).catch(() => {});
+  }, []);
+
   const setHasCompletedOnboarding = useCallback((val: boolean) => {
     setHasCompletedOnboardingState(val);
     AsyncStorage.setItem(STORAGE_KEYS.onboarding, String(val)).catch(() => {});
@@ -914,21 +911,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return next;
     });
   }, []);
-
-  const toggleFavorite = useCallback(
-    (id: string) => {
-      setFavorites((prev) => {
-        const removing = prev.includes(id);
-        const next = removing ? prev.filter((favId) => favId !== id) : [...prev, id];
-        AsyncStorage.setItem(STORAGE_KEYS.favorites, JSON.stringify(next)).catch(() => {});
-        if (isApiMode && session.isLoggedIn) {
-          (removing ? apiRemoveFavorite(id) : apiAddFavorite(id)).catch(() => {});
-        }
-        return next;
-      });
-    },
-    [session.isLoggedIn],
-  );
 
   const completeApiSignIn = useCallback(
     async (res: AuthMeResponse): Promise<AuthResult> => {
@@ -2156,8 +2138,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addProperty,
       updateProperty,
       deleteProperty,
-      favorites,
-      toggleFavorite,
       directoryProfiles,
       updateDirectoryProfile,
       inquiries,
@@ -2222,6 +2202,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       retryAuthCheck,
       preferredRole,
       setPreferredRole,
+      preferredPurpose,
+      setPreferredPurpose,
     }),
     [
       lastActionError,
@@ -2243,8 +2225,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addProperty,
       updateProperty,
       deleteProperty,
-      favorites,
-      toggleFavorite,
       directoryProfiles,
       updateDirectoryProfile,
       inquiries,
@@ -2289,6 +2269,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       retryAuthCheck,
       preferredRole,
       setPreferredRole,
+      preferredPurpose,
+      setPreferredPurpose,
     ],
   );
 

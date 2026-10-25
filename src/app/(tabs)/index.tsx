@@ -13,7 +13,6 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ExpertCard } from "@/components/ui/expert-card";
 import {
   Bell,
-  Bookmark,
   Building,
   Building2,
   ChevronRight,
@@ -67,7 +66,6 @@ export default function HomeScreen() {
   const router = useRouter();
   const {
     properties,
-    favorites,
     selectedCity,
     userEmail,
     userName,
@@ -173,7 +171,6 @@ export default function HomeScreen() {
             onPressTitle={() => setCityModalVisible(true)}
             actions={[
               { icon: Bell, label: "Notifications", badge: unreadCount > 0, onPress: () => setNotificationsVisible(true) },
-              { icon: Bookmark, label: "Saved properties", badge: favorites.length, onPress: () => router.push("/saved" as Href) },
             ]}
           />
 

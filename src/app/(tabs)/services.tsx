@@ -72,7 +72,7 @@ function matchesType(p: DirectoryProfile, typeId: string, typeName: string) {
 export default function ServicesTabScreen() {
   const router = useRouter();
   const requireAuth = useRequireAuth();
-  const { selectedCity, directoryProfiles, isLoggedIn } = useApp();
+  const { selectedCity, directoryProfiles } = useApp();
   const { types } = useServiceTypes();
   const myService = useMyServiceProfile();
 
@@ -135,18 +135,19 @@ export default function ServicesTabScreen() {
   };
 
   const hasServiceProfile = Boolean(myService.profile);
+  const openListBusiness = () => {
+    const href = (hasServiceProfile ? "/services/manage" : "/services/register") as Href;
+    if (hasServiceProfile) {
+      router.push(href);
+      return;
+    }
+    requireAuth("Sign in to list your service business on SqftGo.", () => {
+      router.push(href);
+    });
+  };
   const listBusinessBanner = (
     <Pressable
-      onPress={() => {
-        const href = (hasServiceProfile ? "/services/manage" : "/services/register") as Href;
-        if (hasServiceProfile || isLoggedIn) {
-          router.push(href);
-          return;
-        }
-        requireAuth("Sign in to list your service business on SqftGo.", () => {
-          router.push(href);
-        });
-      }}
+      onPress={openListBusiness}
       accessibilityRole="button"
       style={({ pressed }) => ({
         flexDirection: "row",

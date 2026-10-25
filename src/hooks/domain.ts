@@ -78,8 +78,6 @@ const DIRECTORY_KEYS = ["directoryProfiles", "updateDirectoryProfile", "register
 const PREFERENCE_KEYS = [
   "selectedCity",
   "setSelectedCity",
-  "favorites",
-  "toggleFavorite",
   "notifPrefs",
   "setNotifPrefs",
   "hasCompletedOnboarding",
@@ -102,7 +100,7 @@ export const useLeads = () => pick(useApp(), LEAD_KEYS);
 export const useVisits = () => pick(useApp(), VISIT_KEYS);
 /** Dealer and service-partner directory profiles. */
 export const useDirectory = () => pick(useApp(), DIRECTORY_KEYS);
-/** Device-level preferences: city, saved homes, onboarding, notification toggles. */
+/** Device-level preferences: city, onboarding, notification toggles. */
 export const usePreferences = () => pick(useApp(), PREFERENCE_KEYS);
 /** Public platform settings and runtime mode. */
 export const usePlatform = () => pick(useApp(), PLATFORM_KEYS);

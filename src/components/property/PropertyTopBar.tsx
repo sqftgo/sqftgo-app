@@ -8,7 +8,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { ChevronLeft, Heart, Share2, type IconComponent } from "@/components/ui/icons";
+import { ChevronLeft, Share2, type IconComponent } from "@/components/ui/icons";
 import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
 
 import { GALLERY_HEIGHT } from "./PropertyGallery";
@@ -18,22 +18,18 @@ const BAR_HEIGHT = 56;
 interface PropertyTopBarProps {
   scrollY: SharedValue<number>;
   title: string;
-  isFavorite: boolean;
   onBack: () => void;
   onShare: () => void;
-  onToggleFavorite: () => void;
 }
 
 function FloatingButton({
   icon: Icon,
   label,
   onPress,
-  active,
 }: {
   icon: IconComponent;
   label: string;
   onPress: () => void;
-  active?: boolean;
 }) {
   return (
     <Pressable
@@ -65,12 +61,7 @@ function FloatingButton({
           backgroundColor: "rgba(255, 255, 255, 0.72)",
         }}
       >
-        <Icon
-          size={20}
-          color={active ? colors.accent : colors.ink}
-          fill={active ? colors.accent : "transparent"}
-          strokeWidth={1.9}
-        />
+        <Icon size={20} color={colors.ink} fill="transparent" strokeWidth={1.9} />
       </BlurView>
     </Pressable>
   );
@@ -80,10 +71,8 @@ function FloatingButton({
 export function PropertyTopBar({
   scrollY,
   title,
-  isFavorite,
   onBack,
   onShare,
-  onToggleFavorite,
 }: PropertyTopBarProps) {
   const insets = useSafeAreaInsets();
   const fadeStart = GALLERY_HEIGHT - insets.top - BAR_HEIGHT * 2;
@@ -134,12 +123,6 @@ export function PropertyTopBar({
           </Text>
         </Animated.View>
         <FloatingButton icon={Share2} label="Share property" onPress={onShare} />
-        <FloatingButton
-          icon={Heart}
-          label={isFavorite ? "Remove from saved" : "Save property"}
-          onPress={onToggleFavorite}
-          active={isFavorite}
-        />
       </View>
     </View>
   );

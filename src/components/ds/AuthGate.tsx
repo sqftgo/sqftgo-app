@@ -24,7 +24,6 @@ const AuthGateContext = createContext<Gate | null>(null);
  * Account actions call `requireAuth(reason, action)`. Signed-in users run the action
  * immediately. Guests see a sign-in sheet; after a successful sign-in, the deferred
  * `action` runs once so they do not need a second tap.
- * (Marketplace itself is gated behind onboarding + sign-in at the root stack.)
  */
 export function AuthGateProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -101,7 +100,13 @@ export function useRequireAuth(): Gate {
 }
 
 const styles = StyleSheet.create({
-  body: { paddingHorizontal: spacing.xl, paddingTop: spacing.md, paddingBottom: spacing.lg, gap: spacing.md, alignItems: "center" },
+  body: {
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.lg,
+    gap: spacing.md,
+    alignItems: "center",
+  },
   icon: {
     width: 56,
     height: 56,

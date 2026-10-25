@@ -25,7 +25,8 @@ export async function apiCreateVisit(
 ): Promise<SiteVisit> {
   const raw = await apiFetch<Parameters<typeof mapVisitFromApi>[0]>(
     `/api/properties/${propertyId}/visits`,
-    { method: "POST", body },
+    // Guest booking matches web BFF (optional auth + public rate limit).
+    { method: "POST", body, public: true },
   );
   return mapVisitFromApi({ ...raw, propertyId: raw.propertyId ?? propertyId });
 }
