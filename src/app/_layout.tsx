@@ -30,7 +30,10 @@ import { colors } from "@/theme/tokens";
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export const unstable_settings = {
-  /** Fresh guests land on onboarding; logout navigates to /auth explicitly. */
+  /**
+   * Initial route while the stack mounts. Onboarding self-skips when
+   * hasCompletedOnboarding or a restored session is present.
+   */
   anchor: "onboarding",
 };
 
