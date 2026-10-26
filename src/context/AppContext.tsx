@@ -657,6 +657,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         storedMessages,
         storedNotif,
         storedPurpose,
+        storedOnboarding,
+        storedOnboardingStep,
       ] = await Promise.all([
         AsyncStorage.getItem(STORAGE_KEYS.city),
         AsyncStorage.getItem(STORAGE_KEYS.session),
@@ -669,6 +671,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         AsyncStorage.getItem(STORAGE_KEYS.messages),
         AsyncStorage.getItem(STORAGE_KEYS.notifPrefs),
         AsyncStorage.getItem(STORAGE_KEYS.preferredPurpose),
+        AsyncStorage.getItem(STORAGE_KEYS.onboarding),
+        AsyncStorage.getItem(STORAGE_KEYS.onboardingStep),
       ]);
       if (storedCity) setSelectedCityState(storedCity);
       if (storedNotif) {
@@ -833,15 +837,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (Array.isArray(parsed)) setVisits(parsed);
       }
 
-      // Guests always re-enter through onboarding (city/role prefs still load above).
+      // Persist onboarding across relaunch. Logged-in users always skip.
+      // Guests keep the saved flag (do not wipe on every cold start).
       if (activeSession.isLoggedIn) {
         setHasCompletedOnboardingState(true);
         setOnboardingStepState(0);
+        AsyncStorage.setItem(STORAGE_KEYS.onboarding, "true").catch(() => {});
       } else {
-        setHasCompletedOnboardingState(false);
-        setOnboardingStepState(0);
-        AsyncStorage.setItem(STORAGE_KEYS.onboarding, "false").catch(() => {});
-        AsyncStorage.removeItem(STORAGE_KEYS.onboardingStep).catch(() => {});
+        setHasCompletedOnboardingState(storedOnboarding === "true");
+        const stepNum = parseInt(storedOnboardingStep ?? "", 10);
+        if (!Number.isNaN(stepNum) && stepNum >= 0 && stepNum <= 3 && storedOnboarding !== "true") {
+          setOnboardingStepState(stepNum);
+        } else {
+          setOnboardingStepState(0);
+        }
       }
 
       // API mode: load public catalog for guests (logged-in hydrate runs separately).
@@ -1102,10 +1111,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     clearTokens();
     persistSession(GUEST_SESSION);
-    // Return guests to a fresh onboarding entry every time they sign out.
-    setHasCompletedOnboardingState(false);
+    // Keep onboarding completed after logout so relaunch goes to sign-in, not slides.
     setOnboardingStepState(0);
-    AsyncStorage.setItem(STORAGE_KEYS.onboarding, "false").catch(() => {});
     AsyncStorage.removeItem(STORAGE_KEYS.onboardingStep).catch(() => {});
     // Navigate after the session clear so /auth is a registered stack screen.
     queueMicrotask(() => {

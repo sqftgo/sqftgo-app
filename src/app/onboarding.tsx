@@ -76,6 +76,10 @@ const INTENT_OPTIONS: Record<"user" | "broker", IntentOption[]> = {
 export default function OnboardingScreen() {
   const router = useRouter();
   const {
+    hasCompletedOnboarding,
+    isLoggedIn,
+    isHydrating,
+    userRole,
     setHasCompletedOnboarding,
     setPreferredRole,
     setPreferredPurpose,
@@ -117,11 +121,23 @@ export default function OnboardingScreen() {
     INTENT_OPTIONS[selectedRole].find((item) => item.id === activeIntent)?.label ?? "";
 
   useEffect(() => {
-    // Guests always start on slide 1 for a consistent first-run experience.
+    if (isHydrating) return;
+    if (isLoggedIn) {
+      router.replace((userRole === "broker" ? "/(dealer)" : "/(tabs)") as Href);
+      return;
+    }
+    if (hasCompletedOnboarding) {
+      router.replace({ pathname: "/auth", params: { mode: "sign-in" } } as unknown as Href);
+    }
+  }, [isHydrating, isLoggedIn, hasCompletedOnboarding, userRole, router]);
+
+  useEffect(() => {
+    if (isHydrating || isLoggedIn || hasCompletedOnboarding) return;
+    // First-run guests start on slide 1.
     setOnboardingStep(0);
     scrollRef.current?.scrollTo({ x: 0, animated: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isHydrating, isLoggedIn, hasCompletedOnboarding]);
 
   const triggerHaptic = () => {
     try {
