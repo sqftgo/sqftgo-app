@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, type Href } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Linking, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import {
   Button,
@@ -16,29 +16,16 @@ import {
   type BadgeTone,
 } from "@/components/ds";
 import { appAlert } from "@/components/ui/app-alert";
-import { Calendar, Lock, Phone, Store } from "@/components/ui/icons";
+import { Calendar, Lock, Store } from "@/components/ui/icons";
 import { useApp } from "@/context/AppContext";
 import { useMyServiceProfile } from "@/hooks/use-my-service-profile";
 import { isApiMode } from "@/lib/api/config";
+import { serviceProviderDenial } from "@/lib/service-access";
 import { userFacingError } from "@/lib/errors";
-import {
-  apiGetMyServiceVerification,
-  apiListOwnerServiceBookings,
-  apiSubmitServiceVerification,
-  apiUpdateServiceBooking,
-  type ServiceBooking,
-  type ServiceBookingStatus,
-} from "@/lib/api/services/services";
+import { apiGetMyServiceVerification, apiSubmitServiceVerification } from "@/lib/api/services/services";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 
 type Tab = "bookings" | "profile" | "verification";
-
-const BOOKING_LABEL: Record<ServiceBookingStatus, string> = {
-  pending: "New request",
-  confirmed: "Confirmed",
-  cancelled: "Declined",
-  completed: "Completed",
-};
 
 const VERIFICATION: Record<string, { label: string; tone: BadgeTone }> = {
   approved: { label: "Verified", tone: "success" },
@@ -47,26 +34,14 @@ const VERIFICATION: Record<string, { label: string; tone: BadgeTone }> = {
   rejected: { label: "Not approved", tone: "danger" },
 };
 
-function formatWhen(iso: string) {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime())
-    ? iso
-    : d.toLocaleString("en-IN", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
-}
-
 export default function ManageServiceScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { updateDirectoryProfile, isLoggedIn } = useApp();
+  const { updateDirectoryProfile, isLoggedIn, serviceAccess } = useApp();
   const mine = useMyServiceProfile();
   const profile = mine.profile;
   const [tab, setTab] = useState<Tab>("bookings");
 
-  const bookingsQuery = useQuery({
-    queryKey: ["service-bookings", "owner", profile?.id],
-    queryFn: () => apiListOwnerServiceBookings(profile!.id),
-    enabled: isApiMode && isLoggedIn && Boolean(profile?.id),
-  });
   const verificationQuery = useQuery({
     queryKey: ["service-verification", "mine"],
     queryFn: apiGetMyServiceVerification,
@@ -93,18 +68,6 @@ export default function ManageServiceScreen() {
     if (verification?.businessRegistrationId) setRegId(verification.businessRegistrationId);
   }, [verification?.businessRegistrationId]);
 
-  const updateBooking = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: ServiceBookingStatus }) =>
-      apiUpdateServiceBooking(id, { status }),
-    onSuccess: (updated) => {
-      queryClient.setQueryData<ServiceBooking[]>(["service-bookings", "owner", profile?.id], (prev) =>
-        prev?.map((b) => (b.id === updated.id ? updated : b)),
-      );
-      toast(`Booking ${BOOKING_LABEL[updated.status].toLowerCase()}`);
-    },
-    onError: (e) => appAlert("Couldn't update booking", userFacingError(e, "Try again.")),
-  });
-
   const submitVerification = useMutation({
     mutationFn: () =>
       apiSubmitServiceVerification({ businessRegistrationId: regId.trim() || null, ownerNotes: notes.trim() }),
@@ -127,6 +90,23 @@ export default function ManageServiceScreen() {
           onAction={() =>
             router.push({ pathname: "/auth", params: { mode: "sign-in" } } as unknown as Href)
           }
+        />
+      </Screen>
+    );
+  }
+
+  if (
+    serviceAccess === "pending" ||
+    serviceAccess === "rejected" ||
+    serviceAccess === "inactive" ||
+    serviceAccess === "suspended"
+  ) {
+    return (
+      <Screen title="Service dashboard" fallbackHref="/(tabs)/services">
+        <EmptyState
+          icon={Lock}
+          title="Dashboard unavailable"
+          message={serviceProviderDenial(serviceAccess)}
         />
       </Screen>
     );
@@ -180,8 +160,6 @@ export default function ManageServiceScreen() {
     toast("Profile saved");
   };
 
-  const bookings = bookingsQuery.data ?? [];
-  const pendingCount = bookings.filter((b) => b.status === "pending").length;
   const vStatus = verification?.status ?? profile.verificationStatus ?? "unverified";
   const vMeta = VERIFICATION[vStatus] ?? { label: "Not verified", tone: "neutral" as BadgeTone };
 
@@ -190,9 +168,8 @@ export default function ManageServiceScreen() {
       title={profile.firmName}
       subtitle={`${profile.category} · ${profile.city}`}
       fallbackHref="/(tabs)/services"
-      refreshing={bookingsQuery.isRefetching}
+      refreshing={verificationQuery.isRefetching}
       onRefresh={() => {
-        void bookingsQuery.refetch();
         void verificationQuery.refetch();
         mine.refetch();
       }}
@@ -208,7 +185,7 @@ export default function ManageServiceScreen() {
 
       <SegmentedControl
         segments={[
-          { value: "bookings", label: "Bookings", count: pendingCount || undefined },
+          { value: "bookings", label: "Bookings" },
           { value: "profile", label: "Details" },
           { value: "verification", label: "Verification" },
         ]}
@@ -217,64 +194,13 @@ export default function ManageServiceScreen() {
       />
 
       {tab === "bookings" ? (
-        !isApiMode ? (
-          <EmptyState icon={Calendar} title="Bookings need a connection" message="Booking requests sync from SqftGo servers." />
-        ) : bookingsQuery.isLoading ? (
-          <ListSkeleton rows={3} />
-        ) : bookingsQuery.isError ? (
-          <ErrorState onRetry={() => void bookingsQuery.refetch()} />
-        ) : bookings.length === 0 ? (
-          <EmptyState
-            icon={Calendar}
-            title="No booking requests yet"
-            message="When someone books a visit from your profile, it shows up here."
-          />
-        ) : (
-          <View style={styles.list}>
-            {bookings.map((b) => {
-              const busy = updateBooking.isPending && updateBooking.variables?.id === b.id;
-              return (
-                <View key={b.id} style={styles.card}>
-                  <View style={styles.cardTop}>
-                    <Text style={styles.when}>{formatWhen(b.preferredAt)}</Text>
-                    <StatusBadge label={BOOKING_LABEL[b.status]} />
-                  </View>
-                  {b.message ? <Text style={styles.body}>{b.message}</Text> : null}
-                  <Button
-                    label={b.contactPhone}
-                    icon={Phone}
-                    variant="tertiary"
-                    onPress={() => void Linking.openURL(`tel:${b.contactPhone.replace(/\s/g, "")}`)}
-                  />
-                  {b.status === "pending" ? (
-                    <View style={styles.actions}>
-                      <Button
-                        label="Decline"
-                        variant="secondary"
-                        disabled={busy}
-                        onPress={() => updateBooking.mutate({ id: b.id, status: "cancelled" })}
-                        style={styles.flex}
-                      />
-                      <Button
-                        label="Confirm"
-                        loading={busy}
-                        onPress={() => updateBooking.mutate({ id: b.id, status: "confirmed" })}
-                        style={styles.flex}
-                      />
-                    </View>
-                  ) : b.status === "confirmed" ? (
-                    <Button
-                      label="Mark completed"
-                      variant="secondary"
-                      loading={busy}
-                      onPress={() => updateBooking.mutate({ id: b.id, status: "completed" })}
-                    />
-                  ) : null}
-                </View>
-              );
-            })}
-          </View>
-        )
+        <EmptyState
+          icon={Calendar}
+          title="Bookings live on your dashboard"
+          message="Accept, reject, reschedule and complete requests from the service dashboard. Those actions are checked against your real booking records."
+          actionLabel={serviceAccess === "approved" ? "Open dashboard" : undefined}
+          onAction={serviceAccess === "approved" ? () => router.push("/services/dashboard" as Href) : undefined}
+        />
       ) : null}
 
       {tab === "profile" ? (

@@ -17,12 +17,12 @@ import { TextField } from "@/components/ds/TextField";
 import { appAlert } from "@/components/ui/app-alert";
 import { ChevronLeft, Globe, MapPin } from "@/components/ui/icons";
 import { useApp } from "@/context/AppContext";
-import type { UserRole } from "@/data/types";
 import { userFacingError } from "@/lib/errors";
+import type { AuthPortal } from "@/lib/service-access";
 import { colors, fonts, radius, spacing, touchTarget, type } from "@/theme/tokens";
 
 type Mode = "sign-in" | "sign-up";
-type LoginType = "user" | "dealer";
+type LoginType = AuthPortal;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -39,9 +39,9 @@ export default function AuthScreen() {
     signIn,
     signUp,
     signInWithGoogle,
-    signOut,
     preferredRole,
     setPreferredRole,
+    landingHref,
     selectedCity,
     forgotPassword,
     isApiMode,
@@ -70,12 +70,15 @@ export default function AuthScreen() {
     setMode(modeFromParam(params.mode));
   }, [params.mode]);
 
-  useEffect(() => {
-    setLoginType(preferredRole === "broker" ? "dealer" : "user");
-  }, [preferredRole]);
-
   const copy = useMemo(() => {
     const city = selectedCity?.trim() || "your city";
+    if (loginType === "provider") {
+      return {
+        title: "Service provider sign in",
+        subtitle: `Open your ${city} dashboard if this account is an approved service provider.`,
+        cta: "Sign in as provider",
+      };
+    }
     if (isSignUp) {
       return {
         title: isDealer ? "Create dealer account" : "Create your account",
@@ -92,7 +95,7 @@ export default function AuthScreen() {
         : `Sign in to see saved homes and visits in ${city}.`,
       cta: isDealer ? "Sign in as dealer" : "Sign in",
     };
-  }, [isDealer, isSignUp, selectedCity]);
+  }, [isDealer, isSignUp, loginType, selectedCity]);
 
   const close = () => {
     if (router.canGoBack()) router.back();
@@ -108,7 +111,7 @@ export default function AuthScreen() {
 
   const selectLoginType = (next: LoginType) => {
     setLoginType(next);
-    setPreferredRole(next === "dealer" ? "broker" : "user");
+    if (next !== "provider") setPreferredRole(next === "dealer" ? "broker" : "user");
     setErrors({});
   };
 
@@ -122,29 +125,6 @@ export default function AuthScreen() {
     }
     setErrors(next);
     return Object.keys(next).length === 0;
-  };
-
-  const finishAuth = (result: { ok: true; role: UserRole; dealerAccess?: string }) => {
-    const isDealerAccount = result.role === "broker" || result.dealerAccess === "pending";
-    if (loginType === "user" && result.role === "broker") {
-      signOut();
-      appAlert(
-        "Dealer account",
-        "This email is registered as a Dealer. Switch to Dealer and try again.",
-      );
-      return;
-    }
-    if (loginType === "dealer" && !isDealerAccount) {
-      signOut();
-      appAlert(
-        "Not a dealer account",
-        "This email is a customer account. Switch to Customer, or create a Dealer account.",
-      );
-      return;
-    }
-    if (loginType === "dealer" && result.role !== "broker" && result.dealerAccess === "pending") {
-      router.replace("/dealer-pending" as Href);
-    }
   };
 
   const handleSubmit = async () => {
@@ -168,15 +148,13 @@ export default function AuthScreen() {
         return;
       }
 
-      const result = await signIn(email.trim(), password);
+      const result = await signIn(email.trim(), password, loginType);
       if (!result.ok) {
         appAlert(
           result.code === "admin_unsupported" ? "Use the SqftGo website" : "Couldn't sign in",
           result.message,
         );
-        return;
       }
-      finishAuth(result);
     } catch (error) {
       appAlert(
         isSignUp ? "Couldn't create account" : "Couldn't sign in",
@@ -197,14 +175,12 @@ export default function AuthScreen() {
     }
     setBusy("google");
     try {
-      const result = await signInWithGoogle();
+      const result = await signInWithGoogle(loginType);
       if (!result.ok) {
         if (!result.cancelled) {
           appAlert("Google sign-in failed", result.message);
         }
-        return;
       }
-      finishAuth(result);
     } catch (error) {
       appAlert("Google sign-in failed", userFacingError(error, "Please try again."));
     } finally {
@@ -231,11 +207,12 @@ export default function AuthScreen() {
     }
   };
 
-  const showGoogle = isApiMode && !(isSignUp && isDealer);
+  const showGoogle = isApiMode && !(isSignUp && (isDealer || loginType === "provider"));
+  const providerSignup = isSignUp && loginType === "provider";
 
   if (isLoggedIn) {
     return (
-      <Redirect href={(userRole === "broker" ? "/(dealer)" : "/(tabs)") as Href} />
+      <Redirect href={(landingHref ?? (userRole === "broker" ? "/(dealer)" : "/(tabs)")) as Href} />
     );
   }
 
@@ -290,6 +267,7 @@ export default function AuthScreen() {
               segments={[
                 { value: "user", label: "Customer" },
                 { value: "dealer", label: "Dealer" },
+                { value: "provider", label: "Provider" },
               ]}
               value={loginType}
               onChange={selectLoginType}
@@ -315,6 +293,13 @@ export default function AuthScreen() {
             </>
           ) : null}
 
+          {providerSignup ? (
+            <Text style={styles.helperNote}>
+              Service provider access is approved on an existing account. Switch to Sign in and use the email on your approved profile.
+            </Text>
+          ) : null}
+
+          {providerSignup ? null : (
           <View style={styles.form}>
             {isSignUp ? (
               <TextField
@@ -403,7 +388,11 @@ export default function AuthScreen() {
               </Pressable>
             )}
           </View>
+          )}
 
+          {providerSignup ? (
+            <Button label="Go to sign in" onPress={() => selectMode("sign-in")} fullWidth />
+          ) : (
           <Button
             label={copy.cta}
             loading={busy === "form"}
@@ -411,6 +400,7 @@ export default function AuthScreen() {
             onPress={() => void handleSubmit()}
             fullWidth
           />
+          )}
 
           {isSignUp && isDealer ? (
             <Text style={styles.helperNote}>

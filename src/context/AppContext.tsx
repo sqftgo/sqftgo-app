@@ -52,6 +52,15 @@ import {
 } from "@/lib/api/services/dealers";
 import { apiGetKyc, apiPutKyc } from "@/lib/api/services/kyc";
 import {
+  apiAccountGate,
+  apiSendMobileOtp,
+  apiVerifyMobileOtp,
+  authProviderFromToken,
+} from "@/lib/api/services/mobile-auth";
+import { mockSendMobileOtp, mockVerifyMobileOtp } from "@/lib/mock-mobile-otp";
+import { postAuthDestination, setLastPortal, setPostAuthHref } from "@/lib/post-auth";
+import { type AuthPortal, type ServiceAccess, serviceProviderDenial } from "@/lib/service-access";
+import {
   apiCreateInquiry,
   apiListInquiries,
   apiListReceivedInquiries,
@@ -103,6 +112,10 @@ interface StoredAccount {
   password: string;
   name: string;
   phone?: string;
+  countryCode?: string;
+  mobileVerified?: boolean;
+  authProvider?: string | null;
+  serviceAccess?: ServiceAccess;
   role: UserRole | "admin";
   status: AccountStatus;
   dealerAccess: DealerAccessStatus;
@@ -117,6 +130,11 @@ interface Session {
   email: string;
   name: string;
   phone?: string;
+  countryCode?: string;
+  mobileVerified: boolean;
+  mobileVerifiedAt?: string | null;
+  authProvider?: string | null;
+  serviceAccess: ServiceAccess;
   role: UserRole | null;
   status: AccountStatus;
   dealerAccess: DealerAccessStatus;
@@ -127,6 +145,8 @@ interface Session {
   bio?: string;
   city?: string;
   avatarUrl?: string;
+  /** In-memory only. Where this sign-in should open. */
+  landing?: Href;
 }
 
 const GUEST_SESSION: Session = {
@@ -135,6 +155,8 @@ const GUEST_SESSION: Session = {
   email: "",
   name: "",
   role: null,
+  mobileVerified: false,
+  serviceAccess: "none",
   status: "active",
   dealerAccess: "none",
   listingStatus: "none",
@@ -149,6 +171,10 @@ export const DEMO_ACCOUNTS: StoredAccount[] = [
     password: "sqftgo26",
     name: "Riya Sharma",
     phone: "+91 98765 43210",
+    countryCode: "91",
+    mobileVerified: true,
+    authProvider: "email",
+    serviceAccess: "none",
     role: "user",
     status: "active",
     dealerAccess: "none",
@@ -160,6 +186,10 @@ export const DEMO_ACCOUNTS: StoredAccount[] = [
     password: "sqftgo26",
     name: "Aman Verma",
     phone: "+91 98111 22334",
+    countryCode: "91",
+    mobileVerified: true,
+    authProvider: "email",
+    serviceAccess: "none",
     role: "broker",
     status: "active",
     dealerAccess: "approved",
@@ -179,6 +209,10 @@ export const DEMO_ACCOUNTS: StoredAccount[] = [
     password: "sqftgo26",
     name: "Neha Patel",
     phone: "+91 99000 11122",
+    countryCode: "91",
+    mobileVerified: true,
+    authProvider: "email",
+    serviceAccess: "none",
     role: "user",
     status: "active",
     dealerAccess: "pending",
@@ -200,6 +234,67 @@ export const DEMO_ACCOUNTS: StoredAccount[] = [
     status: "active",
     dealerAccess: "none",
     joinedDate: "2024-01-01T00:00:00.000Z",
+  },
+  {
+    id: "acc-google",
+    email: "google@sqftgo.com",
+    password: "sqftgo26",
+    name: "Aisha Google",
+    role: "user",
+    status: "active",
+    dealerAccess: "none",
+    authProvider: "google",
+    mobileVerified: false,
+    serviceAccess: "none",
+    joinedDate: "2026-11-01T00:00:00.000Z",
+  },
+  {
+    id: "acc-provider",
+    email: "provider@sqftgo.com",
+    password: "sqftgo26",
+    name: "Meera Shah",
+    phone: "9811122330",
+    countryCode: "91",
+    mobileVerified: true,
+    authProvider: "email",
+    serviceAccess: "approved",
+    role: "user",
+    status: "active",
+    dealerAccess: "none",
+    directoryProfileId: "dir-provider",
+    joinedDate: "2026-04-01T00:00:00.000Z",
+  },
+  {
+    id: "acc-provider-pending",
+    email: "provider-pending@sqftgo.com",
+    password: "sqftgo26",
+    name: "Meera Shah",
+    phone: "9811122331",
+    countryCode: "91",
+    mobileVerified: true,
+    authProvider: "email",
+    serviceAccess: "pending",
+    role: "user",
+    status: "active",
+    dealerAccess: "none",
+    directoryProfileId: "dir-provider-pending",
+    joinedDate: "2026-08-01T00:00:00.000Z",
+  },
+  {
+    id: "acc-provider-inactive",
+    email: "provider-inactive@sqftgo.com",
+    password: "sqftgo26",
+    name: "Meera Shah",
+    phone: "9811122332",
+    countryCode: "91",
+    mobileVerified: true,
+    authProvider: "email",
+    serviceAccess: "inactive",
+    role: "user",
+    status: "active",
+    dealerAccess: "none",
+    directoryProfileId: "dir-provider-inactive",
+    joinedDate: "2026-03-01T00:00:00.000Z",
   },
 ];
 
@@ -236,7 +331,12 @@ type PropertyInput = Omit<
 };
 
 export type AuthResult =
-  | { ok: true; role: UserRole; dealerAccess: DealerAccessStatus }
+  | {
+      ok: true;
+      role: UserRole;
+      dealerAccess: DealerAccessStatus;
+      needsMobile?: boolean;
+    }
   | {
       ok: false;
       code: "invalid" | "suspended" | "admin_unsupported" | "exists" | "network";
@@ -343,14 +443,31 @@ interface AppContextType {
   myListingsCount: number;
   /** Whether the current user may create another listing under platform caps. */
   canPostListing: boolean;
-  signIn: (email: string, password: string) => Promise<AuthResult> | AuthResult;
+  signIn: (
+    email: string,
+    password: string,
+    portal?: AuthPortal,
+  ) => Promise<AuthResult> | AuthResult;
   signUp: (input: {
     email: string;
     password: string;
     name: string;
     intent?: "user" | "dealer";
   }) => Promise<AuthResult> | AuthResult;
-  signInWithGoogle: () => Promise<AuthResult & { cancelled?: boolean }>;
+  signInWithGoogle: (portal?: AuthPortal) => Promise<AuthResult & { cancelled?: boolean }>;
+  needsMobileVerification: boolean;
+  serviceAccess: ServiceAccess;
+  landingHref?: Href;
+  sendMobileOtp: (input: {
+    countryCode: string;
+    mobileNumber: string;
+  }) => Promise<
+    | { ok: true; resendAfterSeconds: number; previewCode?: string }
+    | { ok: false; message: string; resendAfterSeconds?: number }
+  >;
+  verifyMobileOtp: (
+    code: string,
+  ) => Promise<{ ok: true } | { ok: false; message: string }>;
   signOut: () => void;
   refreshSessionFromApi: () => Promise<void>;
   updateProfile: (patch: {
@@ -423,6 +540,10 @@ function sessionFromAccount(account: StoredAccount): Session {
     email: account.email,
     name: account.name,
     phone: account.phone,
+    countryCode: account.countryCode,
+    mobileVerified: account.mobileVerified ?? Boolean(account.phone),
+    authProvider: account.authProvider ?? "email",
+    serviceAccess: account.serviceAccess ?? "none",
     role: account.role,
     status: account.status,
     dealerAccess: dealerAccessFromRole(account.role, account.dealerAccess),
@@ -447,6 +568,11 @@ function sessionFromApiUser(user: AuthMeResponse, previous?: Session): Session {
     email: user.email,
     name: user.name,
     phone: user.phone,
+    countryCode: carry?.countryCode,
+    mobileVerified: carry?.mobileVerified ?? Boolean(user.phone),
+    mobileVerifiedAt: carry?.mobileVerifiedAt,
+    authProvider: carry?.authProvider ?? "email",
+    serviceAccess: carry?.serviceAccess ?? "unknown",
     role: user.role,
     status: user.status,
     dealerAccess:
@@ -461,6 +587,26 @@ function sessionFromApiUser(user: AuthMeResponse, previous?: Session): Session {
   };
 }
 
+async function withAccountGate(session: Session): Promise<{ session: Session; needsMobile: boolean }> {
+  const tokens = await getTokens();
+  const gate = isApiMode ? await apiAccountGate().catch(() => null) : null;
+  const authProvider =
+    gate?.authProvider ?? authProviderFromToken(tokens.accessToken) ?? session.authProvider ?? "email";
+  const mobileVerified = gate ? gate.mobileVerified : session.mobileVerified;
+  return {
+    needsMobile: authProvider === "google" && !mobileVerified,
+    session: {
+      ...session,
+      phone: gate?.phone ?? session.phone,
+      countryCode: gate?.countryCode ?? session.countryCode,
+      mobileVerified,
+      mobileVerifiedAt: gate?.mobileVerifiedAt ?? session.mobileVerifiedAt,
+      authProvider,
+      serviceAccess: gate?.serviceAccess ?? session.serviceAccess,
+    },
+  };
+}
+
 function profileFromSession(session: Session): UserProfile | null {
   if (!session.isLoggedIn || !session.role) return null;
   return {
@@ -468,6 +614,11 @@ function profileFromSession(session: Session): UserProfile | null {
     email: session.email,
     name: session.name,
     phone: session.phone,
+    countryCode: session.countryCode,
+    mobileVerified: session.mobileVerified,
+    mobileVerifiedAt: session.mobileVerifiedAt,
+    authProvider: session.authProvider,
+    serviceAccess: session.serviceAccess,
     role: session.role,
     status: session.status,
     joinedDate: session.joinedDate,
@@ -557,7 +708,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const persistSession = useCallback((next: Session) => {
     setSession(next);
     if (next.isLoggedIn) {
-      AsyncStorage.setItem(STORAGE_KEYS.session, JSON.stringify(next)).catch(() => {});
+      const { landing: _landing, ...stored } = next;
+      AsyncStorage.setItem(STORAGE_KEYS.session, JSON.stringify(stored)).catch(() => {});
     } else {
       AsyncStorage.removeItem(STORAGE_KEYS.session).catch(() => {});
     }
@@ -697,7 +849,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (!isApiMode && storedDirectory) {
         const parsed: DirectoryProfile[] = JSON.parse(storedDirectory);
-        if (Array.isArray(parsed) && parsed.length > 0) setDirectoryProfiles(parsed);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const ids = new Set(parsed.map((profile) => profile.id));
+          const extras = seedDirectoryProfiles.filter((profile) => !ids.has(profile.id));
+          setDirectoryProfiles(extras.length ? [...parsed, ...extras] : parsed);
+        }
       }
 
       if (!isApiMode && storedMessages) {
@@ -720,6 +876,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           email?: string;
           name?: string;
           phone?: string;
+          countryCode?: string;
+          mobileVerified?: boolean;
+          authProvider?: string | null;
+          serviceAccess?: ServiceAccess;
           status?: AccountStatus;
           directoryProfileId?: string;
           kyc?: DealerKyc;
@@ -742,6 +902,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             email: parsed.email ?? "",
             name: parsed.name ?? "",
             phone: parsed.phone,
+            countryCode: parsed.countryCode,
+            mobileVerified: parsed.mobileVerified ?? Boolean(parsed.phone),
+            authProvider: parsed.authProvider ?? "email",
+            serviceAccess: parsed.serviceAccess ?? "unknown",
             role: parsed.role,
             status: parsed.status ?? "active",
             dealerAccess:
@@ -777,7 +941,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     setSessionNotice("This account is suspended. Contact support.");
                   }
                 } else {
-                  const refreshed = sessionFromApiUser(me, nextSession);
+                  const refreshed = (await withAccountGate(sessionFromApiUser(me, nextSession))).session;
                   activeSession = refreshed;
                   setSession(refreshed);
                   AsyncStorage.setItem(STORAGE_KEYS.session, JSON.stringify(refreshed)).catch(
@@ -922,7 +1086,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const completeApiSignIn = useCallback(
-    async (res: AuthMeResponse): Promise<AuthResult> => {
+    async (res: AuthMeResponse, portal: AuthPortal = "user", route = true): Promise<AuthResult> => {
       if (res.role === "admin") {
         await clearTokens();
         return {
@@ -939,7 +1103,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           message: "This account is suspended. Contact support.",
         };
       }
-      const next = sessionFromApiUser(res);
+      const gated = await withAccountGate(sessionFromApiUser(res));
+      const dealerAccess = dealerAccessFromRole(res.role, res.dealerAccess);
+      if (portal === "provider" && gated.session.serviceAccess !== "approved") {
+        await clearTokens();
+        return { ok: false, code: "invalid", message: serviceProviderDenial(gated.session.serviceAccess) };
+      }
+      if (portal === "user" && res.role === "broker") {
+        await clearTokens();
+        return {
+          ok: false,
+          code: "invalid",
+          message: "This email is registered as a Dealer. Switch to Dealer and try again.",
+        };
+      }
+      if (portal === "dealer" && res.role !== "broker" && dealerAccess !== "pending") {
+        await clearTokens();
+        return {
+          ok: false,
+          code: "invalid",
+          message: "This email is a customer account. Switch to Customer, or create a Dealer account.",
+        };
+      }
+      const next: Session = {
+        ...gated.session,
+        dealerAccess,
+        landing: route
+          ? postAuthDestination({
+              portal,
+              role: res.role,
+              dealerAccess,
+              needsMobile: gated.needsMobile,
+            })
+          : undefined,
+      };
+      if (route) setLastPortal(portal);
       setSessionNotice(null);
       persistSession(next);
       setHasCompletedOnboardingState(true);
@@ -948,7 +1146,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return {
         ok: true,
         role: res.role,
-        dealerAccess: dealerAccessFromRole(res.role, res.dealerAccess),
+        dealerAccess,
+        needsMobile: gated.needsMobile,
       };
     },
     [persistSession, hydrateFromApi],
@@ -974,11 +1173,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [persistSession]);
 
   const signIn = useCallback(
-    async (email: string, password: string): Promise<AuthResult> => {
+    async (email: string, password: string, portal: AuthPortal = "user"): Promise<AuthResult> => {
       if (isApiMode) {
         try {
           const res = await apiLogin(email.trim().toLowerCase(), password);
-          return await completeApiSignIn(res);
+          return await completeApiSignIn(res, portal);
         } catch (e) {
           const status = e instanceof ApiError ? e.status : 0;
           return {
@@ -1008,21 +1207,52 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           message: "Admin accounts sign in on the SqftGo website. Use a buyer or dealer account here.",
         };
       }
-      persistSession(sessionFromAccount(account));
+      const serviceAccess = account.serviceAccess ?? "none";
+      if (portal === "provider" && serviceAccess !== "approved") {
+        return { ok: false, code: "invalid", message: serviceProviderDenial(serviceAccess) };
+      }
+      if (portal === "user" && account.role === "broker") {
+        return {
+          ok: false,
+          code: "invalid",
+          message: "This email is registered as a Dealer. Switch to Dealer and try again.",
+        };
+      }
+      if (portal === "dealer" && account.role !== "broker" && account.dealerAccess !== "pending") {
+        return {
+          ok: false,
+          code: "invalid",
+          message: "This email is a customer account. Switch to Customer, or create a Dealer account.",
+        };
+      }
+      const base = sessionFromAccount(account);
+      const needsMobile = base.authProvider === "google" && !base.mobileVerified;
+      const dealerAccess = base.dealerAccess;
+      setLastPortal(portal);
+      persistSession({
+        ...base,
+        landing: postAuthDestination({
+          portal,
+          role: base.role ?? "user",
+          dealerAccess,
+          needsMobile,
+        }),
+      });
       setHasCompletedOnboardingState(true);
       AsyncStorage.setItem(STORAGE_KEYS.onboarding, "true").catch(() => {});
       return {
         ok: true,
-        role: account.role,
-        dealerAccess: dealerAccessFromRole(account.role, account.dealerAccess),
+        role: base.role ?? "user",
+        dealerAccess,
+        needsMobile,
       };
     },
     [accounts, persistSession, completeApiSignIn],
   );
 
-  const signInWithGoogle = useCallback(async (): Promise<
-    AuthResult & { cancelled?: boolean }
-  > => {
+  const signInWithGoogle = useCallback(async (
+    portal: AuthPortal = "user",
+  ): Promise<AuthResult & { cancelled?: boolean }> => {
     if (!isApiMode) {
       return {
         ok: false,
@@ -1034,7 +1264,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!res.ok) {
       return { ok: false, code: "network", message: res.message, cancelled: res.cancelled };
     }
-    return completeApiSignIn(res.me);
+    return completeApiSignIn(res.me, portal);
   }, [completeApiSignIn]);
 
   const signUp = useCallback(
@@ -1059,7 +1289,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               message: res.message || "Check your email to confirm your account before signing in.",
             };
           }
-          return await completeApiSignIn(res);
+          return await completeApiSignIn(res, input.intent === "dealer" ? "dealer" : "user", false);
         } catch (e) {
           const msg = e instanceof Error ? e.message : "Sign up failed.";
           return {
@@ -1128,12 +1358,82 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         signOut();
         return;
       }
-      persistSession(sessionFromApiUser(me, session));
+      persistSession((await withAccountGate(sessionFromApiUser(me, session))).session);
       await hydrateFromApi(me.role === "broker" ? "broker" : "user");
     } catch {
       // keep current session
     }
   }, [session, persistSession, hydrateFromApi, signOut]);
+
+  const sendMobileOtp = useCallback(
+    async (input: { countryCode: string; mobileNumber: string }) => {
+      if (!session.isLoggedIn) return { ok: false as const, message: "Sign in required." };
+      if (isApiMode) {
+        const result = await apiSendMobileOtp(input);
+        if (!result.ok) {
+          return {
+            ok: false as const,
+            message: result.message,
+            resendAfterSeconds: result.resendAfterSeconds,
+          };
+        }
+        return { ok: true as const, resendAfterSeconds: result.resendAfterSeconds };
+      }
+      const result = mockSendMobileOtp(
+        session.accountId,
+        input.countryCode,
+        input.mobileNumber,
+        accounts,
+      );
+      if (!result.ok) {
+        return {
+          ok: false as const,
+          message: result.message,
+          resendAfterSeconds: result.resendAfterSeconds,
+        };
+      }
+      return {
+        ok: true as const,
+        resendAfterSeconds: result.resendAfterSeconds,
+        previewCode: result.previewCode,
+      };
+    },
+    [session.isLoggedIn, session.accountId, accounts],
+  );
+
+  const verifyMobileOtp = useCallback(
+    async (code: string) => {
+      if (!session.isLoggedIn) return { ok: false as const, message: "Sign in required." };
+      if (isApiMode) {
+        const result = await apiVerifyMobileOtp(code);
+        if (!result.ok) return { ok: false as const, message: result.message };
+        persistSession({
+          ...session,
+          phone: result.phone,
+          countryCode: result.countryCode,
+          mobileVerified: true,
+          mobileVerifiedAt: new Date().toISOString(),
+        });
+        return { ok: true as const };
+      }
+      const result = mockVerifyMobileOtp(session.accountId, code, accounts);
+      if (!result.ok) return { ok: false as const, message: result.message };
+      persistSession({
+        ...session,
+        phone: result.phone,
+        countryCode: result.countryCode,
+        mobileVerified: true,
+        mobileVerifiedAt: new Date().toISOString(),
+      });
+      patchAccount(session.accountId, {
+        phone: result.phone,
+        countryCode: result.countryCode,
+        mobileVerified: true,
+      });
+      return { ok: true as const };
+    },
+    [session, accounts, persistSession, patchAccount],
+  );
 
   const updateProfile = useCallback(
     async (patch: {
@@ -2180,6 +2480,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       userName: session.name,
       userRole: session.role,
       dealerAccess: session.dealerAccess,
+      serviceAccess: session.serviceAccess,
+      needsMobileVerification:
+        session.isLoggedIn && session.authProvider === "google" && !session.mobileVerified,
+      landingHref: session.landing,
       canAccessDealerDashboard,
       isApiMode,
       platformSettings,
@@ -2188,6 +2492,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       signIn,
       signUp,
       signInWithGoogle,
+      sendMobileOtp,
+      verifyMobileOtp,
       signOut,
       refreshSessionFromApi,
       updateProfile,
@@ -2224,6 +2530,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       reloadCatalog,
       mergeProperties,
       signInWithGoogle,
+      sendMobileOtp,
+      verifyMobileOtp,
       sessionNotice,
       clearSessionNotice,
       selectedCity,

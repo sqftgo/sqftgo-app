@@ -13,6 +13,7 @@ import { appAlert } from "@/components/ui/app-alert";
 import { Lock } from "@/components/ui/icons";
 import { useApp } from "@/context/AppContext";
 import { initialsFromName } from "@/lib/format";
+import { formatMobile } from "@/lib/phone";
 import { pickAndUploadAvatar } from "@/lib/media-upload";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 
@@ -24,7 +25,6 @@ export default function EditProfileScreen() {
   const { profile, userName, userEmail, updateProfile, isApiMode, isLoggedIn } = useApp();
 
   const [name, setName] = useState(userName);
-  const [phone, setPhone] = useState(profile?.phone ?? "");
   const [bio, setBio] = useState(profile?.bio ?? "");
   const [city, setCity] = useState(profile?.city ?? "");
   const [avatar, setAvatar] = useState<string | null>(profile?.avatar ?? null);
@@ -50,7 +50,6 @@ export default function EditProfileScreen() {
     setSaving(true);
     const result = await updateProfile({
       name: name.trim(),
-      phone: phone.trim(),
       bio: bio.trim(),
       city: city.trim(),
       avatarUrl: avatar,
@@ -134,16 +133,27 @@ export default function EditProfileScreen() {
           error={nameError}
         />
         <TextField label="Email" value={userEmail} editable={false} hint="Email can't be changed in the app." />
-        <TextField
-          label="Phone"
-          value={phone}
-          onChangeText={setPhone}
-          keyboardType="phone-pad"
-          autoComplete="tel"
-          maxLength={30}
-          placeholder="+91"
-          hint="Shared with dealers only when you send an inquiry or book a visit."
-        />
+        <View style={{ gap: spacing.xs }}>
+          <Text style={styles.phoneLabel}>
+            Mobile {profile?.mobileVerified ? "· verified" : "· not verified"}
+          </Text>
+          <Text style={styles.phoneValue}>
+            {profile?.phone
+              ? formatMobile(profile.countryCode, profile.phone)
+              : "No mobile number yet"}
+          </Text>
+          <Pressable
+            onPress={() =>
+              router.push({ pathname: "/auth/verify-mobile", params: { purpose: "update" } } as unknown as Href)
+            }
+            accessibilityRole="button"
+            hitSlop={8}
+          >
+            <Text style={styles.link}>
+              {profile?.mobileVerified ? "Change verified number" : "Verify mobile number"}
+            </Text>
+          </Pressable>
+        </View>
         <CityField value={city} onChange={setCity} />
         <TextField
           label="About you"
@@ -175,5 +185,7 @@ const styles = StyleSheet.create({
   initials: { ...type.hero, color: colors.onPrimary },
   avatarActions: { flexDirection: "row", gap: spacing.xl },
   link: { ...type.label, color: colors.accent, fontFamily: "Inter_600SemiBold", fontWeight: "600" },
+  phoneLabel: { ...type.label, color: colors.inkSecondary },
+  phoneValue: { ...type.body, color: colors.ink },
 });
 

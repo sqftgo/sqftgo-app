@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Stack, useRouter, type Href } from "expo-router";
+import { Stack, usePathname, useRouter, type Href } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
@@ -63,6 +63,7 @@ function RootLayoutNav() {
   const {
     isLoggedIn,
     userRole,
+    needsMobileVerification,
     isHydrating,
     authStatus,
     authError,
@@ -73,6 +74,7 @@ function RootLayoutNav() {
     clearSessionNotice,
   } = useApp();
 
+  const pathname = usePathname();
   const isDealer = isLoggedIn && userRole === "broker";
   const isBuyer = isLoggedIn && userRole !== "broker";
 
@@ -90,6 +92,12 @@ function RootLayoutNav() {
     }
     wasLoggedInRef.current = isLoggedIn;
   }, [isHydrating, isLoggedIn, router]);
+
+  useEffect(() => {
+    if (isHydrating || !isLoggedIn || !needsMobileVerification) return;
+    if (pathname === "/auth/verify-mobile") return;
+    router.replace("/auth/verify-mobile" as Href);
+  }, [isHydrating, isLoggedIn, needsMobileVerification, pathname, router]);
 
   useEffect(() => {
     if (!sessionNotice) return;
@@ -130,6 +138,7 @@ function RootLayoutNav() {
           */}
           <Stack.Screen name="onboarding" />
           <Stack.Screen name="auth/index" />
+          <Stack.Screen name="auth/verify-mobile" />
           <Stack.Screen name="auth/callback" />
           <Stack.Screen name="legal/[doc]" />
           <Stack.Screen name="help" />
@@ -173,6 +182,14 @@ function RootLayoutNav() {
             <Stack.Screen name="settings/password" />
             <Stack.Screen name="services/register" />
             <Stack.Screen name="services/manage" />
+            <Stack.Screen name="services/dashboard" />
+            <Stack.Screen name="services/bookings" />
+            <Stack.Screen name="services/booking/[id]" />
+            <Stack.Screen name="services/availability" />
+            <Stack.Screen name="services/catalog" />
+            <Stack.Screen name="services/customers" />
+            <Stack.Screen name="services/notifications" />
+            <Stack.Screen name="services/settings" />
           </Stack.Protected>
         </Stack>
       </AuthGateProvider>

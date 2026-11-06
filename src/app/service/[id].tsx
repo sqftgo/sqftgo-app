@@ -6,6 +6,7 @@ import { Linking, StyleSheet, Text, View } from "react-native";
 
 import {
   Button,
+  Chip,
   DateTimeField,
   EmptyState,
   ErrorState,
@@ -22,6 +23,8 @@ import { useApp } from "@/context/AppContext";
 import { ApiError } from "@/lib/api/client";
 import { isApiMode } from "@/lib/api/config";
 import { apiGetDealer } from "@/lib/api/services/dealers";
+import { createServiceBooking, listProviderServices } from "@/lib/api/services/provider";
+import { mobileAuthConfigured } from "@/lib/api/supabase";
 import { apiCreateServiceBooking } from "@/lib/api/services/services";
 import { userFacingError } from "@/lib/errors";
 import { initialsFromName } from "@/lib/format";
@@ -42,7 +45,7 @@ function open(url: string) {
 export default function ServiceProfileScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { directoryProfiles, profile: me, userEmail } = useApp();
+  const { directoryProfiles, profile: me, userEmail, serviceAccess } = useApp();
   const requireAuth = useRequireAuth();
 
   const cached = useMemo(() => directoryProfiles.find((d) => d.id === id), [directoryProfiles, id]);
@@ -56,15 +59,34 @@ export default function ServiceProfileScreen() {
   const [when, setWhen] = useState(tomorrowAt11);
   const [phone, setPhone] = useState(me?.phone ?? "");
   const [message, setMessage] = useState("");
+  const [location, setLocation] = useState("");
+  const [serviceId, setServiceId] = useState<string | null>(null);
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const servicesQuery = useQuery({
+    queryKey: ["provider-services", id],
+    queryFn: () => listProviderServices(id),
+    enabled: mobileAuthConfigured && Boolean(id),
+  });
 
   const booking = useMutation({
-    mutationFn: () =>
-      apiCreateServiceBooking(id, {
+    mutationFn: async () => {
+      if (mobileAuthConfigured) {
+        return createServiceBooking({
+          directoryProfileId: id,
+          preferredAt: when.toISOString(),
+          contactPhone: phone.trim(),
+          message: message.trim() || undefined,
+          serviceId,
+          location: location.trim() || null,
+        });
+      }
+      const created = await apiCreateServiceBooking(id, {
         preferredAt: when.toISOString(),
         contactPhone: phone.trim(),
         message: message.trim() || undefined,
-      }),
+      });
+      return { ...created, message: created.message ?? null };
+    },
     onError: (e) => appAlert("Couldn't send request", userFacingError(e, "Please try again.")),
   });
 
@@ -185,7 +207,10 @@ export default function ServiceProfileScreen() {
         <View style={styles.card}>
           <Text style={styles.blockTitle}>This is your profile</Text>
           <Text style={styles.muted}>Edit details, verification and booking requests from Manage.</Text>
-          <Button label="Manage service profile" onPress={() => router.push("/services/manage" as Href)} />
+          <Button
+            label={serviceAccess === "approved" ? "Open dashboard" : "Manage service profile"}
+            onPress={() => router.push((serviceAccess === "approved" ? "/services/dashboard" : "/services/manage") as Href)}
+          />
         </View>
       ) : booking.isSuccess ? (
         <View style={[styles.card, styles.success]}>
@@ -201,6 +226,26 @@ export default function ServiceProfileScreen() {
           <Text style={styles.blockTitle}>Book a visit</Text>
           <Text style={styles.muted}>Pick a time that suits you. The partner confirms the request.</Text>
           <DateTimeField label="Preferred time" value={when} onChange={setWhen} />
+          {(servicesQuery.data ?? []).filter((item) => item.active).length > 0 ? (
+            <View style={styles.chips}>
+              {(servicesQuery.data ?? [])
+                .filter((item) => item.active)
+                .map((item) => (
+                  <Chip
+                    key={item.id}
+                    label={item.priceInr == null ? item.name : `${item.name} · ₹${item.priceInr}`}
+                    selected={serviceId === item.id}
+                    onPress={() => setServiceId(serviceId === item.id ? null : item.id)}
+                  />
+                ))}
+            </View>
+          ) : null}
+          <TextField
+            label="Service location"
+            value={location}
+            onChangeText={setLocation}
+            placeholder="Address for the visit, if it is not at the business"
+          />
           <TextField
             label="Your phone"
             required

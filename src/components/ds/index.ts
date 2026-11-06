@@ -1,5 +1,4 @@
 export { Accordion, type AccordionItem } from "./Accordion";
-export { ActionSheet, type SheetAction } from "./ActionSheet";
 export { AuthGateProvider, useRequireAuth } from "./AuthGate";
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from "./Button";
 export { BarChart, DonutChart, type ChartDatum } from "./Chart";
@@ -20,10 +19,8 @@ export { StatCard, StatGrid } from "./StatCard";
 export { StatusBadge, toneForStatus, type BadgeTone } from "./StatusBadge";
 export { Stepper } from "./Stepper";
 export { SwipeRow, type SwipeAction } from "./SwipeRow";
-export { PriceText, Text, type TextTone, type TextVariant } from "./Text";
 export { TextField } from "./TextField";
 export { ToastProvider, toast } from "./Toast";
 export { ModalSheet as Sheet, ModalSheetHeader as SheetHeader } from "@/components/ui/modal-sheet";
 export { EmptyState } from "@/components/ui/empty-state";
-export { ExpertCard as PersonCard } from "@/components/ui/expert-card";
 export { PropertyCard } from "@/components/ui/property-card";

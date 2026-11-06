@@ -58,6 +58,7 @@ export default function ProfileScreen() {
     myListingsCount,
     refreshVisits,
     refreshInquiries,
+    serviceAccess,
   } = useApp();
 
   const [countsRefreshing, setCountsRefreshing] = useState(false);
@@ -85,7 +86,7 @@ export default function ProfileScreen() {
       icon={Briefcase}
       title="Service business"
       subtitle={serviceProfile.firmName}
-      onPress={() => go("/services/manage")}
+      onPress={() => go(serviceAccess === "approved" ? "/services/dashboard" : "/services/manage")}
     />
   ) : (
     <ListRow

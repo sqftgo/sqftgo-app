@@ -211,6 +211,15 @@ export interface UserProfile {
   email: string;
   name: string;
   phone?: string;
+  /** ITU calling code, digits only. */
+  countryCode?: string;
+  /** True after OTP, or when a number already on the account was grandfathered. */
+  mobileVerified?: boolean;
+  mobileVerifiedAt?: string | null;
+  /** email, google, or another Supabase provider. Not used as an authorization claim. */
+  authProvider?: string | null;
+  /** Approved service-partner access. Separate from the dealer/broker role. */
+  serviceAccess?: "none" | "pending" | "approved" | "rejected" | "inactive" | "suspended" | "unknown";
   avatar?: string;
   bio?: string;
   city?: string;

@@ -10,7 +10,15 @@ export type ServiceType = {
   sortOrder?: number;
 };
 
-export type ServiceBookingStatus = "pending" | "confirmed" | "cancelled" | "completed";
+export type ServiceBookingStatus =
+  | "pending"
+  | "confirmed"
+  | "in_progress"
+  | "completed"
+  | "cancelled"
+  | "rejected"
+  | "reschedule_requested"
+  | "reschedule_proposed";
 
 export type ServiceBooking = {
   id: string;
