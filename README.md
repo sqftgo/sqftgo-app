@@ -68,7 +68,7 @@ SqftGo provides a seamless platform for users to discover, buy, rent, list, and 
 ```text
 real-estate/
 ├── assets/                     # App icons, splash screens, and images
-├── scripts/                    # Project utility scripts
+├── docs/                       # Pending notes (e.g. Google Sign-In)
 ├── app.json                    # Expo configuration
 ├── package.json
 └── src/                        # Application source (Expo Router uses src/app)
@@ -163,7 +163,6 @@ Ensure you have the following installed on your development machine:
 | **iOS** | `npm run ios` | Starts app directly on an iOS simulator (macOS required) |
 | **Web** | `npm run web` | Launches the app in a local web browser |
 | **Lint** | `npm run lint` | Runs ESLint to check for code style issues |
-| **Reset** | `npm run reset-project` | Script to reset example project files |
 
 ---
 

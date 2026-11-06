@@ -3,26 +3,17 @@ import { useRouter, type Href } from "expo-router";
 import React from "react";
 import { FlatList, StyleSheet, Text, View } from "react-native";
 
-import { Button, EmptyState, ErrorState, ListSkeleton, Screen, StatusBadge, toast, type BadgeTone } from "@/components/ds";
+import { Button, EmptyState, ErrorState, ListSkeleton, Screen, StatusBadge, toast } from "@/components/ds";
 import { appAlert } from "@/components/ui/app-alert";
 import { Briefcase, Lock } from "@/components/ui/icons";
 import { useApp } from "@/context/AppContext";
 import { isApiMode } from "@/lib/api/config";
-import {
-  apiCancelServiceBooking,
-  apiListMyServiceBookings,
-  type ServiceBooking,
-  type ServiceBookingStatus,
-} from "@/lib/api/services/services";
+import { applyBookingAction, listServiceBookings, type ProviderBooking } from "@/lib/api/services/provider";
+import { mobileAuthConfigured } from "@/lib/api/supabase";
+import { apiCancelServiceBooking, apiListMyServiceBookings } from "@/lib/api/services/services";
+import { bookingStatusMeta, formatBookingWhen } from "@/lib/booking-status";
 import { userFacingError } from "@/lib/errors";
 import { colors, radius, spacing, type } from "@/theme/tokens";
-
-const STATUS: Record<ServiceBookingStatus, { label: string; tone: BadgeTone }> = {
-  pending: { label: "Awaiting partner", tone: "warning" },
-  confirmed: { label: "Confirmed", tone: "success" },
-  cancelled: { label: "Cancelled", tone: "danger" },
-  completed: { label: "Completed", tone: "info" },
-};
 
 const KEY = ["service-bookings", "mine"];
 
@@ -32,17 +23,25 @@ export default function MyServiceBookingsScreen() {
   const queryClient = useQueryClient();
   const query = useQuery({
     queryKey: KEY,
-    queryFn: apiListMyServiceBookings,
-    enabled: isApiMode && isLoggedIn,
+    queryFn: async (): Promise<ProviderBooking[]> => {
+      if (mobileAuthConfigured) return listServiceBookings("customer");
+      const rows = await apiListMyServiceBookings();
+      return rows.map((row) => ({ ...row, message: row.message ?? null }));
+    },
+    enabled: (isApiMode || mobileAuthConfigured) && isLoggedIn,
   });
 
-  const cancel = useMutation({
-    mutationFn: (id: string) => apiCancelServiceBooking(id),
-    onSuccess: (updated) => {
-      queryClient.setQueryData<ServiceBooking[]>(KEY, (prev) => prev?.map((b) => (b.id === updated.id ? updated : b)));
-      toast("Booking cancelled");
+  const respond = useMutation({
+    mutationFn: async (input: { id: string; action: "cancel" | "accept_reschedule" | "decline_reschedule" | "request_reschedule" }) => {
+      if (mobileAuthConfigured) return applyBookingAction(input.id, input.action);
+      const updated = await apiCancelServiceBooking(input.id);
+      return { ...updated, message: updated.message ?? null };
     },
-    onError: (e) => appAlert("Couldn't cancel", userFacingError(e, "Try again.")),
+    onSuccess: (updated) => {
+      queryClient.setQueryData<ProviderBooking[]>(KEY, (prev) => prev?.map((b) => (b.id === updated.id ? { ...b, ...updated } : b)));
+      toast(bookingStatusMeta(updated.status).label);
+    },
+    onError: (e) => appAlert("Couldn't update booking", userFacingError(e, "Try again.")),
   });
 
   if (!isLoggedIn) {
@@ -61,13 +60,14 @@ export default function MyServiceBookingsScreen() {
     );
   }
 
-  const confirmCancel = (item: ServiceBooking) =>
+  const confirmCancel = (item: ProviderBooking) =>
     appAlert("Cancel this request?", `${item.firmName ?? "The partner"} will be told you no longer need the visit.`, [
       { text: "Keep", style: "cancel" },
-      { text: "Cancel request", style: "destructive", onPress: () => cancel.mutate(item.id) },
+      { text: "Cancel request", style: "destructive", onPress: () => respond.mutate({ id: item.id, action: "cancel" }) },
     ]);
 
-  const empty = !isApiMode ? (
+  const connected = isApiMode || mobileAuthConfigured;
+  const empty = !connected ? (
     <EmptyState icon={Briefcase} title="Bookings need a connection" message="Service bookings sync from SqftGo servers." />
   ) : query.isLoading ? (
     <ListSkeleton rows={3} />
@@ -89,12 +89,13 @@ export default function MyServiceBookingsScreen() {
         data={query.data ?? []}
         keyExtractor={(item) => item.id}
         refreshing={query.isRefetching}
-        onRefresh={isApiMode ? () => void query.refetch() : undefined}
+        onRefresh={connected ? () => void query.refetch() : undefined}
         contentContainerStyle={styles.list}
         ListEmptyComponent={empty}
         renderItem={({ item }) => {
-          const meta = STATUS[item.status] ?? STATUS.pending;
-          const open = item.status === "pending" || item.status === "confirmed";
+          const meta = bookingStatusMeta(item.status);
+          const open = item.status === "pending" || item.status === "confirmed" || item.status === "reschedule_requested" || item.status === "reschedule_proposed" || item.status === "in_progress";
+          const pendingThis = respond.isPending && respond.variables?.id === item.id;
           return (
             <View style={styles.card}>
               <View style={styles.top}>
@@ -103,20 +104,8 @@ export default function MyServiceBookingsScreen() {
                 </Text>
                 <StatusBadge label={meta.label} tone={meta.tone} />
               </View>
-              <Text style={styles.meta}>
-                {[
-                  item.city,
-                  new Date(item.preferredAt).toLocaleString("en-IN", {
-                    weekday: "short",
-                    day: "numeric",
-                    month: "short",
-                    hour: "numeric",
-                    minute: "2-digit",
-                  }),
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </Text>
+              <Text style={styles.meta}>{[item.city, item.serviceName, formatBookingWhen(item.preferredAt)].filter(Boolean).join(" · ")}</Text>
+              {item.proposedAt ? <Text style={styles.body}>Proposed time: {formatBookingWhen(item.proposedAt)}</Text> : null}
               {item.message ? (
                 <Text style={styles.body} numberOfLines={3}>
                   {item.message}
@@ -130,13 +119,18 @@ export default function MyServiceBookingsScreen() {
                     onPress={() => router.push({ pathname: "/service/[id]", params: { id: item.directoryProfileId } })}
                     style={styles.flex}
                   />
-                  <Button
-                    label="Cancel"
-                    variant="tertiary"
-                    loading={cancel.isPending && cancel.variables === item.id}
-                    onPress={() => confirmCancel(item)}
-                    style={styles.flex}
-                  />
+                  {mobileAuthConfigured ? (
+                    <Button
+                      label="Details"
+                      variant="secondary"
+                      onPress={() => router.push({ pathname: "/services/booking/[id]", params: { id: item.id } } as unknown as Href)}
+                      style={styles.flex}
+                    />
+                  ) : null}
+                  {item.status === "reschedule_proposed" && mobileAuthConfigured ? (
+                    <Button label="Accept time" loading={pendingThis} onPress={() => respond.mutate({ id: item.id, action: "accept_reschedule" })} style={styles.flex} />
+                  ) : null}
+                  <Button label="Cancel" variant="tertiary" loading={pendingThis} onPress={() => confirmCancel(item)} style={styles.flex} />
                 </View>
               ) : null}
             </View>

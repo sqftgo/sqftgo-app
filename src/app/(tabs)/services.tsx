@@ -72,7 +72,7 @@ function matchesType(p: DirectoryProfile, typeId: string, typeName: string) {
 export default function ServicesTabScreen() {
   const router = useRouter();
   const requireAuth = useRequireAuth();
-  const { selectedCity, directoryProfiles } = useApp();
+  const { selectedCity, directoryProfiles, serviceAccess } = useApp();
   const { types } = useServiceTypes();
   const myService = useMyServiceProfile();
 
@@ -136,7 +136,9 @@ export default function ServicesTabScreen() {
 
   const hasServiceProfile = Boolean(myService.profile);
   const openListBusiness = () => {
-    const href = (hasServiceProfile ? "/services/manage" : "/services/register") as Href;
+    const href = (
+      serviceAccess === "approved" ? "/services/dashboard" : hasServiceProfile ? "/services/manage" : "/services/register"
+    ) as Href;
     if (hasServiceProfile) {
       router.push(href);
       return;

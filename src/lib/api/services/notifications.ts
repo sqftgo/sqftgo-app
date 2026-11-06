@@ -27,6 +27,10 @@ function hrefFor(raw: ApiNotification): Href | undefined {
       return dealer ? "/manage-visits" : "/my-visits";
     case "property":
       return raw.entityId ? { pathname: "/edit-property/[id]", params: { id: raw.entityId } } : undefined;
+    case "service_booking":
+      return (raw.entityId
+        ? { pathname: "/services/booking/[id]", params: { id: raw.entityId } }
+        : "/services/bookings") as Href;
     default:
       return undefined;
   }
