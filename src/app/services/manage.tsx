@@ -1,28 +1,33 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, type Href } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Linking, StyleSheet, Text, View } from "react-native";
 
 import {
-  Button,
-  EmptyState,
-  ErrorState,
-  ListSkeleton,
-  Screen,
-  SegmentedControl,
-  StatusBadge,
-  TextField,
-  toast,
-  type BadgeTone,
+    Button,
+    EmptyState,
+    ErrorState,
+    ListSkeleton,
+    Screen,
+    SegmentedControl,
+    StatusBadge,
+    TextField,
+    toast,
+    type BadgeTone,
 } from "@/components/ds";
 import { appAlert } from "@/components/ui/app-alert";
 import { Calendar, Lock, Store } from "@/components/ui/icons";
 import { useApp } from "@/context/AppContext";
 import { useMyServiceProfile } from "@/hooks/use-my-service-profile";
-import { isApiMode } from "@/lib/api/config";
-import { serviceProviderDenial } from "@/lib/service-access";
+import { API_BASE_URL, isApiMode } from "@/lib/api/config";
+import {
+    apiGetMyServiceVerification,
+    apiGetMyWebsitePromotion,
+    apiListWebsitePromotionPlans,
+    apiSubmitServiceVerification,
+} from "@/lib/api/services/services";
 import { userFacingError } from "@/lib/errors";
-import { apiGetMyServiceVerification, apiSubmitServiceVerification } from "@/lib/api/services/services";
+import { serviceProviderDenial } from "@/lib/service-access";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 
 type Tab = "bookings" | "profile" | "verification";
@@ -48,8 +53,24 @@ export default function ManageServiceScreen() {
     enabled: isApiMode && isLoggedIn && Boolean(profile?.id),
   });
   const verification = verificationQuery.data;
+  const promoQuery = useQuery({
+    queryKey: ["website-promotion", "mine"],
+    queryFn: apiGetMyWebsitePromotion,
+    enabled: isApiMode && isLoggedIn && Boolean(profile?.id),
+  });
+  const promoPlansQuery = useQuery({
+    queryKey: ["website-promotion", "plans"],
+    queryFn: apiListWebsitePromotionPlans,
+    enabled: isApiMode && isLoggedIn && Boolean(profile?.id),
+  });
 
-  const [details, setDetails] = useState({ description: "", address: "", mobile: "", website: "", offerings: "" });
+  const [details, setDetails] = useState({
+    description: "",
+    address: "",
+    mobile: "",
+    website: "",
+    offerings: "",
+  });
   const [regId, setRegId] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
@@ -65,18 +86,23 @@ export default function ManageServiceScreen() {
     });
   }, [profile]);
   useEffect(() => {
-    if (verification?.businessRegistrationId) setRegId(verification.businessRegistrationId);
+    if (verification?.businessRegistrationId)
+      setRegId(verification.businessRegistrationId);
   }, [verification?.businessRegistrationId]);
 
   const submitVerification = useMutation({
     mutationFn: () =>
-      apiSubmitServiceVerification({ businessRegistrationId: regId.trim() || null, ownerNotes: notes.trim() }),
+      apiSubmitServiceVerification({
+        businessRegistrationId: regId.trim() || null,
+        ownerNotes: notes.trim(),
+      }),
     onSuccess: (v) => {
       queryClient.setQueryData(["service-verification", "mine"], v);
       setNotes("");
       toast("Sent for review");
     },
-    onError: (e) => appAlert("Couldn't submit", userFacingError(e, "Try again.")),
+    onError: (e) =>
+      appAlert("Couldn't submit", userFacingError(e, "Try again.")),
   });
 
   if (!isLoggedIn) {
@@ -88,7 +114,10 @@ export default function ManageServiceScreen() {
           message="Sign in to manage bookings, details and verification."
           actionLabel="Sign in"
           onAction={() =>
-            router.push({ pathname: "/auth", params: { mode: "sign-in" } } as unknown as Href)
+            router.push({
+              pathname: "/auth",
+              params: { mode: "sign-in" },
+            } as unknown as Href)
           }
         />
       </Screen>
@@ -160,8 +189,12 @@ export default function ManageServiceScreen() {
     toast("Profile saved");
   };
 
-  const vStatus = verification?.status ?? profile.verificationStatus ?? "unverified";
-  const vMeta = VERIFICATION[vStatus] ?? { label: "Not verified", tone: "neutral" as BadgeTone };
+  const vStatus =
+    verification?.status ?? profile.verificationStatus ?? "unverified";
+  const vMeta = VERIFICATION[vStatus] ?? {
+    label: "Not verified",
+    tone: "neutral" as BadgeTone,
+  };
 
   return (
     <Screen
@@ -171,6 +204,8 @@ export default function ManageServiceScreen() {
       refreshing={verificationQuery.isRefetching}
       onRefresh={() => {
         void verificationQuery.refetch();
+        void promoQuery.refetch();
+        void promoPlansQuery.refetch();
         mine.refetch();
       }}
     >
@@ -179,9 +214,48 @@ export default function ManageServiceScreen() {
         <Button
           label="View public profile"
           variant="tertiary"
-          onPress={() => router.push({ pathname: "/service/[id]", params: { id: profile.id } })}
+          onPress={() =>
+            router.push({
+              pathname: "/service/[id]",
+              params: { id: profile.id },
+            } as unknown as Href)
+          }
         />
       </View>
+
+      {isApiMode ? (
+        <View style={styles.promoCard}>
+          <Text style={styles.promoTitle}>Website promotion</Text>
+          <Text style={styles.promoBody}>
+            {promoQuery.data?.active || promoQuery.data?.status === "active"
+              ? `Premium site active${
+                  promoQuery.data?.expiresAt
+                    ? ` until ${new Date(promoQuery.data.expiresAt).toLocaleDateString()}`
+                    : ""
+                }.`
+              : "Promote your business website on SqftGo. Checkout opens on the website for Razorpay."}
+          </Text>
+          {(promoPlansQuery.data ?? []).slice(0, 2).map((p) => (
+            <Text key={p.id} style={styles.promoPlan}>
+              {p.name} · ₹{(p.amountPaise / 100).toFixed(0)} · {p.durationDays}{" "}
+              days
+            </Text>
+          ))}
+          <Button
+            label="Manage on website"
+            variant="secondary"
+            onPress={() => {
+              const url = `${API_BASE_URL}/services/manage`;
+              Linking.openURL(url).catch(() =>
+                appAlert(
+                  "Couldn't open",
+                  "Open SqftGo website → Services → Manage.",
+                ),
+              );
+            }}
+          />
+        </View>
+      ) : null}
 
       <SegmentedControl
         segments={[
@@ -198,8 +272,14 @@ export default function ManageServiceScreen() {
           icon={Calendar}
           title="Bookings live on your dashboard"
           message="Accept, reject, reschedule and complete requests from the service dashboard. Those actions are checked against your real booking records."
-          actionLabel={serviceAccess === "approved" ? "Open dashboard" : undefined}
-          onAction={serviceAccess === "approved" ? () => router.push("/services/dashboard" as Href) : undefined}
+          actionLabel={
+            serviceAccess === "approved" ? "Open dashboard" : undefined
+          }
+          onAction={
+            serviceAccess === "approved"
+              ? () => router.push("/services/dashboard" as Href)
+              : undefined
+          }
         />
       ) : null}
 
@@ -212,7 +292,11 @@ export default function ManageServiceScreen() {
             value={details.description}
             onChangeText={(v) => setDetails((d) => ({ ...d, description: v }))}
           />
-          <TextField label="Address" value={details.address} onChangeText={(v) => setDetails((d) => ({ ...d, address: v }))} />
+          <TextField
+            label="Address"
+            value={details.address}
+            onChangeText={(v) => setDetails((d) => ({ ...d, address: v }))}
+          />
           <TextField
             label="Mobile"
             keyboardType="phone-pad"
@@ -232,7 +316,12 @@ export default function ManageServiceScreen() {
             value={details.offerings}
             onChangeText={(v) => setDetails((d) => ({ ...d, offerings: v }))}
           />
-          <Button label="Save details" size="lg" loading={saving} onPress={() => void saveDetails()} />
+          <Button
+            label="Save details"
+            size="lg"
+            loading={saving}
+            onPress={() => void saveDetails()}
+          />
         </View>
       ) : null}
 
@@ -247,7 +336,9 @@ export default function ManageServiceScreen() {
           </Text>
           {verification?.rejectionReason ? (
             <View style={styles.warn}>
-              <Text style={styles.body}>Not approved: {verification.rejectionReason}</Text>
+              <Text style={styles.body}>
+                Not approved: {verification.rejectionReason}
+              </Text>
             </View>
           ) : null}
           {isApiMode ? (
@@ -258,9 +349,18 @@ export default function ManageServiceScreen() {
                 value={regId}
                 onChangeText={setRegId}
               />
-              <TextField label="Notes for our team" multiline value={notes} onChangeText={setNotes} />
+              <TextField
+                label="Notes for our team"
+                multiline
+                value={notes}
+                onChangeText={setNotes}
+              />
               <Button
-                label={vStatus === "approved" ? "Verified" : "Submit for verification"}
+                label={
+                  vStatus === "approved"
+                    ? "Verified"
+                    : "Submit for verification"
+                }
                 size="lg"
                 disabled={vStatus === "approved"}
                 loading={submitVerification.isPending}
@@ -275,7 +375,22 @@ export default function ManageServiceScreen() {
 }
 
 const styles = StyleSheet.create({
-  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  promoCard: {
+    gap: spacing.sm,
+    padding: spacing.lg,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  promoTitle: { ...type.heading, color: colors.ink },
+  promoBody: { ...type.body, color: colors.inkSecondary },
+  promoPlan: { ...type.caption, color: colors.inkMuted },
   list: { gap: spacing.md },
   card: {
     gap: spacing.sm,
@@ -285,7 +400,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  cardTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
+  cardTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+  },
   when: { ...type.emphasis, color: colors.ink, flex: 1 },
   body: { ...type.body, color: colors.inkSecondary },
   actions: { flexDirection: "row", gap: spacing.sm },

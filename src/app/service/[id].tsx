@@ -37,7 +37,13 @@ import { isApiMode } from "@/lib/api/config";
 import { apiGetDealer } from "@/lib/api/services/dealers";
 import { createServiceBooking, listProviderServices } from "@/lib/api/services/provider";
 import { mobileAuthConfigured } from "@/lib/api/supabase";
-import { apiCreateServiceBooking } from "@/lib/api/services/services";
+import {
+  apiCreateServiceBooking,
+  apiCreateServiceReview,
+  apiGetServiceWebsiteStatus,
+  apiListServicePortfolio,
+  apiListServiceReviews,
+} from "@/lib/api/services/services";
 import { userFacingError } from "@/lib/errors";
 import { initialsFromName } from "@/lib/format";
 import { isDirectoryVerified, isServiceDirectoryCategory } from "@/lib/is-dealer-category";
@@ -85,6 +91,37 @@ export default function ServiceProfileScreen() {
     queryKey: ["provider-services", id],
     queryFn: () => listProviderServices(id),
     enabled: mobileAuthConfigured && Boolean(id),
+  });
+  const portfolioQuery = useQuery({
+    queryKey: ["service-portfolio", id],
+    queryFn: () => apiListServicePortfolio(id),
+    enabled: isApiMode && Boolean(id),
+  });
+  const reviewsQuery = useQuery({
+    queryKey: ["service-reviews", id],
+    queryFn: () => apiListServiceReviews(id),
+    enabled: isApiMode && Boolean(id),
+  });
+  const websiteQuery = useQuery({
+    queryKey: ["service-website-status", id],
+    queryFn: () => apiGetServiceWebsiteStatus(id),
+    enabled: isApiMode && Boolean(id),
+  });
+
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewBody, setReviewBody] = useState("");
+  const reviewMutation = useMutation({
+    mutationFn: () =>
+      apiCreateServiceReview(id, {
+        rating: reviewRating,
+        body: reviewBody.trim(),
+      }),
+    onSuccess: () => {
+      setReviewBody("");
+      void reviewsQuery.refetch();
+      appAlert("Review submitted", "Thanks — it appears after moderation if required.");
+    },
+    onError: (e) => appAlert("Couldn't post review", userFacingError(e, "Please try again.")),
   });
 
   const booking = useMutation({
@@ -153,13 +190,9 @@ export default function ServiceProfileScreen() {
         : [];
   const hours = formatHours(partner.businessHours);
   const rating =
-    typeof partner.rating === "number" && partner.rating > 0
-      ? partner.rating.toFixed(1)
-      : null;
+    typeof partner.rating === "number" && partner.rating > 0 ? partner.rating.toFixed(1) : null;
   const reviews =
-    typeof partner.reviewsCount === "number" && partner.reviewsCount > 0
-      ? partner.reviewsCount
-      : null;
+    typeof partner.reviewsCount === "number" && partner.reviewsCount > 0 ? partner.reviewsCount : null;
   const phoneDigits = partner.mobile?.replace(/\s/g, "") ?? "";
 
   const submit = () => {
@@ -268,9 +301,7 @@ export default function ServiceProfileScreen() {
           </View>
           <View style={styles.credItem}>
             <Text style={styles.credLabel}>Services</Text>
-            <Text style={styles.credValue}>
-              {services.length > 0 ? `${services.length} listed` : "—"}
-            </Text>
+            <Text style={styles.credValue}>{services.length > 0 ? `${services.length} listed` : "—"}</Text>
           </View>
           <View style={styles.credItem}>
             <Text style={styles.credLabel}>Rating</Text>
@@ -279,7 +310,9 @@ export default function ServiceProfileScreen() {
               <Text style={styles.credValue}>
                 {rating
                   ? `${rating}${reviews != null ? ` · ${reviews} reviews` : ""}`
-                  : "No reviews yet"}
+                  : reviewsQuery.data?.averageRating
+                    ? `${reviewsQuery.data.averageRating.toFixed(1)}★ from reviews`
+                    : "No reviews yet"}
               </Text>
             </View>
           </View>
@@ -299,8 +332,84 @@ export default function ServiceProfileScreen() {
               <Text style={styles.credValue}>{partner.languages.join(", ")}</Text>
             </View>
           ) : null}
+          {websiteQuery.data?.active ? (
+            <View style={[styles.credItem, styles.promoItem]}>
+              <Globe size={14} color={colors.accent} />
+              <Text style={styles.promoText}>Premium website</Text>
+            </View>
+          ) : null}
         </View>
       </View>
+
+      {(portfolioQuery.data?.length ?? 0) > 0 ? (
+        <View style={styles.block}>
+          <Text style={styles.blockTitle}>Portfolio</Text>
+          <View style={styles.portfolioRow}>
+            {portfolioQuery.data!.map((img) => (
+              <Image
+                key={img.id}
+                source={{ uri: img.imageUrl }}
+                style={styles.portfolioImg}
+                contentFit="cover"
+              />
+            ))}
+          </View>
+        </View>
+      ) : null}
+
+      {(reviewsQuery.data?.items.length ?? 0) > 0 || reviewsQuery.data?.averageRating ? (
+        <View style={styles.block}>
+          <Text style={styles.blockTitle}>
+            Reviews
+            {reviewsQuery.data?.averageRating ? ` · ${reviewsQuery.data.averageRating.toFixed(1)}★` : ""}
+          </Text>
+          {(reviewsQuery.data?.items ?? []).slice(0, 5).map((r) => (
+            <View key={r.id} style={styles.reviewCard}>
+              <Text style={styles.reviewMeta}>
+                {r.reviewerName ?? "Customer"} · {r.rating}★
+              </Text>
+              {r.title ? <Text style={styles.reviewTitle}>{r.title}</Text> : null}
+              <Text style={styles.muted}>{r.body}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
+      {!isOwner ? (
+        <View style={styles.card}>
+          <Text style={styles.blockTitle}>Write a review</Text>
+          <View style={styles.chips}>
+            {[5, 4, 3, 2, 1].map((n) => (
+              <Chip
+                key={n}
+                label={`${n}★`}
+                selected={reviewRating === n}
+                onPress={() => setReviewRating(n)}
+              />
+            ))}
+          </View>
+          <TextField
+            label="Your experience"
+            multiline
+            maxLength={2000}
+            value={reviewBody}
+            onChangeText={setReviewBody}
+            placeholder="At least a few words about the service"
+          />
+          <Button
+            label="Submit review"
+            variant="secondary"
+            loading={reviewMutation.isPending}
+            onPress={() => {
+              if (reviewBody.trim().length < 5) {
+                appAlert("Add more detail", "Write at least a short review.");
+                return;
+              }
+              requireAuth("Sign in to leave a review.", () => reviewMutation.mutate());
+            }}
+          />
+        </View>
+      ) : null}
 
       {services.length > 0 ? (
         <View style={styles.block}>
@@ -342,11 +451,14 @@ export default function ServiceProfileScreen() {
         {partner.email ? (
           <ListRow icon={Mail} title={partner.email} onPress={() => open(`mailto:${partner.email}`)} />
         ) : null}
-        {partner.website ? (
+        {partner.website || websiteQuery.data?.websiteUrl ? (
           <ListRow
             icon={Globe}
-            title={partner.website.replace(/^https?:\/\//, "")}
-            onPress={() => open(partner.website!.startsWith("http") ? partner.website! : `https://${partner.website}`)}
+            title={(websiteQuery.data?.websiteUrl || partner.website || "").replace(/^https?:\/\//, "")}
+            onPress={() => {
+              const raw = websiteQuery.data?.websiteUrl || partner.website || "";
+              open(raw.startsWith("http") ? raw : `https://${raw}`);
+            }}
           />
         ) : null}
       </ListSection>
@@ -357,7 +469,9 @@ export default function ServiceProfileScreen() {
           <Text style={styles.muted}>Edit details, verification and booking requests from Manage.</Text>
           <Button
             label={serviceAccess === "approved" ? "Open dashboard" : "Manage service profile"}
-            onPress={() => router.push((serviceAccess === "approved" ? "/services/dashboard" : "/services/manage") as Href)}
+            onPress={() =>
+              router.push((serviceAccess === "approved" ? "/services/dashboard" : "/services/manage") as Href)
+            }
           />
         </View>
       ) : booking.isSuccess ? (
@@ -372,9 +486,7 @@ export default function ServiceProfileScreen() {
       ) : (
         <View style={styles.card}>
           <Text style={styles.blockTitle}>Book / enquire</Text>
-          <Text style={styles.muted}>
-            Request a preferred time. The provider confirms from their dashboard.
-          </Text>
+          <Text style={styles.muted}>Request a preferred time. The provider confirms from their dashboard.</Text>
           <DateTimeField label="Preferred date & time" value={when} onChange={setWhen} />
           {(servicesQuery.data ?? []).filter((item) => item.active).length > 0 ? (
             <View style={styles.chips}>
@@ -515,9 +627,33 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  promoItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    width: "100%",
+  },
+  promoText: { ...type.label, color: colors.accent },
   credLabel: { ...type.caption, color: colors.inkMuted },
   credValue: { ...type.emphasis, color: colors.ink },
   ratingRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+  portfolioRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  portfolioImg: {
+    width: "31%",
+    aspectRatio: 1,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceSubtle,
+  },
+  reviewCard: {
+    gap: spacing.xs,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  reviewMeta: { ...type.caption, color: colors.inkMuted },
+  reviewTitle: { ...type.label, color: colors.ink },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   chip: {
     paddingHorizontal: spacing.md,
