@@ -19,9 +19,9 @@ import {
   Community,
   Home as HomeIcon,
   KeyRound,
+  Leaf,
   MapPin,
   Plus,
-  Search,
   Shop,
 } from "@/components/ui/icons";
 import { NotificationsSheet, useNotifications } from "@/components/ui/notifications-sheet";
@@ -39,19 +39,35 @@ import { displayNameFromEmail, greetingForHour } from "@/lib/format";
 import { isDealerCategory } from "@/lib/is-dealer-category";
 import { colors, fonts, radius, shadow, spacing, type } from "@/theme/tokens";
 
-type ExploreIntent = PurposeFilter | "commercial" | "plot";
+type BrowseIntent = PurposeFilter | "commercial" | "plot";
 
-const INTENTS: { id: ExploreIntent; label: string; icon: typeof HomeIcon }[] = [
-  { id: "buy", label: "Buy", icon: HomeIcon },
-  { id: "rent", label: "Rent", icon: KeyRound },
-  { id: "plot", label: "Plots", icon: Community },
+const BROWSE_INTENTS: {
+  id: BrowseIntent;
+  label: string;
+  hint: string;
+  icon: typeof HomeIcon;
+  bg: string;
+  fg: string;
+}[] = [
+  { id: "buy", label: "Buy", hint: "Homes for sale", icon: HomeIcon, bg: colors.primarySoft, fg: colors.primary },
+  { id: "rent", label: "Rent", hint: "Ready to move", icon: KeyRound, bg: colors.accentSoft, fg: colors.accent },
+  { id: "plot", label: "Plots", hint: "Industrial land", icon: Community, bg: colors.successSoft, fg: colors.success },
+  { id: "commercial", label: "Commercial", hint: "Shops & offices", icon: Shop, bg: colors.infoSoft, fg: colors.info },
 ];
 
 const CATEGORIES = [
   { id: "Apartment", title: "Apartments", icon: Building, typeParam: "Apartment", bg: colors.primarySoft, fg: colors.primary },
   { id: "Villa", title: "Villas & homes", icon: HomeIcon, typeParam: "Villa", bg: colors.accentSoft, fg: colors.accent },
   { id: "Commercial", title: "Commercial", icon: Shop, typeParam: "commercial", bg: colors.infoSoft, fg: colors.info },
-  { id: "Plot", title: "Plots & land", icon: Community, typeParam: "Industrial Plot", bg: colors.successSoft, fg: colors.success },
+  { id: "Plot", title: "Industrial plots", icon: Community, typeParam: "Industrial Plot", bg: colors.successSoft, fg: colors.success },
+  {
+    id: "Agricultural Land",
+    title: "Agricultural land",
+    icon: Leaf,
+    typeParam: "Agricultural Land",
+    bg: "rgba(70, 126, 84, 0.14)",
+    fg: colors.success,
+  },
 ];
 
 function isAllIndia(city: string) {
@@ -82,7 +98,6 @@ export default function HomeScreen() {
 
   const [cityModalVisible, setCityModalVisible] = useState(false);
   const [notificationsVisible, setNotificationsVisible] = useState(false);
-  const [selectedIntent, setSelectedIntent] = useState<ExploreIntent>("buy");
   const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
 
   const firstName = useMemo(() => {
@@ -96,6 +111,17 @@ export default function HomeScreen() {
 
   const cityActiveCount = useMemo(
     () => properties.filter((p) => p.status === "Active" && matchesCity(p.city, selectedCity)).length,
+    [properties, selectedCity],
+  );
+
+  const agriCount = useMemo(
+    () =>
+      properties.filter(
+        (p) =>
+          p.status === "Active" &&
+          p.type === "Agricultural Land" &&
+          matchesCity(p.city, selectedCity),
+      ).length,
     [properties, selectedCity],
   );
 
@@ -135,7 +161,7 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
-  const goToExplore = (purpose?: ExploreIntent, typeParam?: string) => {
+  const goToExplore = (purpose?: BrowseIntent, typeParam?: string) => {
     const params: Record<string, string> = {};
     if (purpose === "commercial") params.type = "commercial";
     else if (purpose === "plot") params.type = "Industrial Plot";
@@ -144,12 +170,10 @@ export default function HomeScreen() {
     router.push({ pathname: "/(tabs)/explore", params });
   };
 
-  const handleIntentPress = (id: ExploreIntent) => {
+  const goToAgriculturalLand = () => {
     if (process.env.EXPO_OS === "ios") Haptics.selectionAsync();
-    setSelectedIntent(id);
+    goToExplore(undefined, "Agricultural Land");
   };
-
-  const intentLabel = INTENTS.find((i) => i.id === selectedIntent)?.label ?? "Buy";
 
   const listProperty = () =>
     requireAuth("Sign in to list your property and reach buyers in your city.", () =>
@@ -193,57 +217,54 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          <View style={styles.searchCard}>
-            <Text style={styles.searchEyebrow}>What are you looking for?</Text>
-            <View style={styles.segment} accessibilityRole="tablist">
-              {INTENTS.map(({ id, label, icon: Icon }) => {
-                const active = selectedIntent === id;
-                return (
-                  <Pressable
-                    key={id}
-                    onPress={() => handleIntentPress(id)}
-                    accessibilityRole="tab"
-                    accessibilityState={{ selected: active }}
-                    accessibilityLabel={`Browse ${label} properties`}
-                    style={({ pressed }) => [
-                      styles.segmentItem,
-                      active && styles.segmentItemActive,
-                      pressed && { opacity: 0.8 },
-                    ]}
-                  >
-                    <Icon size={15} color={active ? colors.accent : colors.inkMuted} strokeWidth={active ? 2.5 : 2} />
-                    <Text numberOfLines={1} style={[styles.segmentLabel, active && styles.segmentLabelActive]}>
-                      {label}
+          <View style={styles.browseCard}>
+            <Text style={styles.browseEyebrow}>Browse by intent</Text>
+            <View style={styles.intentGrid}>
+              {BROWSE_INTENTS.map(({ id, label, hint, icon: Icon, bg, fg }) => (
+                <Pressable
+                  key={id}
+                  onPress={() => {
+                    if (process.env.EXPO_OS === "ios") Haptics.selectionAsync();
+                    goToExplore(id);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Browse ${label} properties`}
+                  style={({ pressed }) => [styles.intentTile, pressed && { transform: [{ scale: 0.98 }] }]}
+                >
+                  <View style={[styles.intentIcon, { backgroundColor: bg }]}>
+                    <Icon size={18} color={fg} strokeWidth={2} />
+                  </View>
+                  <View style={{ flex: 1, gap: 1 }}>
+                    <Text style={styles.intentLabel}>{label}</Text>
+                    <Text style={styles.intentHint} numberOfLines={1}>
+                      {hint}
                     </Text>
-                  </Pressable>
-                );
-              })}
+                  </View>
+                  <ChevronRight size={16} color={colors.inkMuted} />
+                </Pressable>
+              ))}
             </View>
-
-            <Pressable
-              onPress={() => goToExplore(selectedIntent)}
-              accessibilityRole="search"
-              accessibilityLabel={`Search ${intentLabel.toLowerCase()} properties in ${selectedCity}`}
-              style={({ pressed }) => [styles.searchField, pressed && { opacity: 0.8 }]}
-            >
-              <Search size={18} color={colors.accent} strokeWidth={2} />
-              <Text style={styles.searchText}>
-                {allIndia
-                  ? `Search ${intentLabel.toLowerCase()} across India`
-                  : `Search ${intentLabel.toLowerCase()} in ${selectedCity}`}
-              </Text>
-            </Pressable>
-
-            <Pressable
-              onPress={() => goToExplore(selectedIntent)}
-              accessibilityRole="button"
-              accessibilityLabel={`Explore ${intentLabel} listings`}
-              style={({ pressed }) => [styles.exploreBtn, pressed && { opacity: 0.9 }]}
-            >
-              <Text style={styles.exploreBtnText}>Explore {intentLabel.toLowerCase()} listings</Text>
-              <ChevronRight size={16} color={colors.onAccent} />
-            </Pressable>
           </View>
+
+          <Pressable
+            onPress={goToAgriculturalLand}
+            accessibilityRole="button"
+            accessibilityLabel="Browse agricultural land listings"
+            style={({ pressed }) => [styles.agriCard, pressed && { opacity: 0.92 }]}
+          >
+            <View style={styles.agriIcon}>
+              <Leaf size={22} color={colors.onPrimary} strokeWidth={2} />
+            </View>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={styles.agriTitle}>Agricultural land</Text>
+              <Text style={styles.agriText}>
+                {agriCount > 0
+                  ? `${agriCount} farmland ${agriCount === 1 ? "listing" : "listings"} in ${allIndia ? "India" : selectedCity}`
+                  : "Farmland and agri parcels — clear title, ready to browse"}
+              </Text>
+            </View>
+            <ChevronRight size={18} color={colors.onPrimaryMuted} />
+          </Pressable>
         </View>
 
         <View style={{ gap: spacing.md }}>
@@ -293,7 +314,7 @@ export default function HomeScreen() {
               actionLabel="See all"
               onAction={() => router.push("/destinations" as Href)}
             />
-            <Text style={styles.destinationsSub}>Search homes by market — tap a city to open Explore</Text>
+            <Text style={styles.destinationsSub}>Tap a city to open Explore for that market</Text>
           </View>
           <FlatList
             horizontal
@@ -349,7 +370,7 @@ export default function HomeScreen() {
                   <View style={[styles.tileIcon, { backgroundColor: cat.bg }]}>
                     <Icon size={20} color={cat.fg} strokeWidth={2} />
                   </View>
-                  <Text style={styles.tileTitle} numberOfLines={1}>
+                  <Text style={styles.tileTitle} numberOfLines={2}>
                     {cat.title}
                   </Text>
                 </Pressable>
@@ -454,7 +475,7 @@ const styles = StyleSheet.create({
     color: colors.onPrimaryMuted,
     maxWidth: 300,
   },
-  searchCard: {
+  browseCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
     borderCurve: "continuous",
@@ -464,61 +485,53 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     boxShadow: shadow.card,
   },
-  searchEyebrow: {
+  browseEyebrow: {
     ...type.label,
     color: colors.inkSecondary,
   },
-  segment: {
-    flexDirection: "row",
-    backgroundColor: colors.surfaceSubtle,
-    borderRadius: radius.md,
-    borderCurve: "continuous",
-    padding: spacing.xs,
-    gap: spacing.xs,
-  },
-  segmentItem: {
-    flexGrow: 1,
-    flexShrink: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.xs,
-    paddingHorizontal: spacing.xs,
-    minHeight: 38,
-    borderRadius: radius.sm,
-    borderCurve: "continuous",
-  },
-  segmentItemActive: { backgroundColor: colors.surface, boxShadow: shadow.card },
-  segmentLabel: { ...type.caption, color: colors.inkMuted, fontWeight: "500" },
-  segmentLabelActive: { color: colors.ink, fontWeight: "700" },
-  searchField: {
+  intentGrid: { gap: spacing.sm },
+  intentTile: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.md,
+    borderCurve: "continuous",
     backgroundColor: colors.surfaceSubtle,
-    borderRadius: radius.md,
-    borderCurve: "continuous",
-    height: 48,
-    paddingHorizontal: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
+    minHeight: 56,
   },
-  searchText: { ...type.body, color: colors.inkMuted, flex: 1 },
-  exploreBtn: {
-    minHeight: 46,
-    borderRadius: radius.md,
+  intentIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.sm,
     borderCurve: "continuous",
-    backgroundColor: colors.accent,
-    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: spacing.xs,
-    paddingHorizontal: spacing.lg,
   },
-  exploreBtnText: {
-    ...type.emphasis,
-    color: colors.onAccent,
+  intentLabel: { ...type.emphasis, color: colors.ink },
+  intentHint: { ...type.caption, color: colors.inkMuted },
+  agriCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    backgroundColor: colors.success,
+    borderRadius: radius.xl,
+    borderCurve: "continuous",
+    padding: spacing.lg,
+    boxShadow: shadow.raised,
   },
+  agriIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: radius.sm,
+    borderCurve: "continuous",
+    backgroundColor: "rgba(255,255,255,0.18)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  agriTitle: { ...type.emphasis, color: colors.onPrimary },
+  agriText: { ...type.caption, color: "rgba(255,255,255,0.82)" },
   destinationsSub: { ...type.caption, color: colors.inkMuted },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   tile: {
@@ -533,6 +546,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.md,
+    minHeight: 64,
   },
   tileIcon: {
     width: 40,
@@ -542,7 +556,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  tileTitle: { ...type.emphasis, color: colors.ink, flexShrink: 1 },
+  tileTitle: { ...type.emphasis, color: colors.ink, flexShrink: 1, flex: 1 },
   sellCard: {
     flexDirection: "row",
     alignItems: "center",

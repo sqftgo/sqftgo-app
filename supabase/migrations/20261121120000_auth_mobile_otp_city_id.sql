@@ -1,0 +1,3 @@
+-- Applied via Supabase MCP as auth_mobile_otp_city_id.
+-- Adds profiles.city_id, auth OTP purposes (register/login), and claim RPCs.
+-- See remote migration history for the live definition.

@@ -53,10 +53,18 @@ import {
 import { apiGetKyc, apiPutKyc } from "@/lib/api/services/kyc";
 import {
   apiAccountGate,
+  apiMobileLogin,
+  apiSendAuthMobileOtp,
   apiSendMobileOtp,
   apiVerifyMobileOtp,
+  apiVerifyRegisterMobileOtp,
   authProviderFromToken,
 } from "@/lib/api/services/mobile-auth";
+import {
+  mockLoginMobileOtp,
+  mockSendAuthMobileOtp,
+  mockVerifyRegisterMobileOtp,
+} from "@/lib/mock-auth-mobile-otp";
 import { mockSendMobileOtp, mockVerifyMobileOtp } from "@/lib/mock-mobile-otp";
 import { postAuthDestination, setLastPortal, setPostAuthHref } from "@/lib/post-auth";
 import { type AuthPortal, type ServiceAccess, serviceProviderDenial } from "@/lib/service-access";
@@ -453,7 +461,31 @@ interface AppContextType {
     password: string;
     name: string;
     intent?: "user" | "dealer";
+    countryCode?: string;
+    mobileNumber?: string;
+    mobileClaimToken?: string;
+    cityId?: string;
   }) => Promise<AuthResult> | AuthResult;
+  sendAuthMobileOtp: (input: {
+    purpose: "register" | "login";
+    countryCode: string;
+    mobileNumber: string;
+  }) => Promise<
+    | { ok: true; resendAfterSeconds: number; previewCode?: string }
+    | { ok: false; message: string; resendAfterSeconds?: number }
+  >;
+  verifyRegisterMobileOtp: (input: {
+    countryCode: string;
+    mobileNumber: string;
+    code: string;
+  }) => Promise<
+    | { ok: true; claimToken: string; phone: string; countryCode: string }
+    | { ok: false; message: string }
+  >;
+  signInWithMobile: (
+    input: { countryCode: string; mobileNumber: string; code: string },
+    portal?: AuthPortal,
+  ) => Promise<AuthResult>;
   signInWithGoogle: (portal?: AuthPortal) => Promise<AuthResult & { cancelled?: boolean }>;
   needsMobileVerification: boolean;
   serviceAccess: ServiceAccess;
@@ -1267,12 +1299,176 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return completeApiSignIn(res.me, portal);
   }, [completeApiSignIn]);
 
+  const sendAuthMobileOtp = useCallback(
+    async (input: {
+      purpose: "register" | "login";
+      countryCode: string;
+      mobileNumber: string;
+    }) => {
+      if (isApiMode) {
+        const result = await apiSendAuthMobileOtp(input);
+        if (!result.ok) {
+          return {
+            ok: false as const,
+            message: result.message,
+            resendAfterSeconds: result.resendAfterSeconds,
+          };
+        }
+        return { ok: true as const, resendAfterSeconds: result.resendAfterSeconds };
+      }
+      const result = mockSendAuthMobileOtp(
+        input.purpose,
+        input.countryCode,
+        input.mobileNumber,
+        accounts,
+      );
+      if (!result.ok) {
+        return {
+          ok: false as const,
+          message: result.message,
+          resendAfterSeconds: result.resendAfterSeconds,
+        };
+      }
+      return {
+        ok: true as const,
+        resendAfterSeconds: result.resendAfterSeconds,
+        previewCode: result.previewCode,
+      };
+    },
+    [accounts],
+  );
+
+  const verifyRegisterMobileOtp = useCallback(
+    async (input: { countryCode: string; mobileNumber: string; code: string }) => {
+      if (isApiMode) {
+        const result = await apiVerifyRegisterMobileOtp(input);
+        if (!result.ok) return { ok: false as const, message: result.message };
+        return {
+          ok: true as const,
+          claimToken: result.claimToken,
+          phone: result.phone,
+          countryCode: result.countryCode,
+        };
+      }
+      const result = mockVerifyRegisterMobileOtp(
+        input.countryCode,
+        input.mobileNumber,
+        input.code,
+      );
+      if (!result.ok) return { ok: false as const, message: result.message };
+      return {
+        ok: true as const,
+        claimToken: result.claimToken,
+        phone: result.phone,
+        countryCode: result.countryCode,
+      };
+    },
+    [],
+  );
+
+  const signInWithMobile = useCallback(
+    async (
+      input: { countryCode: string; mobileNumber: string; code: string },
+      portal: AuthPortal = "user",
+    ): Promise<AuthResult> => {
+      if (isApiMode) {
+        try {
+          const res = await apiMobileLogin(input);
+          return await completeApiSignIn(res, portal);
+        } catch (e) {
+          const status = e instanceof ApiError ? e.status : 0;
+          return {
+            ok: false,
+            code: status === 401 ? "invalid" : status === 403 ? "suspended" : "network",
+            message: e instanceof Error ? e.message : "Sign in failed.",
+          };
+        }
+      }
+
+      const result = mockLoginMobileOtp(
+        input.countryCode,
+        input.mobileNumber,
+        input.code,
+        accounts,
+      );
+      if (!result.ok) {
+        return { ok: false, code: "invalid", message: result.message };
+      }
+      const account = accounts.find((a) => a.id === result.accountId);
+      if (!account) {
+        return { ok: false, code: "invalid", message: "Account not found." };
+      }
+      if (account.status === "suspended") {
+        return {
+          ok: false,
+          code: "suspended",
+          message: "This account is suspended. Contact support.",
+        };
+      }
+      if (account.role === "admin") {
+        return {
+          ok: false,
+          code: "admin_unsupported",
+          message: "Admin accounts sign in on the SqftGo website. Use a buyer or dealer account here.",
+        };
+      }
+      const serviceAccess = account.serviceAccess ?? "none";
+      if (portal === "provider" && serviceAccess !== "approved") {
+        return { ok: false, code: "invalid", message: serviceProviderDenial(serviceAccess) };
+      }
+      if (portal === "user" && account.role === "broker") {
+        return {
+          ok: false,
+          code: "invalid",
+          message: "This email is registered as a Dealer. Switch to Dealer and try again.",
+        };
+      }
+      if (portal === "dealer" && account.role !== "broker" && account.dealerAccess !== "pending") {
+        return {
+          ok: false,
+          code: "invalid",
+          message: "This email is a customer account. Switch to Customer, or create a Dealer account.",
+        };
+      }
+      const base = sessionFromAccount(account);
+      const needsMobile = base.authProvider === "google" && !base.mobileVerified;
+      const dealerAccess = base.dealerAccess;
+      setLastPortal(portal);
+      persistSession({
+        ...base,
+        phone: result.phone,
+        countryCode: result.countryCode,
+        mobileVerified: true,
+        authProvider: account.authProvider ?? "email",
+        landing: postAuthDestination({
+          portal,
+          role: base.role ?? "user",
+          dealerAccess,
+          needsMobile,
+        }),
+      });
+      setHasCompletedOnboardingState(true);
+      AsyncStorage.setItem(STORAGE_KEYS.onboarding, "true").catch(() => {});
+      return {
+        ok: true,
+        role: base.role ?? "user",
+        dealerAccess,
+        needsMobile,
+      };
+    },
+    [accounts, persistSession, completeApiSignIn],
+  );
+
   const signUp = useCallback(
     async (input: {
       email: string;
       password: string;
       name: string;
       intent?: "user" | "dealer";
+      countryCode?: string;
+      mobileNumber?: string;
+      mobileClaimToken?: string;
+      cityId?: string;
     }): Promise<AuthResult> => {
       if (isApiMode) {
         try {
@@ -1281,6 +1477,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             password: input.password,
             name: input.name.trim(),
             intent: input.intent === "dealer" ? "dealer" : "user",
+            countryCode: input.countryCode,
+            mobileNumber: input.mobileNumber,
+            mobileClaimToken: input.mobileClaimToken,
+            cityId: input.cityId,
           });
           if ("status" in res && res.status === "confirm_email") {
             return {
@@ -1305,11 +1505,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return { ok: false, code: "exists", message: "An account with this email already exists." };
       }
       const asDealer = input.intent === "dealer";
+      const hasMobileClaim = Boolean(input.mobileClaimToken);
       const account: StoredAccount = {
         id: `acc-${Date.now()}`,
         email,
         password: input.password,
         name: input.name.trim() || email.split("@")[0],
+        phone: hasMobileClaim ? input.mobileNumber : undefined,
+        countryCode: hasMobileClaim ? input.countryCode : undefined,
+        mobileVerified: hasMobileClaim,
+        authProvider: "email",
+        serviceAccess: "none",
         role: asDealer ? "broker" : "user",
         status: "active",
         dealerAccess: asDealer ? "approved" : "none",
@@ -2492,6 +2698,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       signIn,
       signUp,
       signInWithGoogle,
+      sendAuthMobileOtp,
+      verifyRegisterMobileOtp,
+      signInWithMobile,
       sendMobileOtp,
       verifyMobileOtp,
       signOut,
@@ -2530,6 +2739,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       reloadCatalog,
       mergeProperties,
       signInWithGoogle,
+      sendAuthMobileOtp,
+      verifyRegisterMobileOtp,
+      signInWithMobile,
       sendMobileOtp,
       verifyMobileOtp,
       sessionNotice,

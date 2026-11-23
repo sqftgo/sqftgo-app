@@ -85,11 +85,16 @@ export function PropertySummary({ property }: { property: Property }) {
             <Text style={{ ...type.label, color: colors.inkMuted }}>/ month</Text>
           ) : null}
         </View>
-        {pricePerSqft ? (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, alignItems: "center" }}>
           <Text style={{ ...type.caption, color: colors.inkMuted }}>
-            ₹{pricePerSqft.toLocaleString("en-IN")} per sq.ft
+            {rental ? "Rent" : "Guide price"}
           </Text>
-        ) : null}
+          {pricePerSqft ? (
+            <Text style={{ ...type.caption, color: colors.inkMuted }}>
+              · ₹{pricePerSqft.toLocaleString("en-IN")} per sq.ft
+            </Text>
+          ) : null}
+        </View>
       </View>
 
       <Text style={{ ...type.title, fontSize: 19, color: colors.ink }}>{property.title}</Text>

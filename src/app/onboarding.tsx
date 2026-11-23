@@ -276,7 +276,7 @@ export default function OnboardingScreen() {
           <View style={styles.slideContentCentered}>
             <View style={[styles.heroImageBox, { height: Math.min(height * 0.35, 260) }]}>
               <Image
-                source={require("../../assets/images/OnBoarding1.png")}
+                source={require("../../assets/images/OnBoarding1.jpg")}
                 style={styles.slideImg}
                 contentFit="cover"
               />
