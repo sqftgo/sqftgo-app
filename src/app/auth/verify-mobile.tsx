@@ -142,8 +142,8 @@ export default function VerifyMobileScreen() {
             <Text style={styles.title}>{updating ? "Update your mobile" : "Verify your mobile"}</Text>
             <Text style={styles.subtitle}>
               {sent
-                ? `Enter the code sent to ${formatMobile(countryCode, mobile)}.`
-                : "Google sign-in is linked to your email. Add a mobile number so dealers and service partners can reach you."}
+                ? `Enter the WhatsApp code sent to ${formatMobile(countryCode, mobile)}.`
+                : "Google sign-in is linked to your email. Add a mobile number so dealers and service partners can reach you. We'll send a code on WhatsApp."}
             </Text>
           </View>
 
@@ -234,7 +234,7 @@ export default function VerifyMobileScreen() {
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
           <Button
-            label={sent ? "Verify and continue" : "Send code"}
+            label={sent ? "Verify and continue" : "Send WhatsApp code"}
             loading={busy !== null}
             onPress={() => void (sent ? verify() : send())}
             fullWidth

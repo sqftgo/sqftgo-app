@@ -13,6 +13,7 @@ import { formatIndianCurrency, isRentalPurpose } from "@/components/property/for
 import { KeyFacts, type KeyFact } from "@/components/property/KeyFacts";
 import { LocationSection } from "@/components/property/LocationSection";
 import { OverviewList } from "@/components/property/OverviewList";
+import { PriceBreakdownSection } from "@/components/property/PriceBreakdownSection";
 import { GALLERY_HEIGHT, PropertyGallery, SHEET_OVERLAP } from "@/components/property/PropertyGallery";
 import { PropertySection } from "@/components/property/PropertySection";
 import { PropertySummary } from "@/components/property/PropertySummary";
@@ -25,6 +26,7 @@ import { CheckCircle2, ChevronLeft, Bath, Bed, Maximize2, Sparkles, Eye } from "
 import { PropertyCard } from "@/components/ui/property-card";
 import { useApp } from "@/context/AppContext";
 import { apiGetProperty } from "@/lib/api/services/properties";
+import { NON_RESIDENTIAL_TYPES } from "@/lib/filters";
 import { formatSize, purposeLabel } from "@/lib/format";
 import { ownsProperty } from "@/lib/ownership";
 import { colors, radius, spacing, type } from "@/theme/tokens";
@@ -142,9 +144,13 @@ export default function PropertyDetailsScreen() {
       (property.ownerId && d.userId === property.ownerId),
   );
 
+  const nonResidential = NON_RESIDENTIAL_TYPES.has(property.type);
+
   const facts: KeyFact[] = [
-    property.bhk ? { icon: Bed, value: `${property.bhk} BHK`, label: "Config" } : null,
-    property.bathrooms
+    !nonResidential && property.bhk
+      ? { icon: Bed, value: `${property.bhk} BHK`, label: "Config" }
+      : null,
+    !nonResidential && property.bathrooms
       ? {
           icon: Bath,
           value: String(property.bathrooms),
@@ -163,8 +169,8 @@ export default function PropertyDetailsScreen() {
   const overview = [
     property.type ? { label: "Property type", value: property.type } : null,
     { label: "Listed for", value: purposeLabel(property.purpose) },
-    property.bhk ? { label: "Configuration", value: `${property.bhk} BHK` } : null,
-    property.bathrooms
+    !nonResidential && property.bhk ? { label: "Configuration", value: `${property.bhk} BHK` } : null,
+    !nonResidential && property.bathrooms
       ? {
           label: "Bathrooms",
           value: String(property.bathrooms),
@@ -182,6 +188,10 @@ export default function PropertyDetailsScreen() {
           value: property.parking === 1 ? "1 spot" : `${property.parking} spots`,
         }
       : null,
+    property.city ? { label: "City", value: property.city } : null,
+    property.state ? { label: "State", value: property.state } : null,
+    property.locality ? { label: "Locality", value: property.locality } : null,
+    property.featured ? { label: "Highlight", value: "Featured listing" } : null,
     property.status && property.status !== "Active"
       ? { label: "Listing status", value: property.status }
       : null,
@@ -257,6 +267,12 @@ export default function PropertyDetailsScreen() {
               <OverviewList items={overview} />
             </PropertySection>
           ) : null}
+
+          <PriceBreakdownSection
+            breakdown={property.priceBreakdown}
+            purpose={property.purpose}
+            listedPrice={property.price}
+          />
 
           {isOwner && property.status === "Rejected" && property.rejectionReason ? (
             <PropertySection title="Rejection reason">

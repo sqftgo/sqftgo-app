@@ -243,7 +243,7 @@ export function ServiceTile({ label, icon: Icon, onPress, selected }: ServiceTil
         alignItems: "center",
         gap: spacing.xs + 2,
         paddingHorizontal: 2,
-        opacity: pressed ? 0.7 : 1,
+        transform: [{ scale: pressed ? 0.96 : 1 }],
       })}
     >
       <View
@@ -254,10 +254,10 @@ export function ServiceTile({ label, icon: Icon, onPress, selected }: ServiceTil
           borderCurve: "continuous",
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: selected ? colors.accent : colors.surface,
+          backgroundColor: selected ? colors.accent : colors.accentSoft,
           borderWidth: 1,
-          borderColor: selected ? colors.accent : colors.border,
-          boxShadow: shadow.card,
+          borderColor: selected ? colors.accent : colors.accentBorder,
+          boxShadow: selected ? shadow.button : shadow.card,
         }}
       >
         <Icon size={24} color={selected ? colors.onAccent : colors.accent} strokeWidth={1.8} />

@@ -46,7 +46,7 @@ export default function CitySelectionModal({ visible, onClose, value, onSelect }
   const app = useApp();
   const selectedCity = onSelect ? (value ?? "") : app.selectedCity;
   const [searchQuery, setSearchQuery] = useState("");
-  const { cities } = useCities();
+  const { cities, isLoading, isError, refetch } = useCities();
 
   const filteredCities = cities.filter((city) =>
     city.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -132,12 +132,25 @@ export default function CitySelectionModal({ visible, onClose, value, onSelect }
           )}
         </View>
 
-        {/* Grid of Cities */}
-        {filteredCities.length > 0 ? (
+        {isLoading ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>Loading cities…</Text>
+            <Text style={styles.emptySubtext}>Fetching the latest catalog from SqftGo.</Text>
+          </View>
+        ) : isError ? (
+          <View style={styles.emptyContainer}>
+            <MapPin size={40} color={colors.accent} style={styles.emptyIcon} />
+            <Text style={styles.emptyText}>Couldn&apos;t load cities</Text>
+            <Text style={styles.emptySubtext}>Check your connection, then try again.</Text>
+            <Pressable onPress={refetch} accessibilityRole="button" style={styles.retryBtn}>
+              <Text style={styles.retryText}>Retry</Text>
+            </Pressable>
+          </View>
+        ) : filteredCities.length > 0 ? (
           <FlatList
             data={filteredCities}
             renderItem={renderCityCard}
-            keyExtractor={(item) => item.name}
+            keyExtractor={(item) => item.id ?? item.name}
             numColumns={2}
             style={styles.cityList}
             contentContainerStyle={styles.gridContainer}
@@ -269,5 +282,19 @@ const styles = StyleSheet.create({
     ...type.caption,
     color: colors.inkMuted,
     textAlign: "center",
+  },
+  retryBtn: {
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.sm,
+    backgroundColor: colors.primarySoft,
+    borderWidth: 1,
+    borderColor: colors.primaryBorder,
+  },
+  retryText: {
+    ...type.label,
+    color: colors.primary,
+    fontWeight: "600",
   },
 });

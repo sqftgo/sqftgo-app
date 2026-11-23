@@ -56,6 +56,10 @@ export async function apiSignup(input: {
   name: string;
   /** Matches web: dealer signup promotes profile.role to broker via BFF. */
   intent?: "user" | "dealer";
+  countryCode?: string;
+  mobileNumber?: string;
+  mobileClaimToken?: string;
+  cityId?: string;
 }): Promise<AuthLoginResponse | { status: "confirm_email"; email: string; message: string }> {
   const res = await apiFetch<
     AuthLoginResponse | { status: "confirm_email"; email: string; message: string }
@@ -66,6 +70,10 @@ export async function apiSignup(input: {
       password: input.password,
       name: input.name,
       intent: input.intent === "dealer" ? "dealer" : "user",
+      ...(input.countryCode ? { countryCode: input.countryCode } : {}),
+      ...(input.mobileNumber ? { mobileNumber: input.mobileNumber } : {}),
+      ...(input.mobileClaimToken ? { mobileClaimToken: input.mobileClaimToken } : {}),
+      ...(input.cityId ? { cityId: input.cityId } : {}),
     },
     public: true,
   });
@@ -111,6 +119,7 @@ export async function apiUpdateMe(body: {
   phone?: string;
   bio?: string;
   city?: string;
+  cityId?: string | null;
   avatarUrl?: string | null;
 }): Promise<AuthMeResponse> {
   return apiFetch<AuthMeResponse>("/api/auth/me", { method: "PATCH", body });
