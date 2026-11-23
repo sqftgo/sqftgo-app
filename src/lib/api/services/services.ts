@@ -79,6 +79,98 @@ export async function apiCreateServiceBooking(
   });
 }
 
+export type ServicePortfolioImage = {
+  id: string;
+  directoryProfileId: string;
+  imageUrl: string;
+  caption?: string;
+  sortOrder?: number;
+  createdAt?: string;
+};
+
+export type ServiceReview = {
+  id: string;
+  directoryProfileId: string;
+  userId: string;
+  rating: number;
+  title?: string;
+  body: string;
+  status?: string;
+  createdAt: string;
+  reviewerName?: string;
+};
+
+export async function apiListServicePortfolio(
+  directoryProfileId: string,
+): Promise<ServicePortfolioImage[]> {
+  const res = await apiFetch<{ items?: ServicePortfolioImage[] } | ServicePortfolioImage[]>(
+    `/api/services/${directoryProfileId}/portfolio`,
+    { public: true },
+  );
+  return Array.isArray(res) ? res : res.items ?? [];
+}
+
+export async function apiListServiceReviews(
+  directoryProfileId: string,
+): Promise<{ items: ServiceReview[]; averageRating?: number; total?: number }> {
+  const res = await apiFetch<{
+    items?: ServiceReview[];
+    averageRating?: number;
+    total?: number;
+    avg?: number;
+  }>(`/api/services/${directoryProfileId}/reviews`, { public: true });
+  return {
+    items: res.items ?? [],
+    averageRating: res.averageRating ?? res.avg,
+    total: res.total ?? res.items?.length ?? 0,
+  };
+}
+
+export async function apiCreateServiceReview(
+  directoryProfileId: string,
+  body: { rating: number; title?: string; body: string },
+): Promise<ServiceReview> {
+  return apiFetch<ServiceReview>(`/api/services/${directoryProfileId}/reviews`, {
+    method: "POST",
+    body,
+  });
+}
+
+export async function apiGetServiceWebsiteStatus(
+  directoryProfileId: string,
+): Promise<{ active: boolean; hasWebsite: boolean; websiteUrl?: string }> {
+  return apiFetch(`/api/services/${directoryProfileId}/website-status`, { public: true });
+}
+
+export type WebsitePromotionPlan = {
+  id: string;
+  name: string;
+  description?: string;
+  amountPaise: number;
+  durationDays: number;
+  active?: boolean;
+};
+
+export async function apiListWebsitePromotionPlans(): Promise<WebsitePromotionPlan[]> {
+  const res = await apiFetch<{ items?: WebsitePromotionPlan[] } | WebsitePromotionPlan[]>(
+    "/api/services/website-promotion/plans",
+  );
+  return Array.isArray(res) ? res : res.items ?? [];
+}
+
+export async function apiGetMyWebsitePromotion(): Promise<{
+  status?: string;
+  expiresAt?: string | null;
+  websiteUrl?: string | null;
+  active?: boolean;
+} | null> {
+  try {
+    return await apiFetch("/api/services/website-promotion");
+  } catch {
+    return null;
+  }
+}
+
 export async function apiListMyServiceBookings(): Promise<ServiceBooking[]> {
   const res = await apiFetch<ListResponse<ServiceBooking> | ServiceBooking[]>(
     "/api/service-bookings",
