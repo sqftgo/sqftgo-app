@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { handleClientError } from "@/lib/handle-client-error";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
@@ -91,7 +92,7 @@ export default function DealerPropertiesScreen() {
         onPress: async () => {
           const ok = await deleteProperty(item.id);
           if (!ok) {
-            appAlert("Couldn't delete", getLastActionError() ?? "Please try again.");
+            handleClientError(getLastActionError() ?? "Please try again.", { title: "Couldn't delete" });
             return;
           }
           refresh();
@@ -104,7 +105,7 @@ export default function DealerPropertiesScreen() {
   const handleSubmit = async (item: Property) => {
     const updated = await updateProperty(item.id, { status: "Pending Review" });
     if (!updated) {
-      appAlert("Couldn't submit", getLastActionError() ?? "Open the listing and check the required fields.");
+      handleClientError(getLastActionError() ?? "Open the listing and check the required fields.", { title: "Couldn't submit" });
       return;
     }
     refresh();
@@ -114,7 +115,7 @@ export default function DealerPropertiesScreen() {
   const handleMoveToDraft = async (item: Property) => {
     const updated = await updateProperty(item.id, { status: "Draft" });
     if (!updated) {
-      appAlert("Couldn't update", getLastActionError() ?? "Please try again.");
+      handleClientError(getLastActionError() ?? "Please try again.", { title: "Couldn't update" });
       return;
     }
     refresh();

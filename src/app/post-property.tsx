@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { handleClientError } from "@/lib/handle-client-error";
 import { useRouter, type Href } from "expo-router";
 import React, { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
@@ -6,7 +7,6 @@ import { StyleSheet, Text, View } from "react-native";
 import { Button, EmptyState, Screen, toast } from "@/components/ds";
 import { ListingForm, type ListingPayload, type ListingSaveStatus } from "@/components/listing/ListingForm";
 import { emptyDraft } from "@/components/listing/listing-draft";
-import { appAlert } from "@/components/ui/app-alert";
 import { Lock } from "@/components/ui/icons";
 import { useApp } from "@/context/AppContext";
 import { apiGetListingQuota } from "@/lib/api/services/listing-plans";
@@ -111,7 +111,7 @@ export default function PostPropertyScreen() {
   const onSave = async (payload: ListingPayload, status: ListingSaveStatus) => {
     const created = await addProperty({ ...payload, status: status ?? "Pending Review" });
     if (!created) {
-      appAlert("Couldn't save listing", getLastActionError() ?? "Please try again.");
+      handleClientError(getLastActionError() ?? "Please try again.", { title: "Couldn't save listing" });
       return false;
     }
     void queryClient.invalidateQueries({ queryKey: ["properties", "mine"] });

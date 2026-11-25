@@ -1,9 +1,9 @@
 import { useRouter, type Href } from "expo-router";
+import { handleClientError } from "@/lib/handle-client-error";
 import React, { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { Button, ChipGroup, CityField, ListRow, ListSection, Screen, TextField } from "@/components/ds";
-import { appAlert } from "@/components/ui/app-alert";
 import { Briefcase, Clock } from "@/components/ui/icons";
 import { useApp } from "@/context/AppContext";
 import type { DirectoryCategory } from "@/data/types";
@@ -76,7 +76,7 @@ export default function DealerRegisterScreen() {
     });
     setBusy(false);
     if (!result.ok) {
-      appAlert("Couldn't submit", result.message ?? "Please try again.");
+      handleClientError(result.message ?? "Please try again.", { title: "Couldn't submit" });
       return;
     }
     router.replace("/dealer-pending" as Href);

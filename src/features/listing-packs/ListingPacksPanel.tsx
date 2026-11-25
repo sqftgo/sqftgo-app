@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Sparkles } from "@/components/ui/icons";
-import { appAlert } from "@/components/ui/app-alert";
+import { handleClientError, notifySuccess } from "@/lib/handle-client-error";
+import { userFacingError } from "@/lib/errors";
 import {
   RazorpayCheckoutModal,
   type RazorpayCheckoutSuccess,
@@ -46,7 +47,7 @@ export function ListingPacksPanel({ canBuy }: { canBuy: boolean }) {
         await refresh();
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Unable to load listing packs");
+          setError(userFacingError(err, "Unable to load listing packs"));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -64,7 +65,7 @@ export function ListingPacksPanel({ canBuy }: { canBuy: boolean }) {
       if (!order.keyId) throw new Error("Razorpay is not configured on the server.");
       setCheckout({ ...order, plan });
     } catch (err) {
-      appAlert("Checkout failed", err instanceof Error ? err.message : "Try again.");
+      handleClientError(err, { title: "Checkout failed", fallback: "Try again." });
     } finally {
       setBusyId(null);
     }
@@ -79,12 +80,12 @@ export function ListingPacksPanel({ canBuy }: { canBuy: boolean }) {
         razorpaySignature: response.razorpay_signature,
       });
       await refresh();
-      appAlert("Payment verified", "Listing slots were added to your account.");
+      notifySuccess("Listing slots were added to your account.");
     } catch (err) {
-      appAlert(
-        "Verification issue",
-        err instanceof Error ? err.message : "Payment received but slots are not confirmed yet.",
-      );
+      handleClientError(err, {
+        title: "Verification issue",
+        fallback: "Payment received but slots are not confirmed yet.",
+      });
     }
   };
 
@@ -177,7 +178,7 @@ export function ListingPacksPanel({ canBuy }: { canBuy: boolean }) {
           onDismiss={() => setCheckout(null)}
           onError={(message) => {
             setCheckout(null);
-            appAlert("Payment failed", message);
+            handleClientError(message, { title: "Payment failed", fallback: "Try again." });
           }}
         />
       ) : null}

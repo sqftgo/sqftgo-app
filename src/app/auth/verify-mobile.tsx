@@ -16,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "@/components/ds/Button";
 import { ChevronLeft } from "@/components/ui/icons";
 import { useApp } from "@/context/AppContext";
+import { userFacingError } from "@/lib/errors";
 import { getLastPortal, postAuthDestination } from "@/lib/post-auth";
 import { COUNTRY_CODES, formatMobile, validateMobile } from "@/lib/phone";
 import { colors, fonts, radius, spacing, touchTarget, type } from "@/theme/tokens";
@@ -81,7 +82,7 @@ export default function VerifyMobileScreen() {
       const result = await sendMobileOtp({ countryCode, mobileNumber: mobile });
       if (!result.ok) {
         if (result.resendAfterSeconds) setSecondsLeft(result.resendAfterSeconds);
-        setError(result.message);
+        setError(userFacingError(result.message, "Couldn't send the code. Please try again."));
         return;
       }
       setSent(true);
@@ -104,7 +105,7 @@ export default function VerifyMobileScreen() {
     try {
       const result = await verifyMobileOtp(nextCode);
       if (!result.ok) {
-        setError(result.message);
+        setError(userFacingError(result.message, "Couldn't verify the code. Please try again."));
         return;
       }
       finish();

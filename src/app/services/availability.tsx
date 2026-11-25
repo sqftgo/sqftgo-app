@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { handleClientError } from "@/lib/handle-client-error";
 import type { Href } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { useProviderBlock } from "@/components/provider-block";
 import { Button, DateTimeField, EmptyState, ErrorState, ListSkeleton, Screen, TextField, toast } from "@/components/ds";
-import { appAlert } from "@/components/ui/app-alert";
 import { Calendar } from "@/components/ui/icons";
 import {
   DAY_LABEL,
@@ -19,7 +19,6 @@ import {
   type WeekHours,
 } from "@/lib/api/services/provider";
 import { formatBookingWhen } from "@/lib/booking-status";
-import { userFacingError } from "@/lib/errors";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 
 function normalizeHours(value: WeekHours | null): WeekHours {
@@ -68,7 +67,7 @@ export default function AvailabilityScreen() {
       void queryClient.invalidateQueries({ queryKey: ["provider-schedule"] });
       toast("Working hours saved");
     },
-    onError: (error) => appAlert("Couldn't save hours", userFacingError(error, "Check each open and close time.")),
+    onError: (error) => handleClientError(error, { title: "Couldn't save hours", fallback: "Check each open and close time." }),
   });
 
   const addBlock = useMutation({
@@ -78,7 +77,7 @@ export default function AvailabilityScreen() {
       setReason("");
       toast("Date blocked");
     },
-    onError: (error) => appAlert("Couldn't block that time", userFacingError(error, "Try again.")),
+    onError: (error) => handleClientError(error, { title: "Couldn't block that time", fallback: "Try again." }),
   });
 
   const removeBlock = useMutation({
@@ -87,7 +86,7 @@ export default function AvailabilityScreen() {
       queryClient.setQueryData(["provider-schedule"], schedule);
       toast("Block removed");
     },
-    onError: (error) => appAlert("Couldn't remove the block", userFacingError(error, "Try again.")),
+    onError: (error) => handleClientError(error, { title: "Couldn't remove the block", fallback: "Try again." }),
   });
 
   if (blocked) return blocked;

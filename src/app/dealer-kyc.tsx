@@ -1,9 +1,9 @@
 import { type Href } from "expo-router";
+import { handleClientError } from "@/lib/handle-client-error";
 import React, { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { Button, EmptyState, ListRow, ListSection, Screen, StatusBadge, TextField, toast, useBack } from "@/components/ds";
-import { appAlert } from "@/components/ui/app-alert";
 import { CheckCircle, FileCheck, ShieldCheck } from "@/components/ui/icons";
 import { usePlatform, useSession } from "@/hooks/domain";
 import type { KycDocumentType } from "@/data/types";
@@ -61,7 +61,7 @@ export default function DealerKycScreen() {
     });
     setSubmitting(false);
     if (!result.ok) {
-      appAlert("Couldn't submit KYC", result.message);
+      handleClientError(result.message, { title: "Couldn't submit KYC" });
       return;
     }
     toast("KYC sent for review");

@@ -1,4 +1,5 @@
 import { useLocalSearchParams } from "expo-router";
+import { handleClientError } from "@/lib/handle-client-error";
 import React, { useMemo, useState } from "react";
 import {
   FlatList,
@@ -127,10 +128,9 @@ export default function DealerInquiriesScreen() {
     const result = await replyInquiry(replyTarget.id, replyText.trim());
     setReplyBusy(false);
     if (!result.ok) {
-      appAlert(
-        "Couldn't send reply",
-        result.message ?? "Check your connection and try again.",
-      );
+      handleClientError(result.message ?? "Check your connection and try again.", {
+        title: "Couldn't send reply",
+      });
       return;
     }
     setReplyTarget(null);
@@ -152,10 +152,9 @@ export default function DealerInquiriesScreen() {
     });
     setComposeBusy(false);
     if (!thread) {
-      appAlert(
-        "Couldn't send message",
-        "Check the email address and your connection, then try again.",
-      );
+      handleClientError("Check the email address and your connection, then try again.", {
+        title: "Couldn't send message",
+      });
       return;
     }
     setComposeOpen(false);
@@ -167,8 +166,7 @@ export default function DealerInquiriesScreen() {
   const handleThreadSend = async (body: string) => {
     if (!activeThread) return false;
     const sent = await sendThreadMessage(activeThread.id, body);
-    if (!sent)
-      appAlert("Message not sent", "Check your connection and try again.");
+    if (!sent) handleClientError("Check your connection and try again.", { title: "Message not sent" });
     return Boolean(sent);
   };
 
@@ -186,7 +184,7 @@ export default function DealerInquiriesScreen() {
           void (async () => {
             const result = await archiveInquiry(item.id);
             if (!result.ok) {
-              appAlert("Couldn't archive", result.message ?? "Please try again.");
+              handleClientError(result.message ?? "Please try again.", { title: "Couldn't archive" });
               return;
             }
             toast("Lead archived");
@@ -199,7 +197,7 @@ export default function DealerInquiriesScreen() {
     if (item.status !== "new") return;
     const result = await markInquiryRead(item.id);
     if (!result.ok) {
-      appAlert("Couldn't update", result.message ?? "Please try again.");
+      handleClientError(result.message ?? "Please try again.", { title: "Couldn't update" });
     }
   };
 

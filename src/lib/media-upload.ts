@@ -1,4 +1,5 @@
 import { appAlert } from "@/components/ui/app-alert";
+import { handleClientError } from "@/lib/handle-client-error";
 import * as ImagePicker from "expo-image-picker";
 
 import { isApiMode } from "@/lib/api/config";
@@ -39,7 +40,7 @@ export async function pickAndUploadPropertyImage(): Promise<string | null> {
     });
     return url;
   } catch (e) {
-    appAlert("Upload failed", e instanceof Error ? e.message : "Could not upload image.");
+    handleClientError(e, { title: "Upload failed", fallback: "Could not upload image." });
     return null;
   }
 }
@@ -83,10 +84,9 @@ export async function pickAndUploadPropertyImages(
     onProgress?.(i + 1, assets.length);
   }
   if (failed) {
-    appAlert(
-      "Some photos didn't upload",
-      `${failed} of ${assets.length} photos failed. Try adding them again.`,
-    );
+    handleClientError(`${failed} of ${assets.length} photos failed. Try adding them again.`, {
+      title: "Some photos didn't upload",
+    });
   }
   return urls;
 }
@@ -115,7 +115,7 @@ export async function pickAndUploadAvatar(): Promise<string | null> {
     });
     return url;
   } catch (e) {
-    appAlert("Upload failed", e instanceof Error ? e.message : "Could not upload photo.");
+    handleClientError(e, { title: "Upload failed", fallback: "Could not upload photo." });
     return null;
   }
 }
@@ -145,7 +145,7 @@ export async function pickAndUploadKycDocument(
     });
     return true;
   } catch (e) {
-    appAlert("Upload failed", e instanceof Error ? e.message : "Could not upload document.");
+    handleClientError(e, { title: "Upload failed", fallback: "Could not upload document." });
     return false;
   }
 }

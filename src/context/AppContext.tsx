@@ -354,7 +354,7 @@ export type AuthResult =
 export type ActionResult = { ok: true } | { ok: false; message: string };
 
 function failure(e: unknown, fallback: string): { ok: false; message: string } {
-  return { ok: false, message: e instanceof Error && e.message ? e.message : fallback };
+  return { ok: false, message: userFacingError(e, fallback) };
 }
 
 export interface NotifPrefs {
@@ -1066,7 +1066,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (err: any) {
       setHasCompletedOnboardingState(false);
       setAuthStatus("error");
-      setAuthError(err?.message || "Failed to initialize app session.");
+      setAuthError(userFacingError(err, "Failed to initialize app session."));
     } finally {
       setIsHydrating(false);
     }
@@ -1215,7 +1215,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return {
             ok: false,
             code: status === 401 ? "invalid" : status === 403 ? "suspended" : "network",
-            message: e instanceof Error ? e.message : "Sign in failed.",
+            message: userFacingError(e, "Sign in failed."),
           };
         }
       }
@@ -1380,7 +1380,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return {
             ok: false,
             code: status === 401 ? "invalid" : status === 403 ? "suspended" : "network",
-            message: e instanceof Error ? e.message : "Sign in failed.",
+            message: userFacingError(e, "Sign in failed."),
           };
         }
       }
@@ -1491,7 +1491,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
           return await completeApiSignIn(res, input.intent === "dealer" ? "dealer" : "user", false);
         } catch (e) {
-          const msg = e instanceof Error ? e.message : "Sign up failed.";
+          const msg = userFacingError(e, "Sign up failed.");
           return {
             ok: false,
             code: msg.toLowerCase().includes("exist") ? "exists" : "network",
@@ -1697,7 +1697,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (e) {
       return {
         ok: false,
-        message: e instanceof Error ? e.message : "Unable to send reset email.",
+        message: userFacingError(e, "Unable to send reset email."),
       };
     }
   }, []);
@@ -1728,7 +1728,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } catch (e) {
           return {
             ok: false,
-            message: e instanceof Error ? e.message : "Could not create dealer profile.",
+            message: userFacingError(e, "Could not create dealer profile."),
           };
         }
       }
@@ -1775,7 +1775,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setDirectoryProfiles((prev) => [profile, ...prev.filter((p) => p.id !== profile.id)]);
           return { ok: true, profile };
         } catch (e) {
-          return { ok: false, message: e instanceof Error ? e.message : "Could not create your profile." };
+          return { ok: false, message: userFacingError(e, "Could not create your profile.") };
         }
       }
       const profile: DirectoryProfile = {
@@ -1806,7 +1806,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } catch (e) {
           return {
             ok: false,
-            message: e instanceof Error ? e.message : "Update failed.",
+            message: userFacingError(e, "Update failed."),
           };
         }
       }
@@ -2117,7 +2117,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } catch (e) {
           return {
             ok: false,
-            message: e instanceof Error ? e.message : "Couldn't update inquiry.",
+            message: userFacingError(e, "Couldn't update inquiry."),
           };
         }
       }
@@ -2144,7 +2144,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } catch (e) {
           return {
             ok: false,
-            message: e instanceof Error ? e.message : "Couldn't archive inquiry.",
+            message: userFacingError(e, "Couldn't archive inquiry."),
           };
         }
       }
@@ -2583,7 +2583,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } catch (e) {
           return {
             ok: false,
-            message: e instanceof Error ? e.message : "Password update failed.",
+            message: userFacingError(e, "Password update failed."),
           };
         }
       }

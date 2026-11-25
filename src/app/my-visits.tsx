@@ -1,4 +1,5 @@
 import { Image } from "expo-image";
+import { handleClientError } from "@/lib/handle-client-error";
 import { useRouter, type Href } from "expo-router";
 import React, { useMemo, useState } from "react";
 import { FlatList, Linking, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
@@ -105,7 +106,7 @@ export default function MyVisitsScreen() {
     const result = await rescheduleVisit(editing.id, { date, time });
     setBusy(false);
     if (!result.ok) {
-      appAlert("Couldn't reschedule", result.message);
+      handleClientError(result.message, { title: "Couldn't reschedule" });
       return;
     }
     setEditing(null);
@@ -120,7 +121,7 @@ export default function MyVisitsScreen() {
         style: "destructive",
         onPress: async () => {
           const result = await cancelVisit(v.id);
-          if (!result.ok) appAlert("Couldn't cancel", result.message);
+          if (!result.ok) handleClientError(result.message, { title: "Couldn't cancel" });
           else toast("Visit cancelled");
         },
       },

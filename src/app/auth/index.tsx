@@ -1,4 +1,5 @@
 import { Image } from "expo-image";
+import { handleClientError, notifyInfo } from "@/lib/handle-client-error";
 import { Redirect, useLocalSearchParams, useRouter, type Href } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -214,7 +215,7 @@ export default function AuthScreen() {
       });
       if (!result.ok) {
         if (result.resendAfterSeconds) setSecondsLeft(result.resendAfterSeconds);
-        setFormError(result.message);
+        setFormError(userFacingError(result.message, "Couldn't send the code. Please try again."));
         return;
       }
       setRegisterOtpStep(true);
@@ -242,7 +243,7 @@ export default function AuthScreen() {
       });
       if (!result.ok) {
         if (result.resendAfterSeconds) setSecondsLeft(result.resendAfterSeconds);
-        setFormError(result.message);
+        setFormError(userFacingError(result.message, "Couldn't send the code. Please try again."));
         return;
       }
       setMobileOtpSent(true);
@@ -269,14 +270,14 @@ export default function AuthScreen() {
         cityId,
       });
       if (!result.ok) {
-        appAlert("Couldn't create account", result.message);
+        handleClientError(result.message, { title: "Couldn't create account" });
         return;
       }
       if (isDealer) {
         router.replace("/dealer-register" as Href);
       }
     } catch (error) {
-      appAlert("Couldn't create account", userFacingError(error, "Please try again."));
+      handleClientError(error, { title: "Couldn't create account", fallback: "Please try again." });
     } finally {
       setBusy(null);
     }
@@ -296,7 +297,7 @@ export default function AuthScreen() {
         code: nextCode,
       });
       if (!result.ok) {
-        setFormError(result.message);
+        setFormError(userFacingError(result.message, "Couldn't verify the code. Please try again."));
         return;
       }
       setClaimToken(result.claimToken);
@@ -319,10 +320,10 @@ export default function AuthScreen() {
         loginType,
       );
       if (!result.ok) {
-        appAlert("Couldn't sign in", result.message);
+        handleClientError(result.message, { title: "Couldn't sign in" });
       }
     } catch (error) {
-      appAlert("Couldn't sign in", userFacingError(error, "Please try again."));
+      handleClientError(error, { title: "Couldn't sign in", fallback: "Please try again." });
     } finally {
       setBusy(null);
     }
@@ -365,16 +366,15 @@ export default function AuthScreen() {
 
       const result = await signIn(email.trim(), password, loginType);
       if (!result.ok) {
-        appAlert(
-          result.code === "admin_unsupported" ? "Use the SqftGo website" : "Couldn't sign in",
-          result.message,
-        );
+        const title =
+          result.code === "admin_unsupported" ? "Use the SqftGo website" : "Couldn't sign in";
+        handleClientError(result.message ?? "Please try again.", { title });
       }
     } catch (error) {
-      appAlert(
-        isSignUp ? "Couldn't create account" : "Couldn't sign in",
-        userFacingError(error, "Please try again."),
-      );
+      handleClientError(error, {
+        title: isSignUp ? "Couldn't create account" : "Couldn't sign in",
+        fallback: "Please try again.",
+      });
     } finally {
       setBusy(null);
     }
@@ -394,11 +394,11 @@ export default function AuthScreen() {
       const result = await signInWithGoogle(loginType);
       if (!result.ok) {
         if (!result.cancelled) {
-          appAlert("Google sign-in failed", result.message);
+          handleClientError(result.message, { title: "Google sign-in failed" });
         }
       }
     } catch (error) {
-      appAlert("Google sign-in failed", userFacingError(error, "Please try again."));
+      handleClientError(error, { title: "Google sign-in failed", fallback: "Please try again." });
     } finally {
       setBusy(null);
     }
@@ -412,14 +412,15 @@ export default function AuthScreen() {
     }
     try {
       const res = await forgotPassword(target);
-      appAlert(
-        res.ok ? "Check your inbox" : "Couldn't send reset link",
-        res.ok
-          ? "If an account exists for that email, you'll get a link. Open it to set a new password, then sign in here."
-          : (res.message ?? "Please try again."),
-      );
+      if (res.ok) {
+        notifyInfo(
+          "If an account exists for that email, you'll get a link. Open it to set a new password, then sign in here.",
+        );
+      } else {
+        handleClientError(res.message ?? "Please try again.", { title: "Couldn't send reset link" });
+      }
     } catch (error) {
-      appAlert("Couldn't send reset link", userFacingError(error, "Please try again."));
+      handleClientError(error, { title: "Couldn't send reset link", fallback: "Please try again." });
     }
   };
 

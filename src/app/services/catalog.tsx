@@ -1,15 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { handleClientError } from "@/lib/handle-client-error";
 import type { Href } from "expo-router";
 import React, { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { useProviderBlock } from "@/components/provider-block";
 import { Button, EmptyState, ErrorState, ListSkeleton, Screen, StatusBadge, TextField, toast } from "@/components/ds";
-import { appAlert } from "@/components/ui/app-alert";
 import { Store } from "@/components/ui/icons";
 import { listProviderServices, saveProviderService, type ProviderServiceItem } from "@/lib/api/services/provider";
 import { formatInr } from "@/lib/booking-status";
-import { userFacingError } from "@/lib/errors";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 
 const blank = { id: null as string | null, name: "", description: "", price: "", duration: "60", active: true };
@@ -39,7 +38,7 @@ export default function ServiceCatalogScreen() {
       setForm(blank);
       toast("Service saved");
     },
-    onError: (error) => appAlert("Couldn't save service", userFacingError(error, "Check the name and price.")),
+    onError: (error) => handleClientError(error, { title: "Couldn't save service", fallback: "Check the name and price." }),
   });
 
   if (blocked) return blocked;

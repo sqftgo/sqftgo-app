@@ -1,4 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { handleClientError, notifySuccess } from "@/lib/handle-client-error";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import React, { useMemo, useState } from "react";
@@ -44,7 +45,6 @@ import {
   apiListServicePortfolio,
   apiListServiceReviews,
 } from "@/lib/api/services/services";
-import { userFacingError } from "@/lib/errors";
 import { initialsFromName } from "@/lib/format";
 import { isDirectoryVerified, isServiceDirectoryCategory } from "@/lib/is-dealer-category";
 import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
@@ -119,9 +119,9 @@ export default function ServiceProfileScreen() {
     onSuccess: () => {
       setReviewBody("");
       void reviewsQuery.refetch();
-      appAlert("Review submitted", "Thanks — it appears after moderation if required.");
+      notifySuccess("Thanks — your review appears after moderation if required.");
     },
-    onError: (e) => appAlert("Couldn't post review", userFacingError(e, "Please try again.")),
+    onError: (e) => handleClientError(e, { title: "Couldn't post review", fallback: "Please try again." }),
   });
 
   const booking = useMutation({
@@ -143,7 +143,7 @@ export default function ServiceProfileScreen() {
       });
       return { ...created, message: created.message ?? null };
     },
-    onError: (e) => appAlert("Couldn't send request", userFacingError(e, "Please try again.")),
+    onError: (e) => handleClientError(e, { title: "Couldn't send request", fallback: "Please try again." }),
   });
 
   if (!partner || !isServiceDirectoryCategory(partner.category)) {

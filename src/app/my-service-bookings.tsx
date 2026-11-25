@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { handleClientError } from "@/lib/handle-client-error";
 import { useRouter, type Href } from "expo-router";
 import React from "react";
 import { FlatList, StyleSheet, Text, View } from "react-native";
@@ -12,7 +13,6 @@ import { applyBookingAction, listServiceBookings, type ProviderBooking } from "@
 import { mobileAuthConfigured } from "@/lib/api/supabase";
 import { apiCancelServiceBooking, apiListMyServiceBookings } from "@/lib/api/services/services";
 import { bookingStatusMeta, formatBookingWhen } from "@/lib/booking-status";
-import { userFacingError } from "@/lib/errors";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 
 const KEY = ["service-bookings", "mine"];
@@ -41,7 +41,7 @@ export default function MyServiceBookingsScreen() {
       queryClient.setQueryData<ProviderBooking[]>(KEY, (prev) => prev?.map((b) => (b.id === updated.id ? { ...b, ...updated } : b)));
       toast(bookingStatusMeta(updated.status).label);
     },
-    onError: (e) => appAlert("Couldn't update booking", userFacingError(e, "Try again.")),
+    onError: (e) => handleClientError(e, { title: "Couldn't update booking", fallback: "Try again." }),
   });
 
   if (!isLoggedIn) {

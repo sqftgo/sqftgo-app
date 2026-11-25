@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { handleClientError, notifyInfo } from "@/lib/handle-client-error";
 import React, { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
@@ -13,7 +14,6 @@ import {
   StatusBadge,
   toast,
 } from "@/components/ds";
-import { appAlert } from "@/components/ui/app-alert";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Check, CreditCard } from "@/components/ui/icons";
 import { RazorpayCheckoutModal, type RazorpayCheckoutSuccess } from "@/components/ui/razorpay-checkout-modal";
@@ -27,7 +27,6 @@ import {
   apiVerifySubscriptionPayment,
   type SubscriptionOrder,
 } from "@/lib/api/services/billing";
-import { userFacingError } from "@/lib/errors";
 import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
 
 const FAQS = [
@@ -103,7 +102,7 @@ export default function DealerSubscriptionScreen() {
 
   const startCheckout = async (planId: PartnerPlanId) => {
     if (!overview?.billingEnabled) {
-      appAlert("Payments are paused", "Online payments aren't available right now. Please try again later.");
+      notifyInfo("Online payments aren't available right now. Please try again later.");
       return;
     }
     setBusyPlan(planId);
@@ -113,7 +112,7 @@ export default function DealerSubscriptionScreen() {
       setCheckout(order);
     } catch (e) {
       setBusyPlan(null);
-      appAlert("Couldn't start checkout", userFacingError(e, "Please try again."));
+      handleClientError(e, { title: "Couldn't start checkout", fallback: "Please try again." });
     }
   };
 
@@ -128,10 +127,10 @@ export default function DealerSubscriptionScreen() {
       toast("Plan active");
       await query.refetch();
     } catch (e) {
-      appAlert(
-        "Payment received, verification pending",
-        userFacingError(e, "Pull to refresh in a moment to see your plan."),
-      );
+      handleClientError(e, {
+        title: "Payment received, verification pending",
+        fallback: "Pull to refresh in a moment to see your plan.",
+      });
     } finally {
       setBusyPlan(null);
     }
@@ -245,7 +244,7 @@ export default function DealerSubscriptionScreen() {
           onError={(message) => {
             setCheckout(null);
             setBusyPlan(null);
-            appAlert("Payment failed", message);
+            handleClientError(message, { title: "Payment failed", fallback: "Try again." });
           }}
         />
       ) : null}

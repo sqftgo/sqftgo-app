@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { handleClientError } from "@/lib/handle-client-error";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
@@ -6,7 +7,6 @@ import { StyleSheet, Text, View } from "react-native";
 import { EmptyState, ErrorState, ListSkeleton, Screen, StatusBadge, toast } from "@/components/ds";
 import { ListingForm, type ListingPayload, type ListingSaveStatus } from "@/components/listing/ListingForm";
 import { draftFromProperty } from "@/components/listing/listing-draft";
-import { appAlert } from "@/components/ui/app-alert";
 import { Lock } from "@/components/ui/icons";
 import { useApp } from "@/context/AppContext";
 import { ApiError } from "@/lib/api/client";
@@ -78,7 +78,7 @@ export default function EditPropertyScreen() {
   const onSave = async (payload: ListingPayload, status: ListingSaveStatus) => {
     const updated = await updateProperty(property.id, status ? { ...payload, status } : payload);
     if (!updated) {
-      appAlert("Couldn't save changes", getLastActionError() ?? "Please try again.");
+      handleClientError(getLastActionError() ?? "Please try again.", { title: "Couldn't save changes" });
       return false;
     }
     void queryClient.invalidateQueries({ queryKey: ["properties", "mine"] });
