@@ -1,4 +1,5 @@
 import { useRouter, type Href } from "expo-router";
+import { handleClientError } from "@/lib/handle-client-error";
 import React, { useMemo, useState } from "react";
 import { FlatList, Linking, Text, View } from "react-native";
 
@@ -71,7 +72,7 @@ export default function ManageVisitsScreen() {
     const result = await updateVisitStatus(id, status);
     setBusyId(null);
     if (!result.ok) {
-      appAlert("Couldn't update visit", result.message ?? "Please try again.");
+      handleClientError(result.message ?? "Please try again.", { title: "Couldn't update visit" });
       return;
     }
     toast(successLabel);

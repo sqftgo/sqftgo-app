@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { handleClientError } from "@/lib/handle-client-error";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import React, { useMemo, useState } from "react";
@@ -23,7 +24,6 @@ import { formatProjectPriceRange } from "@/components/ui/project-card";
 import type { Project } from "@/data/project";
 import { isApiMode } from "@/lib/api/config";
 import { apiDeleteProject, apiListProjects, apiUpdateProject } from "@/lib/api/services/projects";
-import { userFacingError } from "@/lib/errors";
 import { colors, radius, shadow, spacing, type } from "@/theme/tokens";
 
 const MINE_KEY = ["projects", "mine"] as const;
@@ -66,7 +66,7 @@ export default function DealerProjectsScreen() {
             void queryClient.invalidateQueries({ queryKey: ["projects"] });
             toast("Project deleted");
           } catch (e) {
-            appAlert("Couldn't delete", userFacingError(e, "Please try again."));
+            handleClientError(e, { title: "Couldn't delete", fallback: "Please try again." });
           }
         },
       },
@@ -78,7 +78,7 @@ export default function DealerProjectsScreen() {
       replace(await apiUpdateProject(item.id, { status: "Pending Review" }));
       toast("Sent for review");
     } catch (e) {
-      appAlert("Couldn't submit", userFacingError(e, "Add at least one photo, then try again."));
+      handleClientError(e, { title: "Couldn't submit", fallback: "Add at least one photo, then try again." });
     }
   };
 
@@ -87,7 +87,7 @@ export default function DealerProjectsScreen() {
       replace(await apiUpdateProject(item.id, { status: "Draft" }));
       toast("Moved to draft");
     } catch (e) {
-      appAlert("Couldn't update", userFacingError(e, "Please try again."));
+      handleClientError(e, { title: "Couldn't update", fallback: "Please try again." });
     }
   };
 

@@ -1,4 +1,5 @@
 import { useRouter, type Href } from "expo-router";
+import { handleClientError, notifyInfo } from "@/lib/handle-client-error";
 import React, { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -7,7 +8,6 @@ import { Button } from "@/components/ds/Button";
 import { Screen, useBack } from "@/components/ds/Screen";
 import { TextField } from "@/components/ds/TextField";
 import { toast } from "@/components/ds/Toast";
-import { appAlert } from "@/components/ui/app-alert";
 import { Lock } from "@/components/ui/icons";
 import { useApp } from "@/context/AppContext";
 import { colors, spacing, type } from "@/theme/tokens";
@@ -55,7 +55,7 @@ export default function ChangePasswordScreen() {
     if (!result.ok) {
       const msg = result.message ?? "Please try again.";
       if (/current password/i.test(msg)) setErrors({ current: msg });
-      else appAlert("Couldn't change password", msg);
+      else handleClientError(msg, { title: "Couldn't change password" });
       return;
     }
     toast("Password changed");
@@ -64,10 +64,11 @@ export default function ChangePasswordScreen() {
 
   const sendReset = async () => {
     const res = await forgotPassword(userEmail);
-    appAlert(
-      res.ok ? "Check your inbox" : "Couldn't send reset link",
-      res.ok ? `We sent a link to ${userEmail} to set a new password.` : (res.message ?? "Please try again."),
-    );
+    if (res.ok) {
+      notifyInfo(`We sent a link to ${userEmail} to set a new password.`);
+    } else {
+      handleClientError(res.message ?? "Please try again.", { title: "Couldn't send reset link" });
+    }
   };
 
   return (

@@ -2,6 +2,7 @@ import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 
 import { apiFetch } from "@/lib/api/client";
+import { userFacingError } from "@/lib/errors";
 import { clearTokens, setTokens } from "@/lib/api/auth-token";
 import { API_BASE_URL } from "@/lib/api/config";
 import type { AccountStatus, DealerAccessStatus, DealerKyc, ListerStatus, UserRole } from "@/data/types";
@@ -165,7 +166,7 @@ export async function apiGoogleSignIn(): Promise<GoogleSignInResult> {
     await clearTokens();
     return {
       ok: false,
-      message: e instanceof Error ? e.message : "Could not load your account.",
+      message: userFacingError(e, "Could not load your account."),
     };
   }
 }

@@ -1,4 +1,5 @@
 import { Image } from "expo-image";
+import { handleClientError } from "@/lib/handle-client-error";
 import { useRouter, type Href } from "expo-router";
 import React, { useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from "react-native";
@@ -166,7 +167,7 @@ export default function BusinessProfileScreen() {
     });
     setSaving(false);
     if (!result.ok) {
-      appAlert("Couldn't save", result.message ?? "Please try again.");
+      handleClientError(result.message ?? "Please try again.", { title: "Couldn't save" });
       return;
     }
     toast("Business profile saved");

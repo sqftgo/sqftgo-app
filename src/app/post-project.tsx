@@ -1,16 +1,15 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { handleClientError } from "@/lib/handle-client-error";
 import { useRouter, type Href } from "expo-router";
 import React from "react";
 
 import { EmptyState, Screen, toast } from "@/components/ds";
 import { emptyProjectDraft, ProjectForm, type ProjectSaveStatus } from "@/components/listing/ProjectForm";
-import { appAlert } from "@/components/ui/app-alert";
 import { Building2 } from "@/components/ui/icons";
 import { useApp } from "@/context/AppContext";
 import type { ProjectInput } from "@/data/project";
 import { isApiMode } from "@/lib/api/config";
 import { apiCreateProject } from "@/lib/api/services/projects";
-import { userFacingError } from "@/lib/errors";
 
 export default function PostProjectScreen() {
   const router = useRouter();
@@ -37,7 +36,7 @@ export default function PostProjectScreen() {
     try {
       await apiCreateProject({ ...payload, status: status ?? "Pending Review" });
     } catch (e) {
-      appAlert("Couldn't save project", userFacingError(e, "Please try again."));
+      handleClientError(e, { title: "Couldn't save project", fallback: "Please try again." });
       return false;
     }
     void queryClient.invalidateQueries({ queryKey: ["projects"] });

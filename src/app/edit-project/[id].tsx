@@ -1,14 +1,13 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { handleClientError } from "@/lib/handle-client-error";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { ErrorState, ListSkeleton, Screen, StatusBadge, toast } from "@/components/ds";
 import { ProjectForm, projectDraftFrom, type ProjectSaveStatus } from "@/components/listing/ProjectForm";
-import { appAlert } from "@/components/ui/app-alert";
 import type { ProjectInput } from "@/data/project";
 import { apiGetProject, apiUpdateProject } from "@/lib/api/services/projects";
-import { userFacingError } from "@/lib/errors";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 
 export default function EditProjectScreen() {
@@ -37,7 +36,7 @@ export default function EditProjectScreen() {
     try {
       await apiUpdateProject(project.id, status ? { ...payload, status } : payload);
     } catch (e) {
-      appAlert("Couldn't save project", userFacingError(e, "Please try again."));
+      handleClientError(e, { title: "Couldn't save project", fallback: "Please try again." });
       return false;
     }
     void queryClient.invalidateQueries({ queryKey: ["project", project.id] });

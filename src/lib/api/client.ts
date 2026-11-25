@@ -187,8 +187,7 @@ export async function apiFetch<T = unknown>(
   return parsed as T;
 }
 
-/** User-facing message for any thrown value. */
+/** User-facing message for any thrown value (sanitized). */
 export function errorMessage(e: unknown, fallback = "Something went wrong. Please try again."): string {
-  if (e instanceof Error && e.message) return e.message;
-  return fallback;
+  return userFacingError(e, fallback);
 }

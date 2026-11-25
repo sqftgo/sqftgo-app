@@ -1,4 +1,5 @@
 import { Image } from "expo-image";
+import { handleClientError } from "@/lib/handle-client-error";
 import { useRouter, type Href } from "expo-router";
 import React, { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
@@ -9,7 +10,6 @@ import { CityField } from "@/components/ds/CityField";
 import { Screen, useBack } from "@/components/ds/Screen";
 import { TextField } from "@/components/ds/TextField";
 import { toast } from "@/components/ds/Toast";
-import { appAlert } from "@/components/ui/app-alert";
 import { Lock } from "@/components/ui/icons";
 import { useApp } from "@/context/AppContext";
 import { initialsFromName } from "@/lib/format";
@@ -56,7 +56,7 @@ export default function EditProfileScreen() {
     });
     setSaving(false);
     if (!result.ok) {
-      appAlert("Couldn't save profile", result.message);
+      handleClientError(result.message, { title: "Couldn't save profile" });
       return;
     }
     toast("Profile saved");

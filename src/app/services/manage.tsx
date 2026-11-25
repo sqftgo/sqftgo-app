@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { handleClientError } from "@/lib/handle-client-error";
 import { useRouter, type Href } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { Linking, StyleSheet, Text, View } from "react-native";
@@ -15,7 +16,6 @@ import {
     toast,
     type BadgeTone,
 } from "@/components/ds";
-import { appAlert } from "@/components/ui/app-alert";
 import { Calendar, Lock, Store } from "@/components/ui/icons";
 import { useApp } from "@/context/AppContext";
 import { useMyServiceProfile } from "@/hooks/use-my-service-profile";
@@ -26,7 +26,6 @@ import {
     apiListWebsitePromotionPlans,
     apiSubmitServiceVerification,
 } from "@/lib/api/services/services";
-import { userFacingError } from "@/lib/errors";
 import { serviceProviderDenial } from "@/lib/service-access";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 
@@ -102,7 +101,7 @@ export default function ManageServiceScreen() {
       toast("Sent for review");
     },
     onError: (e) =>
-      appAlert("Couldn't submit", userFacingError(e, "Try again.")),
+      handleClientError(e, { title: "Couldn't submit", fallback: "Try again." }),
   });
 
   if (!isLoggedIn) {
@@ -181,7 +180,7 @@ export default function ManageServiceScreen() {
     });
     setSaving(false);
     if (!result.ok) {
-      appAlert("Couldn't save", result.message ?? "Try again.");
+      handleClientError(result.message ?? "Try again.", { title: "Couldn't save" });
       return;
     }
     void queryClient.invalidateQueries({ queryKey: ["dealers", "mine"] });
@@ -247,10 +246,7 @@ export default function ManageServiceScreen() {
             onPress={() => {
               const url = `${API_BASE_URL}/services/manage`;
               Linking.openURL(url).catch(() =>
-                appAlert(
-                  "Couldn't open",
-                  "Open SqftGo website → Services → Manage.",
-                ),
+                handleClientError("Open SqftGo website → Services → Manage.", { title: "Couldn't open" }),
               );
             }}
           />

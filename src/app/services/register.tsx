@@ -1,4 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { handleClientError } from "@/lib/handle-client-error";
 import { useRouter, type Href } from "expo-router";
 import React, { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
@@ -14,7 +15,6 @@ import {
   TextField,
   toast,
 } from "@/components/ds";
-import { appAlert } from "@/components/ui/app-alert";
 import { Lock, Store } from "@/components/ui/icons";
 import { useApp } from "@/context/AppContext";
 import { useMyServiceProfile } from "@/hooks/use-my-service-profile";
@@ -142,7 +142,7 @@ export default function RegisterServiceScreen() {
     });
     if (!result.ok) {
       setBusy(false);
-      appAlert("Couldn't create profile", result.message);
+      handleClientError(result.message, { title: "Couldn't create profile" });
       return;
     }
     if (isApiMode) {

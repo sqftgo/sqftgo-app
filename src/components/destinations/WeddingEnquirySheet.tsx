@@ -8,6 +8,7 @@ import { ModalSheet, ModalSheetHeader } from "@/components/ui/modal-sheet";
 import { useApp } from "@/context/AppContext";
 import type { WeddingProperty, WeddingVenue } from "@/data/wedding-venues";
 import { isApiMode } from "@/lib/api/config";
+import { userFacingError } from "@/lib/errors";
 import { apiCreateEnquiry } from "@/lib/api/services/enquiries";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 
@@ -157,7 +158,7 @@ export function WeddingEnquirySheet({
           />
           {send.isError ? (
             <Text style={styles.error}>
-              {send.error instanceof Error ? send.error.message : "Couldn't send. Please try again."}
+              {userFacingError(send.error, "Couldn't send. Please try again.")}
             </Text>
           ) : null}
           <Button

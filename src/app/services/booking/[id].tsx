@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { handleClientError } from "@/lib/handle-client-error";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import React, { useState } from "react";
 import { Linking, StyleSheet, Text, View } from "react-native";
@@ -14,12 +15,10 @@ import {
   TextField,
   toast,
 } from "@/components/ds";
-import { appAlert } from "@/components/ui/app-alert";
 import { Calendar, Lock, Mail, Phone } from "@/components/ui/icons";
 import { useApp } from "@/context/AppContext";
 import { applyBookingAction, getServiceBooking, type BookingAction, type ProviderBooking } from "@/lib/api/services/provider";
 import { bookingStatusMeta, formatBookingWhen, formatInr, shortBookingId } from "@/lib/booking-status";
-import { userFacingError } from "@/lib/errors";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 
 function tomorrowAt11() {
@@ -55,7 +54,7 @@ export default function BookingDetailScreen() {
       setShowPropose(false);
       toast(`Booking ${bookingStatusMeta(booking.status).label.toLowerCase()}`);
     },
-    onError: (error) => appAlert("Couldn't update booking", userFacingError(error, "Try again.")),
+    onError: (error) => handleClientError(error, { title: "Couldn't update booking", fallback: "Try again." }),
   });
 
   if (!isLoggedIn) {

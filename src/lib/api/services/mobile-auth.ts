@@ -5,6 +5,7 @@ import { nationalDigits, validateMobile } from "@/lib/phone";
 import { parseServiceAccess, type ServiceAccess } from "@/lib/service-access";
 import type { AuthLoginResponse } from "@/lib/api/services/auth";
 import { setTokens } from "@/lib/api/auth-token";
+import { userFacingError } from "@/lib/errors";
 
 export type AccountGate = {
   phone?: string;
@@ -247,12 +248,12 @@ function mapApiError(e: unknown): { ok: false; message: string; code?: string; r
     return {
       ok: false,
       code: body?.code,
-      message: body?.message || body?.error || e.message || "Request failed.",
+      message: userFacingError(e, "Request failed."),
       resendAfterSeconds: body?.resendAfterSeconds,
     };
   }
   return {
     ok: false,
-    message: e instanceof Error ? e.message : "Request failed.",
+    message: userFacingError(e, "Request failed."),
   };
 }

@@ -1,4 +1,5 @@
 import { Image } from "expo-image";
+import { handleClientError } from "@/lib/handle-client-error";
 import { useRouter, type Href } from "expo-router";
 import React, { useMemo, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -8,7 +9,6 @@ import { Button } from "@/components/ds/Button";
 import { StatCard, StatGrid } from "@/components/ds/StatCard";
 import { StatusBadge, toneForStatus } from "@/components/ds/StatusBadge";
 import { toast } from "@/components/ds/Toast";
-import { appAlert } from "@/components/ui/app-alert";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
   BarChart3,
@@ -212,7 +212,7 @@ export default function DealerDashboardScreen() {
   const confirmTour = async (visitId: string) => {
     const result = await updateVisitStatus(visitId, "confirmed");
     if (!result.ok) {
-      appAlert("Couldn't confirm visit", result.message ?? "Please try again.");
+      handleClientError(result.message ?? "Please try again.", { title: "Couldn't confirm visit" });
       return;
     }
     toast("Tour confirmed");

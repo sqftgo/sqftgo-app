@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { handleClientError } from "@/lib/handle-client-error";
 import { Linking, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { Button } from "@/components/ds/Button";
@@ -101,7 +102,7 @@ export function ContactSheet({
     });
     setSending(false);
     if (!created) {
-      appAlert("Couldn't send inquiry", getLastActionError() ?? "Please try again.");
+      handleClientError(getLastActionError() ?? "Please try again.", { title: "Couldn't send inquiry" });
       return;
     }
     setSent(true);

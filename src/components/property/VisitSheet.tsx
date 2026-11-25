@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { handleClientError } from "@/lib/handle-client-error";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { Button } from "@/components/ds/Button";
@@ -10,7 +11,6 @@ import {
   tomorrowIsoDate,
 } from "@/components/ds/DateSlotPicker";
 import { TextField } from "@/components/ds/TextField";
-import { appAlert } from "@/components/ui/app-alert";
 import { CheckCircle2, MapPin } from "@/components/ui/icons";
 import { ModalSheet, ModalSheetHeader } from "@/components/ui/modal-sheet";
 import { useApp } from "@/context/AppContext";
@@ -114,7 +114,7 @@ export function VisitSheet({
     });
     setSending(false);
     if (!created) {
-      appAlert("Couldn't book visit", getLastActionError() ?? "Please try again.");
+      handleClientError(getLastActionError() ?? "Please try again.", { title: "Couldn't book visit" });
       return;
     }
     setSent(true);
