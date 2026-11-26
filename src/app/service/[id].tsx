@@ -119,7 +119,7 @@ export default function ServiceProfileScreen() {
     onSuccess: () => {
       setReviewBody("");
       void reviewsQuery.refetch();
-      notifySuccess("Thanks — your review appears after moderation if required.");
+      notifySuccess("Thanks — your review is pending moderation before it goes live.");
     },
     onError: (e) => handleClientError(e, { title: "Couldn't post review", fallback: "Please try again." }),
   });

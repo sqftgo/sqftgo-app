@@ -6,6 +6,12 @@ import { isApiMode } from "@/lib/api/config";
 import { apiUploadPropertyImage, apiUploadAvatar } from "@/lib/api/services/uploads";
 import { apiUploadKycDocument } from "@/lib/api/services/kyc";
 import type { KycDocumentType } from "@/data/types";
+import {
+  detectAllowedImageMime,
+  detectAllowedKycMime,
+  extForMime,
+  readUriMagicBytes,
+} from "@/lib/file-magic";
 
 async function ensureLibraryPermission(): Promise<boolean> {
   const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -14,6 +20,62 @@ async function ensureLibraryPermission(): Promise<boolean> {
     return false;
   }
   return true;
+}
+
+async function verifiedImageAsset(asset: ImagePicker.ImagePickerAsset): Promise<{
+  uri: string;
+  fileName: string;
+  mimeType: string;
+} | null> {
+  try {
+    const bytes = await readUriMagicBytes(asset.uri);
+    const mime = detectAllowedImageMime(bytes);
+    if (!mime) {
+      handleClientError("Choose a JPEG, PNG, WebP, or GIF image.", {
+        title: "Unsupported file",
+      });
+      return null;
+    }
+    const base =
+      asset.fileName?.replace(/\.[^.]+$/, "")?.replace(/[^a-zA-Z0-9._-]/g, "_") ||
+      `upload-${Date.now()}`;
+    return {
+      uri: asset.uri,
+      fileName: `${base}.${extForMime(mime)}`,
+      mimeType: mime,
+    };
+  } catch (e) {
+    handleClientError(e, { title: "Couldn't read file", fallback: "Try another photo." });
+    return null;
+  }
+}
+
+async function verifiedKycAsset(asset: ImagePicker.ImagePickerAsset): Promise<{
+  uri: string;
+  fileName: string;
+  mimeType: string;
+} | null> {
+  try {
+    const bytes = await readUriMagicBytes(asset.uri);
+    const mime = detectAllowedKycMime(bytes);
+    if (!mime) {
+      handleClientError("Choose a JPEG, PNG, WebP, or PDF document.", {
+        title: "Unsupported file",
+      });
+      return null;
+    }
+    const base =
+      asset.fileName?.replace(/\.[^.]+$/, "")?.replace(/[^a-zA-Z0-9._-]/g, "_") ||
+      `kyc-${Date.now()}`;
+    return {
+      uri: asset.uri,
+      fileName: `${base}.${extForMime(mime)}`,
+      mimeType: mime,
+    };
+  } catch (e) {
+    handleClientError(e, { title: "Couldn't read file", fallback: "Try another document." });
+    return null;
+  }
 }
 
 export async function pickAndUploadPropertyImage(): Promise<string | null> {
@@ -29,15 +91,11 @@ export async function pickAndUploadPropertyImage(): Promise<string | null> {
   });
   if (result.canceled || !result.assets[0]) return null;
 
-  const asset = result.assets[0];
-  const fileName = asset.fileName ?? `property-${Date.now()}.jpg`;
-  const mimeType = asset.mimeType ?? "image/jpeg";
+  const verified = await verifiedImageAsset(result.assets[0]);
+  if (!verified) return null;
+
   try {
-    const { url } = await apiUploadPropertyImage({
-      uri: asset.uri,
-      fileName,
-      mimeType,
-    });
+    const { url } = await apiUploadPropertyImage(verified);
     return url;
   } catch (e) {
     handleClientError(e, { title: "Upload failed", fallback: "Could not upload image." });
@@ -72,12 +130,16 @@ export async function pickAndUploadPropertyImages(
   onProgress?.(0, assets.length);
   for (const [i, asset] of assets.entries()) {
     try {
-      const { url } = await apiUploadPropertyImage({
-        uri: asset.uri,
-        fileName: asset.fileName ?? `property-${Date.now()}-${i}.jpg`,
-        mimeType: asset.mimeType ?? "image/jpeg",
-      });
-      urls.push(url);
+      const verified = await verifiedImageAsset(asset);
+      if (!verified) {
+        failed += 1;
+      } else {
+        const { url } = await apiUploadPropertyImage({
+          ...verified,
+          fileName: verified.fileName.replace(/(\.[^.]+)$/, `-${i}$1`),
+        });
+        urls.push(url);
+      }
     } catch {
       failed += 1;
     }
@@ -106,13 +168,11 @@ export async function pickAndUploadAvatar(): Promise<string | null> {
   });
   if (result.canceled || !result.assets[0]) return null;
 
-  const asset = result.assets[0];
+  const verified = await verifiedImageAsset(result.assets[0]);
+  if (!verified) return null;
+
   try {
-    const { url } = await apiUploadAvatar({
-      uri: asset.uri,
-      fileName: asset.fileName ?? `avatar-${Date.now()}.jpg`,
-      mimeType: asset.mimeType ?? "image/jpeg",
-    });
+    const { url } = await apiUploadAvatar(verified);
     return url;
   } catch (e) {
     handleClientError(e, { title: "Upload failed", fallback: "Could not upload photo." });
@@ -135,13 +195,13 @@ export async function pickAndUploadKycDocument(
   });
   if (result.canceled || !result.assets[0]) return false;
 
-  const asset = result.assets[0];
+  const verified = await verifiedKycAsset(result.assets[0]);
+  if (!verified) return false;
+
   try {
     await apiUploadKycDocument({
       type,
-      uri: asset.uri,
-      fileName: asset.fileName ?? `${type}-${Date.now()}.jpg`,
-      mimeType: asset.mimeType ?? "image/jpeg",
+      ...verified,
     });
     return true;
   } catch (e) {

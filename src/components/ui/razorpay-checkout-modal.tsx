@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { ActivityIndicator, Modal, Pressable, Text, View } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 
+import { userFacingError } from "@/lib/errors";
 import { colors, radius, spacing, type } from "@/theme/tokens";
 
 export type RazorpayCheckoutSuccess = {
@@ -9,6 +10,19 @@ export type RazorpayCheckoutSuccess = {
   razorpay_order_id: string;
   razorpay_signature: string;
 };
+
+function isCheckoutSuccess(value: unknown): value is RazorpayCheckoutSuccess {
+  if (!value || typeof value !== "object") return false;
+  const o = value as Record<string, unknown>;
+  return (
+    typeof o.razorpay_payment_id === "string" &&
+    o.razorpay_payment_id.length > 8 &&
+    typeof o.razorpay_order_id === "string" &&
+    o.razorpay_order_id.length > 8 &&
+    typeof o.razorpay_signature === "string" &&
+    o.razorpay_signature.length > 8
+  );
+}
 
 type Props = {
   visible: boolean;
@@ -116,11 +130,15 @@ export function RazorpayCheckoutModal({
   const onMessage = (event: WebViewMessageEvent) => {
     try {
       const data = JSON.parse(event.nativeEvent.data) as {
-        type: string;
-        response?: RazorpayCheckoutSuccess;
-        message?: string;
+        type?: string;
+        response?: unknown;
+        message?: unknown;
       };
-      if (data.type === "success" && data.response) {
+      if (data.type === "success") {
+        if (!isCheckoutSuccess(data.response)) {
+          onError("Payment confirmation was incomplete. Try again.");
+          return;
+        }
         onSuccess(data.response);
         return;
       }
@@ -129,7 +147,12 @@ export function RazorpayCheckoutModal({
         return;
       }
       if (data.type === "error") {
-        onError(data.message || "Payment failed");
+        onError(
+          userFacingError(
+            typeof data.message === "string" ? data.message : "Payment failed",
+            "Payment failed",
+          ),
+        );
       }
     } catch {
       onError("Unexpected checkout response");
